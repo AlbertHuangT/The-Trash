@@ -20,7 +20,7 @@ struct VerifyView: View {
     // UI State
     @State private var cardOffset: CGSize = .zero
     @State private var showingFeedbackForm = false
-    @State private var isCameraActive = false
+    @State private var isCameraActive = false // 控制相机 UI 的显示/隐藏
     
     // Form Data
     @State private var selectedFeedbackCategory = "General Trash"
@@ -33,6 +33,7 @@ struct VerifyView: View {
         return false
     }
     
+    // 预览状态：相机开启 且 没有捕获图片 且 处于空闲状态
     var isPreviewState: Bool {
         cameraManager.capturedImage == nil && viewModel.appState == .idle
     }
@@ -60,6 +61,7 @@ struct VerifyView: View {
                             .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
                         
                         if let image = cameraManager.capturedImage {
+                            // 1. 显示拍摄的照片
                             Image(uiImage: image)
                                 .resizable()
                                 .scaledToFill()
@@ -67,9 +69,11 @@ struct VerifyView: View {
                                 .cornerRadius(24)
                                 .clipped()
                         } else if isCameraActive {
+                            // 2. 显示相机预览 (只有点击 Open Camera 后才显示)
                             CameraPreview(cameraManager: cameraManager)
                                 .clipShape(RoundedRectangle(cornerRadius: 24))
                         } else {
+                            // 3. 初始/关闭状态的占位符
                             VStack(spacing: 16) {
                                 Image(systemName: "camera.aperture")
                                     .font(.system(size: 60))
@@ -154,6 +158,7 @@ struct VerifyView: View {
     private func handleSwipe(direction: SwipeDirection, result: TrashAnalysisResult) {
         let generator = UINotificationFeedbackGenerator()
         if direction == .right {
+            // ✅ 正确
             generator.notificationOccurred(.success)
             viewModel.handleCorrectFeedback()
             withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = 500 }
@@ -162,6 +167,7 @@ struct VerifyView: View {
                 finishFlowAndReset(closeCamera: true)
             }
         } else {
+            // ❌ 错误
             generator.notificationOccurred(.warning)
             withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = -500 }
             viewModel.prepareForIncorrectFeedback(wrongResult: result)
@@ -184,7 +190,6 @@ struct VerifyView: View {
             cameraManager.takePhoto()
         } else {
             finishFlowAndReset(closeCamera: false)
-            withAnimation { isCameraActive = true }
             cameraManager.start()
         }
     }
@@ -193,7 +198,12 @@ struct VerifyView: View {
         guard case .collectingFeedback(let originalResult) = viewModel.appState,
               let currentImage = cameraManager.capturedImage else { return }
         Task {
-            await viewModel.submitCorrection(image: currentImage, originalResult: originalResult, correctedCategory: selectedFeedbackCategory, correctedName: feedbackItemName)
+            await viewModel.submitCorrection(
+                image: currentImage,
+                originalResult: originalResult,
+                correctedCategory: selectedFeedbackCategory,
+                correctedName: feedbackItemName
+            )
             finishFlowAndReset(closeCamera: true)
         }
     }
@@ -214,19 +224,82 @@ struct VerifyView: View {
 }
 
 // MARK: - Subcomponents (Internal to VerifyView)
+
 struct SwipeableResultCard: View {
     let result: TrashAnalysisResult
     @Binding var offset: CGSize
     var onSwiped: (SwipeDirection) -> Void
+    
     var body: some View {
+        // 🔥 修复关键：直接使用 ResultCardContent 作为主体
         ResultCardContent(result: result)
+            // 🔥 使用 overlay 将特效层"贴"在卡片表面，强制大小一致
+            .overlay(
+                ZStack {
+                    if offset.width > 0 {
+                        // 向右滑 -> 绿色 (Correct)
+                        CorrectOverlay()
+                            .opacity(Double(offset.width / 150))
+                    } else if offset.width < 0 {
+                        // 向左滑 -> 红色 (Incorrect)
+                        IncorrectOverlay()
+                            .opacity(Double(-offset.width / 150))
+                    }
+                }
+                .allowsHitTesting(false) // 确保 overlay 不拦截触摸事件
+            )
+            // 统一裁切圆角 (同时作用于卡片和 Overlay)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+            
+            // 动画和位移
             .offset(x: offset.width)
             .rotationEffect(.degrees(Double(offset.width / 15)))
-            .gesture(DragGesture().onChanged { offset = $0.translation }.onEnded { gesture in
-                if gesture.translation.width < -100 { onSwiped(.left) }
-                else if gesture.translation.width > 100 { onSwiped(.right) }
-                else { withAnimation(.spring()) { offset = .zero } }
-            })
+            
+            // 外部边距
+            .padding(.horizontal)
+            
+            .gesture(DragGesture()
+                .onChanged { gesture in
+                    offset = gesture.translation
+                }
+                .onEnded { gesture in
+                    if gesture.translation.width < -100 { onSwiped(.left) }
+                    else if gesture.translation.width > 100 { onSwiped(.right) }
+                    else { withAnimation(.spring()) { offset = .zero } }
+                }
+            )
+    }
+}
+
+// Overlay 视图
+struct CorrectOverlay: View {
+    var body: some View {
+        ZStack {
+            Color.green.opacity(0.9)
+            VStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 50))
+                Text("Correct")
+                    .font(.title2.bold())
+            }
+            .foregroundColor(.white)
+        }
+    }
+}
+
+struct IncorrectOverlay: View {
+    var body: some View {
+        ZStack {
+            Color.red.opacity(0.9)
+            VStack(spacing: 8) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 50))
+                Text("Incorrect")
+                    .font(.title2.bold())
+            }
+            .foregroundColor(.white)
+        }
     }
 }
 
@@ -235,14 +308,27 @@ struct ResultCardContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(result.category).font(.headline).foregroundColor(result.color)
+                Text(result.category)
+                    .font(.headline)
+                    .foregroundColor(result.color)
                 Spacer()
-                Text("\(Int(result.confidence * 100))%").font(.caption).bold().padding(4).background(Color.secondary.opacity(0.1)).cornerRadius(4)
+                Text("\(Int(result.confidence * 100))%")
+                    .font(.caption)
+                    .bold()
+                    .padding(4)
+                    .background(Color.secondary.opacity(0.1))
+                    .cornerRadius(4)
             }
-            Text(result.itemName).font(.title3).bold()
-            Text(result.actionTip).font(.caption).foregroundColor(.secondary)
+            Text(result.itemName)
+                .font(.title3)
+                .bold()
+            Text(result.actionTip)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
-        .padding().background(Color(.secondarySystemGroupedBackground)).cornerRadius(16).padding(.horizontal)
+        .padding() // 内部留白
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
     }
 }
 
@@ -257,6 +343,9 @@ struct FeedbackFormView: View {
             }.pickerStyle(.menu)
             TextField("Item Name", text: $itemName).textFieldStyle(.roundedBorder)
         }
-        .padding().background(Color(.secondarySystemGroupedBackground)).cornerRadius(16).padding(.horizontal)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        .padding(.horizontal)
     }
 }

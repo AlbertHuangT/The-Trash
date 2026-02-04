@@ -9,7 +9,7 @@ import SwiftUI
 import AVFoundation
 import Combine
 
-// MARK: - 1. Camera Manager (相机逻辑控制器)
+// MARK: - 1. Camera Manager
 class CameraManager: NSObject, ObservableObject {
     @Published var session = AVCaptureSession()
     @Published var capturedImage: UIImage?
@@ -21,7 +21,7 @@ class CameraManager: NSObject, ObservableObject {
     override init() {
         super.init()
         checkPermission()
-        // ❌ 删除 setupObservers()，防止后台切前台时自动启动
+        // 确保没有 observer 自动启动 session
     }
     
     func checkPermission() {
@@ -44,7 +44,6 @@ class CameraManager: NSObject, ObservableObject {
     private func setupSession() {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
-            // 防止重复配置
             if !self.session.inputs.isEmpty { return }
             
             self.session.beginConfiguration()
@@ -62,7 +61,7 @@ class CameraManager: NSObject, ObservableObject {
             }
             
             self.session.commitConfiguration()
-            // ❌ 注意：配置完成后不自动 startRunning，等待按钮点击
+            // ❌ 配置完成后不自动 startRunning，必须等待 VerifyView 显式调用 start()
         }
     }
     
@@ -89,8 +88,7 @@ class CameraManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.capturedImage = nil
         }
-        // ❌ 修复：reset 时不要自动 start，等待外部显式调用
-        // self.start()
+        // ❌ reset 时不自动 start，等待 "Retake" 按钮调用 start()
     }
     
     func stop() {
@@ -121,7 +119,7 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
               let image = UIImage(data: imageData) else { return }
         
         Task { @MainActor in
-            self.stop() // ✅ 拍照后立即停止相机流
+            self.stop() // ✅ 拍照后停止流，节省资源
             self.capturedImage = image
         }
     }

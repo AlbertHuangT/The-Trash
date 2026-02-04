@@ -91,8 +91,6 @@ class TrashViewModel: ObservableObject {
         } catch {
             print("❌ Upload failed: \(error)")
         }
-        
-        self.reset()
     }
     
     func reset() {

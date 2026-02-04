@@ -129,19 +129,14 @@ class ArenaViewModel: ObservableObject {
             print("❌ [Arena] Vote Submission Error: \(error)")
             
             // 🔥 FIX: 失败回滚逻辑
-            // 如果网络请求失败，将任务插回到原来的位置，并回扣分数
             withAnimation {
-                // 如果索引还在范围内就插回原位，否则插到最前面
                 if index <= self.tasks.count {
                     self.tasks.insert(removedTask, at: index)
                 } else {
                     self.tasks.append(removedTask)
                 }
-                
                 self.totalCredits -= 25 // 回滚分数
             }
-            
-            // 这里可以加一个 Toast 提示用户“网络错误”
         }
     }
 }
@@ -149,6 +144,8 @@ class ArenaViewModel: ObservableObject {
 // MARK: - Main View
 struct ArenaView: View {
     @StateObject private var viewModel = ArenaViewModel()
+    @StateObject private var authViewModel = AuthViewModel() // 引入 AuthViewModel 检查状态
+    
     let categories = ["Recyclable", "Compostable", "Landfill", "Hazardous"]
     
     var body: some View {
@@ -156,90 +153,134 @@ struct ArenaView: View {
             ZStack {
                 Color(.systemGroupedBackground).ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // --- Header ---
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Trash Arena")
-                                .font(.system(size: 34, weight: .heavy, design: .rounded))
-                            Text("Validate trash to train the AI")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 6) {
-                            Image(systemName: "flame.fill")
-                                .foregroundColor(.orange)
-                            Text("\(viewModel.totalCredits)")
-                                .font(.title2)
-                                .fontWeight(.black)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .cornerRadius(20)
-                        .overlay(
-                            Group {
-                                if viewModel.showPointAnimation {
-                                    Text("+25")
-                                        .font(.title)
-                                        .fontWeight(.heavy)
-                                        .foregroundColor(.green)
-                                        .offset(y: -40)
-                                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                                }
-                            }
-                        )
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                    .padding(.bottom, 20)
-                    
-                    Spacer()
-                    
-                    // --- Card stack area ---
-                    ZStack {
-                        if viewModel.tasks.isEmpty {
-                            if viewModel.isLoading {
-                                ProgressView("Loading challenges...")
-                            } else {
-                                EmptyStateView(onRefresh: {
-                                    Task { await viewModel.fetchTasks() }
-                                })
-                            }
-                        } else {
-                            ForEach(Array(viewModel.tasks.enumerated()).reversed(), id: \.element.id) { index, task in
-                                ArenaCard(
-                                    task: task,
-                                    image: viewModel.imageCache[task.id],
-                                    categories: categories,
-                                    isTopCard: index == 0
-                                ) { selectedCategory in
-                                    Task { await viewModel.submitVote(task: task, category: selectedCategory) }
-                                }
-                                .offset(y: CGFloat(index * 4))
-                                .scaleEffect(1.0 - CGFloat(index) * 0.03)
-                                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                            }
-                        }
-                    }
-                    .frame(height: 520)
-                    .padding(.horizontal)
-                    
-                    Spacer()
+                if authViewModel.isAnonymous {
+                    // 🚫 匿名用户限制视图
+                    AnonymousRestrictionView()
+                } else {
+                    // ✅ 正式用户显示 Arena 内容
+                    mainArenaContent
                 }
             }
             .navigationBarHidden(true)
             .onAppear {
-                Task { await viewModel.fetchTasks() }
+                if !authViewModel.isAnonymous {
+                    Task { await viewModel.fetchTasks() }
+                }
             }
+            // 监听状态变化，如果用户刚刚绑定了账号，自动刷新
+            .onChange(of: authViewModel.isAnonymous) { isAnon in
+                if !isAnon {
+                    Task { await viewModel.fetchTasks() }
+                }
+            }
+        }
+    }
+    
+    // 原有的 Arena 主体内容
+    var mainArenaContent: some View {
+        VStack(spacing: 0) {
+            // --- Header ---
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Trash Arena")
+                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    Text("Validate trash to train the AI")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                        .foregroundColor(.orange)
+                    Text("\(viewModel.totalCredits)")
+                        .font(.title2)
+                        .fontWeight(.black)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(20)
+                .overlay(
+                    Group {
+                        if viewModel.showPointAnimation {
+                            Text("+25")
+                                .font(.title)
+                                .fontWeight(.heavy)
+                                .foregroundColor(.green)
+                                .offset(y: -40)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
+                )
+            }
+            .padding(.horizontal)
+            .padding(.top, 10)
+            .padding(.bottom, 20)
+            
+            Spacer()
+            
+            // --- Card stack area ---
+            ZStack {
+                if viewModel.tasks.isEmpty {
+                    if viewModel.isLoading {
+                        ProgressView("Loading challenges...")
+                    } else {
+                        EmptyStateView(onRefresh: {
+                            Task { await viewModel.fetchTasks() }
+                        })
+                    }
+                } else {
+                    ForEach(Array(viewModel.tasks.enumerated()).reversed(), id: \.element.id) { index, task in
+                        ArenaCard(
+                            task: task,
+                            image: viewModel.imageCache[task.id],
+                            categories: categories,
+                            isTopCard: index == 0
+                        ) { selectedCategory in
+                            Task { await viewModel.submitVote(task: task, category: selectedCategory) }
+                        }
+                        .offset(y: CGFloat(index * 4))
+                        .scaleEffect(1.0 - CGFloat(index) * 0.03)
+                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    }
+                }
+            }
+            .frame(height: 520)
+            .padding(.horizontal)
+            
+            Spacer()
         }
     }
 }
 
 // MARK: - Subviews
+
+// 新增：限制匿名用户的视图
+struct AnonymousRestrictionView: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 80))
+                .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .padding(.bottom, 10)
+            
+            Text("Access Restricted")
+                .font(.title).bold()
+            
+            Text("Trash Arena is only available for registered users.\n\nPlease link your Email or Phone in the Account tab to participate and earn rewards.")
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+    }
+}
+
 struct EmptyStateView: View {
     var onRefresh: () -> Void
     var body: some View {
