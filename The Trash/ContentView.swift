@@ -3,7 +3,49 @@ import Supabase
 import Auth
 
 struct ContentView: View {
-    // 确保使用 .shared 单例以防止内存暴涨
+    // 选中的 Tab 索引
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        // 使用 TabView 实现底部导航栏
+        TabView(selection: $selectedTab) {
+            
+            // --- Tab 1: Verify (核心功能) ---
+            VerifyView()
+                .tabItem {
+                    Label("Verify", systemImage: "camera.viewfinder")
+                }
+                .tag(0)
+            
+            // --- Tab 2: Friend (社交) ---
+            FriendView()
+                .tabItem {
+                    Label("Friends", systemImage: "person.2.fill")
+                }
+                .tag(1)
+            
+            // --- Tab 3: Reward (奖励) ---
+            RewardView()
+                .tabItem {
+                    Label("Reward", systemImage: "gift.fill")
+                }
+                .tag(2)
+            
+            // --- Tab 4: My Account (个人中心) ---
+            AccountView()
+                .tabItem {
+                    Label("Account", systemImage: "person.circle.fill")
+                }
+                .tag(3)
+        }
+        // 设置 Tab 选中时的颜色
+        .accentColor(.blue)
+    }
+}
+
+// MARK: - 1. Verify View (原主页逻辑)
+struct VerifyView: View {
+    // 将原 ContentView 的逻辑移到这里
     @StateObject private var viewModel = TrashViewModel(classifier: RealClassifierService.shared)
     @EnvironmentObject var authVM: AuthViewModel
     
@@ -16,24 +58,11 @@ struct ContentView: View {
             Color(.systemGroupedBackground).ignoresSafeArea()
             
             VStack(spacing: 30) {
-                // --- 顶部栏 ---
-                HStack {
-                    Text("The Trash")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    Spacer()
-                    
-                    // 登出按钮
-                    Button(action: {
-                        Task { await authVM.signOut() }
-                    }) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .foregroundColor(.red)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.top, 40)
+                // 顶部标题 (去掉了右上角登出按钮，因为移到了 Account 页)
+                Text("The Trash")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding(.top, 40)
                 
                 // --- 取景/图片区域 ---
                 ZStack {
@@ -78,7 +107,7 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                // --- 底部按钮 ---
+                // --- 底部大按钮 (保留，作为快速入口) ---
                 Button(action: {
                     showCamera = true
                 }) {
@@ -102,7 +131,7 @@ struct ContentView: View {
         .sheet(isPresented: $showCamera) {
             CameraView(selectedImage: $capturedImage)
         }
-        // 🔥 修复：使用通用版 onChange 语法 (兼容 iOS 14/15/16)
+        // 兼容 iOS 14+ 的 onChange
         .onChange(of: capturedImage) { newImage in
             if let img = newImage {
                 viewModel.analyzeImage(image: img)
@@ -122,7 +151,193 @@ struct ContentView: View {
     }
 }
 
-// ResultCard 组件保持不变，为了完整性这里也保留
+// MARK: - 2. Friend View (占位)
+struct FriendView: View {
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "person.2.circle")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.gray)
+                
+                Text("Friends")
+                    .font(.title2)
+                    .bold()
+                
+                Text("Rankings and social features coming soon!")
+                    .foregroundColor(.secondary)
+            }
+            .navigationTitle("Friends")
+        }
+    }
+}
+
+// MARK: - 3. Reward View (占位)
+struct RewardView: View {
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "gift.circle")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.orange)
+                
+                Text("Rewards")
+                    .font(.title2)
+                    .bold()
+                
+                Text("Earn points for recycling correctly!")
+                    .foregroundColor(.secondary)
+            }
+            .navigationTitle("Rewards")
+        }
+    }
+}
+
+// MARK: - 4. Account View (更新版：支持绑定)
+struct AccountView: View {
+    @EnvironmentObject var authVM: AuthViewModel
+    
+    // 绑定弹窗状态
+    @State private var showBindPhoneSheet = false
+    @State private var showBindEmailSheet = false
+    @State private var inputPhone = "+1"
+    @State private var inputEmail = ""
+    @State private var inputOTP = ""
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Profile")) {
+                    HStack {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            // 显示 Email 或 Phone
+                            if let email = authVM.session?.user.email {
+                                Text(email).font(.headline)
+                            } else if let phone = authVM.session?.user.phone {
+                                Text(phone).font(.headline)
+                            } else {
+                                Text("User").font(.headline)
+                            }
+                            Text("The Trash Member")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                Section(header: Text("Linked Accounts")) {
+                    // --- Email 状态 ---
+                    if let email = authVM.session?.user.email, !email.isEmpty {
+                        HStack {
+                            Label("Email", systemImage: "envelope.fill")
+                            Spacer()
+                            Text("Linked")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    } else {
+                        Button(action: { showBindEmailSheet = true }) {
+                            HStack {
+                                Label("Link Email", systemImage: "envelope")
+                                Spacer()
+                                Image(systemName: "plus.circle")
+                            }
+                        }
+                    }
+                    
+                    // --- Phone 状态 ---
+                    if let phone = authVM.session?.user.phone, !phone.isEmpty {
+                        HStack {
+                            Label("Phone", systemImage: "phone.fill")
+                            Spacer()
+                            Text("Linked")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    } else {
+                        Button(action: { showBindPhoneSheet = true }) {
+                            HStack {
+                                Label("Link Phone", systemImage: "phone")
+                                Spacer()
+                                Image(systemName: "plus.circle")
+                            }
+                        }
+                    }
+                }
+                
+                Section {
+                    Button(action: {
+                        Task { await authVM.signOut() }
+                    }) {
+                        Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle("My Account")
+            // --- 绑定手机的 Sheet ---
+            .sheet(isPresented: $showBindPhoneSheet) {
+                VStack(spacing: 20) {
+                    Text("Link Phone Number").font(.headline)
+                    if !authVM.showOTPInput {
+                        TextField("Phone (+1...)", text: $inputPhone)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.phonePad)
+                        Button("Send Code") {
+                            Task { await authVM.bindPhone(phone: inputPhone) }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else {
+                        TextField("Code", text: $inputOTP)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.numberPad)
+                        Button("Verify & Link") {
+                            Task {
+                                await authVM.confirmBindPhone(phone: inputPhone, token: inputOTP)
+                                showBindPhoneSheet = false
+                                authVM.showOTPInput = false // 重置状态
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding()
+                .presentationDetents([.medium])
+            }
+            // --- 绑定邮箱的 Sheet ---
+            .sheet(isPresented: $showBindEmailSheet) {
+                VStack(spacing: 20) {
+                    Text("Link Email Address").font(.headline)
+                    TextField("Email", text: $inputEmail)
+                        .textFieldStyle(.roundedBorder)
+                        .keyboardType(.emailAddress)
+                    Button("Send Confirmation") {
+                        Task {
+                            await authVM.bindEmail(email: inputEmail)
+                            showBindEmailSheet = false
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Text("You will need to click the link in your email to finish linking.")
+                        .font(.caption).foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .presentationDetents([.medium])
+            }
+        }
+    }
+}
+// MARK: - Result Card (保持不变)
 struct ResultCard: View {
     let result: TrashAnalysisResult
     var onReport: () -> Void
