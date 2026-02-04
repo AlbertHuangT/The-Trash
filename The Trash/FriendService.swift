@@ -40,7 +40,6 @@ class FriendService: ObservableObject {
         let store = CNContactStore()
         
         do {
-            // 1. 请求权限
             let granted = try await store.requestAccess(for: .contacts)
             
             await MainActor.run {
@@ -50,43 +49,72 @@ class FriendService: ObservableObject {
             
             if !granted { return }
             
-            // 🔥 Fix: 将耗时的通讯录遍历移到后台线程，避免阻塞主线程
+            // 2. 遍历通讯录
             let phoneNumbers = try await Task.detached(priority: .userInitiated) { () -> [String] in
                 let keys = [CNContactPhoneNumbersKey] as [CNKeyDescriptor]
                 let request = CNContactFetchRequest(keysToFetch: keys)
-                var numbers: [String] = []
+                var numbers: Set<String> = [] // 使用 Set 去重
                 
                 try store.enumerateContacts(with: request) { contact, stop in
                     for number in contact.phoneNumbers {
                         let raw = number.value.stringValue
-                        // 简单的数字清理，保留纯数字
-                        // 建议：实际生产中最好保留 E.164 格式（如 +1...）以匹配数据库标准
+                        // 🔥 FIX: 改进号码清洗逻辑
+                        // 保留纯数字，移除空格、括号、横线
                         let digits = raw.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
                         
-                        // 假设取后10位进行模糊匹配
-                        if digits.count >= 10 {
-                            numbers.append(String(digits.suffix(10)))
+                        // 逻辑：支持 10 位(US) 和 11 位(CN) 号码
+                        if digits.count == 11 {
+                            // 中国号码，直接添加
+                            numbers.insert(digits)
+                        } else if digits.count > 10 {
+                            // 其他带国家码的号码 (如 1858...)，保留后 10 位作为备选
+                            numbers.insert(String(digits.suffix(10)))
+                            // 也保留完整数字，以防数据库存的是完整格式
+                            numbers.insert(digits)
+                        } else if digits.count == 10 {
+                            // 美国号码
+                            numbers.insert(digits)
                         }
                     }
                 }
-                return numbers
+                return Array(numbers)
             }.value
             
             if phoneNumbers.isEmpty { return }
             
-            // 3. 去 Supabase 查询 (🔥 关键修复：增加 .in 过滤)
-            // 假设 profiles 表中有 phone 字段用于匹配
-            let response: [AppUser] = try await client
-                .from("profiles")
-                .select("id, username, credits")
-                .in("phone", value: phoneNumbers) // 🔥 仅查询通讯录存在的号码
-                .order("credits", ascending: false)
-                .execute()
-                .value
+            // 3. 分批查询 (Chunking) 以避免 URL 过长错误
+            // Supabase 的 .in 查询如果是 GET 请求，URL 长度有限制。建议每次查 20-50 个。
+            let chunkSize = 20
+            var allMatchedUsers: [AppUser] = []
             
-            // 4. 更新 UI
+            // 将数组切片
+            let chunks = stride(from: 0, to: phoneNumbers.count, by: chunkSize).map {
+                Array(phoneNumbers[$0..<min($0 + chunkSize, phoneNumbers.count)])
+            }
+            
+            for chunk in chunks {
+                do {
+                    let batchUsers: [AppUser] = try await client
+                        .from("profiles")
+                        .select("id, username, credits")
+                        .in("phone", value: chunk) // 🔥 批量查询
+                        .execute()
+                        .value
+                    
+                    allMatchedUsers.append(contentsOf: batchUsers)
+                } catch {
+                    print("⚠️ Partial batch failed: \(error)")
+                    // 即使一批失败，继续尝试下一批
+                }
+            }
+            
+            // 4. 合并结果并排序
+            // 去重（防止同一个用户被多次匹配）
+            let uniqueUsers = Array(Dictionary(grouping: allMatchedUsers, by: { $0.id }).values.compactMap { $0.first })
+            let sortedUsers = uniqueUsers.sorted { $0.credits > $1.credits }
+            
             await MainActor.run {
-                self.friends = response
+                self.friends = sortedUsers
                 for i in 0..<self.friends.count {
                     self.friends[i].rank = i + 1
                 }

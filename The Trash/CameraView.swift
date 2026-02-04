@@ -21,12 +21,12 @@ class CameraManager: NSObject, ObservableObject {
     override init() {
         super.init()
         checkPermission()
+        // ❌ 删除 setupObservers()，防止后台切前台时自动启动
     }
     
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            // 已经授权
             DispatchQueue.main.async { self.permissionGranted = true }
             self.setupSession()
         case .notDetermined:
@@ -44,6 +44,9 @@ class CameraManager: NSObject, ObservableObject {
     private func setupSession() {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
+            // 防止重复配置
+            if !self.session.inputs.isEmpty { return }
+            
             self.session.beginConfiguration()
             
             guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
@@ -59,8 +62,7 @@ class CameraManager: NSObject, ObservableObject {
             }
             
             self.session.commitConfiguration()
-            // 修改点：初始化后不自动启动流，等待 View 层明确调用 start()
-            // self.session.startRunning()
+            // ❌ 注意：配置完成后不自动 startRunning，等待按钮点击
         }
     }
     
@@ -71,9 +73,7 @@ class CameraManager: NSObject, ObservableObject {
             
             let photoSettings = AVCapturePhotoSettings()
             if let photoOutputConnection = self.photoOutput.connection(with: .video) {
-                // 🔥 Fix: 修复 iOS 17 videoOrientation 过期警告
                 if #available(iOS 17.0, *) {
-                    // 90度通常对应 Portrait，具体取决于设备方向逻辑
                     if photoOutputConnection.isVideoRotationAngleSupported(90) {
                         photoOutputConnection.videoRotationAngle = 90
                     }
@@ -89,7 +89,8 @@ class CameraManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.capturedImage = nil
         }
-        self.start()
+        // ❌ 修复：reset 时不要自动 start，等待外部显式调用
+        // self.start()
     }
     
     func stop() {
@@ -109,8 +110,6 @@ class CameraManager: NSObject, ObservableObject {
     }
 }
 
-// 🔥 Fix: 标记为 nonisolated 以符合 Swift 6 并发要求
-// 因为这个代理方法是由 AVFoundation 在任意线程调用的
 extension CameraManager: AVCapturePhotoCaptureDelegate {
     nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         if let error = error {
@@ -121,12 +120,9 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
         guard let imageData = photo.fileDataRepresentation(),
               let image = UIImage(data: imageData) else { return }
         
-        // 拍照后停止流（定格）
-        // 注意：访问 self.session 需要回到 sessionQueue 或 MainActor，
-        // 但这里我们直接用 Task @MainActor 来更新 UI 和停止 Session
         Task { @MainActor in
-            self.stop() // 停止预览流
-            self.capturedImage = image // 更新 UI 显示照片
+            self.stop() // ✅ 拍照后立即停止相机流
+            self.capturedImage = image
         }
     }
 }
@@ -151,9 +147,7 @@ struct CameraPreview: UIViewRepresentable {
         view.videoPreviewLayer.session = cameraManager.session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
         
-        // 🔥 Fix: 修复 iOS 17 videoOrientation 过期警告
         if #available(iOS 17.0, *) {
-            // iOS 17+ 预览层通常会自动处理，或者使用 RotationAngle
             if view.videoPreviewLayer.connection?.isVideoRotationAngleSupported(90) == true {
                 view.videoPreviewLayer.connection?.videoRotationAngle = 90
             }

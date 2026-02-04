@@ -15,7 +15,6 @@ struct ArenaTask: Identifiable, Codable {
     let imageUrl: String
     let originalAiPrediction: String
     
-    // Map snake_case from database to Swift's camelCase
     enum CodingKeys: String, CodingKey {
         case id
         case imageUrl = "image_url"
@@ -28,14 +27,13 @@ struct ArenaTask: Identifiable, Codable {
 class ArenaViewModel: ObservableObject {
     @Published var tasks: [ArenaTask] = []
     @Published var isLoading = false
-    @Published var totalCredits = 0 // Show total credits from database
+    @Published var totalCredits = 0
     @Published var showPointAnimation = false
     
     @Published var imageCache: [UUID: UIImage] = [:]
     
     private let client = SupabaseManager.shared.client
     
-    // Synchronize latest total credits from profiles table
     func fetchUserCredits() async {
         guard let userId = client.auth.currentUser?.id else { return }
         do {
@@ -57,19 +55,15 @@ class ArenaViewModel: ObservableObject {
         }
     }
     
-    // Get current user's unvoted tasks using RPC function
     func fetchTasks() async {
         isLoading = true
         do {
-            // Call SQL function get_arena_tasks()
             let fetchedTasks: [ArenaTask] = try await client
                 .rpc("get_arena_tasks")
                 .execute()
                 .value
             
             self.tasks = fetchedTasks
-            
-            // Sync credits and preload images
             await fetchUserCredits()
             await preloadImages()
         } catch {
@@ -92,12 +86,16 @@ class ArenaViewModel: ObservableObject {
     
     // Submit vote and update credits
     func submitVote(task: ArenaTask, category: String) async {
-        // 1. Instantly remove card
-        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+        // 保存索引和任务对象，以便回滚
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        let removedTask = tasks[index]
+        
+        // 1. 乐观更新 (Optimistic UI): 立即移除
+        withAnimation {
             tasks.remove(at: index)
         }
         
-        // 2. Local credits animation feedback
+        // 本地临时加分反馈
         withAnimation {
             self.totalCredits += 25
             self.showPointAnimation = true
@@ -107,11 +105,12 @@ class ArenaViewModel: ObservableObject {
             withAnimation { self.showPointAnimation = false }
         }
         
-        // 3. Backend data interaction
+        // 2. 后端交互
         do {
-            guard let userId = client.auth.currentUser?.id else { return }
+            guard let userId = client.auth.currentUser?.id else {
+                throw NSError(domain: "Auth", code: 401, userInfo: nil)
+            }
             
-            // Insert vote record
             struct VoteInsert: Encodable {
                 let task_id: UUID
                 let user_id: UUID
@@ -124,13 +123,25 @@ class ArenaViewModel: ObservableObject {
                 voted_category: category
             )).execute()
             
-            // Call RPC to increment credits in database
             try await client.rpc("increment_credits", params: ["amount": 25]).execute()
             
         } catch {
             print("❌ [Arena] Vote Submission Error: \(error)")
-            // On failure, may consider rolling back credits or fetching again
-            await fetchUserCredits()
+            
+            // 🔥 FIX: 失败回滚逻辑
+            // 如果网络请求失败，将任务插回到原来的位置，并回扣分数
+            withAnimation {
+                // 如果索引还在范围内就插回原位，否则插到最前面
+                if index <= self.tasks.count {
+                    self.tasks.insert(removedTask, at: index)
+                } else {
+                    self.tasks.append(removedTask)
+                }
+                
+                self.totalCredits -= 25 // 回滚分数
+            }
+            
+            // 这里可以加一个 Toast 提示用户“网络错误”
         }
     }
 }
@@ -158,7 +169,6 @@ struct ArenaView: View {
                         
                         Spacer()
                         
-                        // Display real-time synced total credits
                         HStack(spacing: 6) {
                             Image(systemName: "flame.fill")
                                 .foregroundColor(.orange)
@@ -211,7 +221,7 @@ struct ArenaView: View {
                                 }
                                 .offset(y: CGFloat(index * 4))
                                 .scaleEffect(1.0 - CGFloat(index) * 0.03)
-                                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5) // Card shadow
+                                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                             }
                         }
                     }
@@ -243,7 +253,7 @@ struct EmptyStateView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
             Button(action: onRefresh) {
-                Label("Refresh Arena", systemImage: "arrow.clockwise") // Refresh button
+                Label("Refresh Arena", systemImage: "arrow.clockwise")
                     .fontWeight(.semibold)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
@@ -295,7 +305,7 @@ struct ArenaCard: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
                                     .background(Color.white.opacity(0.95))
-                                    .foregroundColor(colorForCategory(category)) // Card color function
+                                    .foregroundColor(colorForCategory(category))
                                     .cornerRadius(12)
                             }
                         }
@@ -307,7 +317,7 @@ struct ArenaCard: View {
             }
             .cornerRadius(24)
         }
-        .allowsHitTesting(isTopCard) // Allow clicking
+        .allowsHitTesting(isTopCard)
     }
     
     func colorForCategory(_ cat: String) -> Color {

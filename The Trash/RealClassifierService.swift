@@ -24,8 +24,7 @@ class RealClassifierService: TrashClassifierService {
     // 视觉模型 (The Eye)
     private var model: VNCoreMLModel?
     
-    // 🔥 Fix 1: 线程安全锁 (防止 Crash)
-    // 使用并发队列实现“多读单写”模式
+    // 线程安全锁
     private let accessQueue = DispatchQueue(label: "com.trash.knowledgeBase", attributes: .concurrent)
     
     // 内部存储
@@ -44,21 +43,18 @@ class RealClassifierService: TrashClassifierService {
     }
     
     private init() {
-        // 🔥 Fix 2: 启动性能优化
-        // 将模型加载和 JSON 解析全部移到后台，避免阻塞主线程导致 App 启动卡顿
+        // 将模型加载和 JSON 解析全部移到后台
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.setupModel()
             self?.loadKnowledgeBase()
         }
     }
     
-    // 加载模型 (耗时操作)
     private func setupModel() {
         do {
             let config = MLModelConfiguration()
             config.computeUnits = .all // 使用 NPU 加速
             
-            // MobileCLIPImage 初始化可能耗时 200ms+
             let coreModel = try MobileCLIPImage(configuration: config)
             self.model = try VNCoreMLModel(for: coreModel.model)
             print("✅ [System] MobileCLIP S2 视觉系统就绪")
@@ -67,7 +63,6 @@ class RealClassifierService: TrashClassifierService {
         }
     }
     
-    // 加载知识库
     private func loadKnowledgeBase() {
         guard let url = Bundle.main.url(forResource: "trash_knowledge", withExtension: "json") else {
             print("❌ [Error] 严重错误: 找不到 trash_knowledge.json 文件！")
@@ -77,8 +72,6 @@ class RealClassifierService: TrashClassifierService {
         do {
             let data = try Data(contentsOf: url)
             let items = try JSONDecoder().decode([TrashItem].self, from: data)
-            
-            // 使用线程安全的 setter
             self.knowledgeBase = items
             print("✅ [System] 成功加载知识库: \(items.count) 个物体向量")
         } catch {
@@ -89,8 +82,6 @@ class RealClassifierService: TrashClassifierService {
     // MARK: - Classification Logic
     
     func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void) {
-        // 🔥 Fix 3: 启动保护 (Race to Start)
-        // 如果用户在 App 刚启动还没加载完数据时就拍照，给一个友好的提示，而不是返回 "Unknown"
         if knowledgeBase.isEmpty {
             print("⚠️ 系统尚未准备就绪")
             let loadingResult = TrashAnalysisResult(
@@ -104,24 +95,29 @@ class RealClassifierService: TrashClassifierService {
             return
         }
         
-        guard let model = self.model, let ciImage = CIImage(image: image) else {
+        // 确保能创建 CIImage，优先使用 image.ciImage，如果没有则尝试从 CGImage 创建
+        guard let model = self.model,
+              let ciImage = image.ciImage ?? (image.cgImage.map { CIImage(cgImage: $0) }) else {
             print("⚠️ [Warning] 模型未初始化或图片无效")
+            let errorResult = TrashAnalysisResult(
+                itemName: "Image Error",
+                category: "Retry",
+                confidence: 0.0,
+                actionTip: "Could not process image data.",
+                color: .red
+            )
+            completion(errorResult)
             return
         }
         
-        // MobileCLIP S2 训练时使用的是 CenterCrop
         let request = VNCoreMLRequest(model: model) { [weak self] request, error in
             guard let self = self else { return }
             
-            // 1. 获取图片向量 (Image Embedding)
             if let results = request.results as? [VNCoreMLFeatureValueObservation],
                let featureValue = results.first?.featureValue,
                let multiArray = featureValue.multiArrayValue {
                 
-                // 2. 将 MultiArray 转为高性能 Float 数组
                 let imageEmbedding = self.convertMultiArray(multiArray)
-                
-                // 3. 计算所有分数并找出最佳匹配
                 let bestMatch = self.findBestMatchAndDebug(imageVector: imageEmbedding)
                 
                 if let match = bestMatch {
@@ -134,7 +130,6 @@ class RealClassifierService: TrashClassifierService {
                     )
                     completion(result)
                 } else {
-                    // 4. 兜底逻辑
                     let failResult = TrashAnalysisResult(
                         itemName: "Unknown Object",
                         category: "Try Closer",
@@ -150,10 +145,7 @@ class RealClassifierService: TrashClassifierService {
         request.imageCropAndScaleOption = .centerCrop
         let handler = VNImageRequestHandler(ciImage: ciImage, orientation: .up)
         
-        // 在后台线程执行推理
         DispatchQueue.global(qos: .userInitiated).async {
-            // 🔥 Fix 4: 内存优化 (Autoreleasepool)
-            // 必须包裹在真正执行繁重图像任务的地方，才能及时释放 CoreML 产生的临时内存
             autoreleasepool {
                 do {
                     try handler.perform([request])
@@ -167,16 +159,22 @@ class RealClassifierService: TrashClassifierService {
     // MARK: - Math Kernels
     
     private func findBestMatchAndDebug(imageVector: [Float]) -> (item: TrashItem, score: Float)? {
-        // 获取当前的知识库快照 (线程安全)
         let currentKnowledge = self.knowledgeBase
         
-        // 1. 归一化图片向量
-        let imageNorm = sqrt(imageVector.reduce(0) { $0 + $1 * $1 })
+        // 🔥 FIX: 增加除以零保护
+        let sumOfSquares = imageVector.reduce(0) { $0 + $1 * $1 }
+        let imageNorm = sqrt(sumOfSquares)
+        
+        // 如果向量模长极小（例如纯黑图），直接返回 nil 防止 NaN 崩溃
+        if imageNorm < 1e-6 {
+            print("⚠️ [Warning] Detected zero vector input (image might be black or invalid).")
+            return nil
+        }
+        
         let normalizedImage = imageVector.map { $0 / imageNorm }
         
         var allScores: [(item: TrashItem, score: Float)] = []
         
-        // 2. 遍历知识库计算点积
         for item in currentKnowledge {
             guard item.embedding.count == normalizedImage.count else { continue }
             
@@ -185,17 +183,14 @@ class RealClassifierService: TrashClassifierService {
             allScores.append((item, score))
         }
         
-        // 3. 排序 (Desc)
         let sortedMatches = allScores.sorted { $0.score > $1.score }
         
-        // 4. 打印 Debug 信息
         print("\n-------- 🧠 AI 思考过程 (Top 5) --------")
         for (index, match) in sortedMatches.prefix(5).enumerated() {
              print("👉 #\(index + 1) [\(match.item.label)] 得分: \(match.score)")
         }
         print("---------------------------------------\n")
         
-        // 5. 返回最佳结果 (阈值 0.10)
         if let best = sortedMatches.first, best.score >= 0.10 {
             return best
         }
@@ -203,7 +198,6 @@ class RealClassifierService: TrashClassifierService {
         return nil
     }
     
-    // 辅助工具：MultiArray -> [Float]
     private func convertMultiArray(_ multiArray: MLMultiArray) -> [Float] {
         let count = multiArray.count
         var array = [Float](repeating: 0, count: count)
