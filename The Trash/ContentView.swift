@@ -209,7 +209,6 @@ struct VerifyView: View {
 
 // MARK: - 2. Friend View (排行榜)
 struct FriendView: View {
-    // 引用 FriendService (请确保已创建 FriendService.swift)
     @StateObject private var friendService = FriendService()
     
     var body: some View {
@@ -218,17 +217,27 @@ struct FriendView: View {
                 Section(header: Text("Leaderboard")) {
                     if friendService.friends.isEmpty {
                         VStack(alignment: .center, spacing: 12) {
-                            Text("No friends found yet.")
-                                .foregroundColor(.secondary)
-                            Text("Sync contacts to complete with friends!")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                            // ✨ 根据权限状态切换提示文案
+                            if friendService.isAuthorized {
+                                Text("No friends found yet.")
+                                    .foregroundColor(.secondary)
+                                Text("None of your contacts are playing yet.\nInvite them to join!")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                            } else {
+                                Text("Waiting to sync...")
+                                    .foregroundColor(.secondary)
+                                Text("Sync contacts to compete with friends!")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
                         }
                         .padding(.vertical)
+                        .frame(maxWidth: .infinity) // 居中对齐
                     } else {
                         ForEach(friendService.friends) { friend in
                             HStack {
-                                // 排名图标/数字
                                 if friend.rank <= 3 {
                                     Image(systemName: "crown.fill")
                                         .foregroundColor(friend.rank == 1 ? .yellow : (friend.rank == 2 ? .gray : .orange))
@@ -255,28 +264,38 @@ struct FriendView: View {
                     }
                 }
                 
-                Section {
-                    Button(action: {
-                        Task { await friendService.findFriendsFromContacts() }
-                    }) {
-                        Label("Find Friends from Contacts", systemImage: "person.crop.circle.badge.plus")
-                    }
-                    if friendService.permissionError {
-                        Text("Please enable Contacts access in Settings.")
-                            .font(.caption)
-                            .foregroundColor(.red)
+                // ✨ 只有在未获得权限时，才显示“Find Friends”按钮
+                if !friendService.isAuthorized {
+                    Section {
+                        Button(action: {
+                            Task { await friendService.findFriendsFromContacts() }
+                        }) {
+                            Label("Find Friends from Contacts", systemImage: "person.crop.circle.badge.plus")
+                        }
+                        if friendService.permissionError {
+                            Text("Please enable Contacts access in Settings.")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
                     }
                 }
             }
             .navigationTitle("Friends & Rankings")
             .refreshable {
-                // 下拉刷新
+                // 下拉刷新时，如果已有权限，直接刷新列表
                 await friendService.findFriendsFromContacts()
+            }
+            .onAppear {
+                // 每次进入页面检查一下权限状态（防止用户在设置里改了）
+                friendService.checkAuthorizationStatus()
+                // 自动尝试加载（可选）
+                if friendService.isAuthorized && friendService.friends.isEmpty {
+                    Task { await friendService.findFriendsFromContacts() }
+                }
             }
         }
     }
 }
-
 // MARK: - 3. Reward View (保持占位，等待未来开发兑换功能)
 struct RewardView: View {
     var body: some View {
