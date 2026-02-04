@@ -1,6 +1,7 @@
 import SwiftUI
 import Supabase
 import Auth
+import Contacts // 需要引入 Contacts 框架（虽然逻辑在 Service 里，但 View 可能需要相关类型）
 
 struct ContentView: View {
     // 选中的 Tab 索引
@@ -10,14 +11,14 @@ struct ContentView: View {
         // 使用 TabView 实现底部导航栏
         TabView(selection: $selectedTab) {
             
-            // --- Tab 1: Verify (核心功能) ---
+            // --- Tab 1: Verify (核心功能 + 游戏化动画) ---
             VerifyView()
                 .tabItem {
                     Label("Verify", systemImage: "camera.viewfinder")
                 }
                 .tag(0)
             
-            // --- Tab 2: Friend (社交) ---
+            // --- Tab 2: Friend (排行榜) ---
             FriendView()
                 .tabItem {
                     Label("Friends", systemImage: "person.2.fill")
@@ -43,9 +44,8 @@ struct ContentView: View {
     }
 }
 
-// MARK: - 1. Verify View (原主页逻辑)
+// MARK: - 1. Verify View (核心 + 积分动画)
 struct VerifyView: View {
-    // 将原 ContentView 的逻辑移到这里
     @StateObject private var viewModel = TrashViewModel(classifier: RealClassifierService.shared)
     @EnvironmentObject var authVM: AuthViewModel
     
@@ -53,12 +53,17 @@ struct VerifyView: View {
     @State private var capturedImage: UIImage?
     @State private var showReportSheet = false
     
+    // 🔥 游戏化动画状态
+    @State private var showPointsAnimation = false
+    @State private var pointsOpacity = 0.0
+    @State private var pointsOffset: CGFloat = 0
+    
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             
             VStack(spacing: 30) {
-                // 顶部标题 (去掉了右上角登出按钮，因为移到了 Account 页)
+                // 顶部标题
                 Text("The Trash")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -107,7 +112,7 @@ struct VerifyView: View {
                 
                 Spacer()
                 
-                // --- 底部大按钮 (保留，作为快速入口) ---
+                // --- 底部大按钮 ---
                 Button(action: {
                     showCamera = true
                 }) {
@@ -127,14 +132,65 @@ struct VerifyView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 30)
             }
+            
+            // --- 🔥 游戏化：积分弹窗动画层 ---
+            if showPointsAnimation {
+                VStack {
+                    Text("+ 20 Credits!")
+                        .font(.system(size: 36, weight: .heavy, design: .rounded))
+                        .foregroundColor(.yellow)
+                        .shadow(color: .orange, radius: 2, x: 1, y: 1)
+                        .padding()
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.7))
+                                .shadow(radius: 10)
+                        )
+                        .scaleEffect(showPointsAnimation ? 1.1 : 0.5)
+                }
+                .offset(y: pointsOffset)
+                .opacity(pointsOpacity)
+                .zIndex(100) // 确保在最上层
+                .onAppear {
+                    // 动画逻辑：向上飘动并消失
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                        pointsOffset = -100 // 向上飘
+                        pointsOpacity = 1.0
+                    }
+                    
+                    // 1.5秒后消失
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        withAnimation(.easeOut) {
+                            pointsOpacity = 0.0
+                            pointsOffset = -200
+                        }
+                        // 重置状态
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            showPointsAnimation = false
+                        }
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showCamera) {
             CameraView(selectedImage: $capturedImage)
         }
-        // 兼容 iOS 14+ 的 onChange
+        // 监听图片变化，开始分析
         .onChange(of: capturedImage) { newImage in
             if let img = newImage {
                 viewModel.analyzeImage(image: img)
+            }
+        }
+        // 🔥 监听状态变化，触发动画
+        .onChange(of: viewModel.appState) { newState in
+            if case .finished(let result) = newState {
+                // 只有识别成功才弹动画
+                if result.confidence > 0.4 {
+                    // 重置初始位置并触发
+                    pointsOffset = 0
+                    pointsOpacity = 0
+                    showPointsAnimation = true
+                }
             }
         }
         .sheet(isPresented: $showReportSheet) {
@@ -151,30 +207,77 @@ struct VerifyView: View {
     }
 }
 
-// MARK: - 2. Friend View (占位)
+// MARK: - 2. Friend View (排行榜)
 struct FriendView: View {
+    // 引用 FriendService (请确保已创建 FriendService.swift)
+    @StateObject private var friendService = FriendService()
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "person.2.circle")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.gray)
+            List {
+                Section(header: Text("Leaderboard")) {
+                    if friendService.friends.isEmpty {
+                        VStack(alignment: .center, spacing: 12) {
+                            Text("No friends found yet.")
+                                .foregroundColor(.secondary)
+                            Text("Sync contacts to complete with friends!")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical)
+                    } else {
+                        ForEach(friendService.friends) { friend in
+                            HStack {
+                                // 排名图标/数字
+                                if friend.rank <= 3 {
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(friend.rank == 1 ? .yellow : (friend.rank == 2 ? .gray : .orange))
+                                } else {
+                                    Text("\(friend.rank)")
+                                        .font(.headline)
+                                        .frame(width: 25)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                VStack(alignment: .leading) {
+                                    Text(friend.username ?? "User \(friend.rank)")
+                                        .fontWeight(.semibold)
+                                }
+                                
+                                Spacer()
+                                
+                                Text("\(friend.credits) pts")
+                                    .bold()
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
                 
-                Text("Friends")
-                    .font(.title2)
-                    .bold()
-                
-                Text("Rankings and social features coming soon!")
-                    .foregroundColor(.secondary)
+                Section {
+                    Button(action: {
+                        Task { await friendService.findFriendsFromContacts() }
+                    }) {
+                        Label("Find Friends from Contacts", systemImage: "person.crop.circle.badge.plus")
+                    }
+                    if friendService.permissionError {
+                        Text("Please enable Contacts access in Settings.")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
             }
-            .navigationTitle("Friends")
+            .navigationTitle("Friends & Rankings")
+            .refreshable {
+                // 下拉刷新
+                await friendService.findFriendsFromContacts()
+            }
         }
     }
 }
 
-// MARK: - 3. Reward View (占位)
+// MARK: - 3. Reward View (保持占位，等待未来开发兑换功能)
 struct RewardView: View {
     var body: some View {
         NavigationView {
@@ -185,19 +288,25 @@ struct RewardView: View {
                     .frame(width: 100, height: 100)
                     .foregroundColor(.orange)
                 
-                Text("Rewards")
+                Text("Rewards Center")
                     .font(.title2)
                     .bold()
                 
-                Text("Earn points for recycling correctly!")
+                Text("Use your credits to redeem eco-friendly gifts!")
                     .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                Button("Coming Soon") { }
+                    .buttonStyle(.bordered)
+                    .disabled(true)
             }
             .navigationTitle("Rewards")
         }
     }
 }
 
-// MARK: - 4. Account View (更新版：支持绑定)
+// MARK: - 4. Account View (保持原有的绑定逻辑)
 struct AccountView: View {
     @EnvironmentObject var authVM: AuthViewModel
     
@@ -218,7 +327,6 @@ struct AccountView: View {
                             .foregroundColor(.blue)
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            // 显示 Email 或 Phone
                             if let email = authVM.session?.user.email {
                                 Text(email).font(.headline)
                             } else if let phone = authVM.session?.user.phone {
@@ -235,14 +343,12 @@ struct AccountView: View {
                 }
                 
                 Section(header: Text("Linked Accounts")) {
-                    // --- Email 状态 ---
+                    // Email Link
                     if let email = authVM.session?.user.email, !email.isEmpty {
                         HStack {
                             Label("Email", systemImage: "envelope.fill")
                             Spacer()
-                            Text("Linked")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            Text("Linked").foregroundColor(.secondary).font(.caption)
                         }
                     } else {
                         Button(action: { showBindEmailSheet = true }) {
@@ -254,14 +360,12 @@ struct AccountView: View {
                         }
                     }
                     
-                    // --- Phone 状态 ---
+                    // Phone Link
                     if let phone = authVM.session?.user.phone, !phone.isEmpty {
                         HStack {
                             Label("Phone", systemImage: "phone.fill")
                             Spacer()
-                            Text("Linked")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            Text("Linked").foregroundColor(.secondary).font(.caption)
                         }
                     } else {
                         Button(action: { showBindPhoneSheet = true }) {
@@ -284,7 +388,7 @@ struct AccountView: View {
                 }
             }
             .navigationTitle("My Account")
-            // --- 绑定手机的 Sheet ---
+            // --- Sheets ---
             .sheet(isPresented: $showBindPhoneSheet) {
                 VStack(spacing: 20) {
                     Text("Link Phone Number").font(.headline)
@@ -304,7 +408,7 @@ struct AccountView: View {
                             Task {
                                 await authVM.confirmBindPhone(phone: inputPhone, token: inputOTP)
                                 showBindPhoneSheet = false
-                                authVM.showOTPInput = false // 重置状态
+                                authVM.showOTPInput = false
                             }
                         }
                         .buttonStyle(.borderedProminent)
@@ -313,7 +417,6 @@ struct AccountView: View {
                 .padding()
                 .presentationDetents([.medium])
             }
-            // --- 绑定邮箱的 Sheet ---
             .sheet(isPresented: $showBindEmailSheet) {
                 VStack(spacing: 20) {
                     Text("Link Email Address").font(.headline)
@@ -337,7 +440,8 @@ struct AccountView: View {
         }
     }
 }
-// MARK: - Result Card (保持不变)
+
+// MARK: - Result Card (UI 组件)
 struct ResultCard: View {
     let result: TrashAnalysisResult
     var onReport: () -> Void
