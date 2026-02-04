@@ -8,17 +8,18 @@
 import Foundation
 import SwiftUI
 import Combine
-import Supabase // 引入 Supabase
+import Supabase
+import UIKit
 
-// MARK: - 1. 分类服务协议 (Protocol)
+// MARK: - 1. Protocol
 protocol TrashClassifierService {
     func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void)
 }
 
-// MARK: - 2. 模拟服务 (Mock Service)
+// MARK: - 2. Mock Service
 class MockClassifierService: TrashClassifierService {
     func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             let mockData = [
                 TrashAnalysisResult(
                     itemName: "Mock-Soda Can",
@@ -26,13 +27,6 @@ class MockClassifierService: TrashClassifierService {
                     confidence: 0.98,
                     actionTip: "Empty liquids. Flatten to save space.",
                     color: .blue
-                ),
-                TrashAnalysisResult(
-                    itemName: "Mock-Pizza Box",
-                    category: "Compost (Green Bin)",
-                    confidence: 0.85,
-                    actionTip: "Greasy paper cannot be recycled. Compost it.",
-                    color: .green
                 )
             ]
             completion(mockData.randomElement()!)
@@ -40,30 +34,26 @@ class MockClassifierService: TrashClassifierService {
     }
 }
 
-// MARK: - 3. 视图模型 (ViewModel)
+// MARK: - 3. ViewModel
+@MainActor
 class TrashViewModel: ObservableObject {
     @Published var appState: AppState = .idle
-    private let classifier: TrashClassifierService
     
-    // 🔥 新增：Supabase 客户端引用
+    private let classifier: TrashClassifierService
     private let client = SupabaseManager.shared.client
     
+    // 🔥 Fix: 确保 init 也是 MainActor，避免初始化并发问题
     init(classifier: TrashClassifierService = MockClassifierService()) {
         self.classifier = classifier
     }
     
-    /// 核心方法：处理图片并更新状态
     func analyzeImage(image: UIImage) {
-        // 1. 设置状态
         self.appState = .analyzing
         
-        // 2. 调用服务
         classifier.classifyImage(image: image) { [weak self] result in
-            // 3. 确保 UI 更新发生在主线程
             DispatchQueue.main.async {
                 self?.appState = .finished(result)
                 
-                // 🔥 游戏化逻辑：识别成功且置信度不错，则加分
                 if result.confidence > 0.4 {
                     self?.grantPoints(amount: 20)
                 }
@@ -71,22 +61,39 @@ class TrashViewModel: ObservableObject {
         }
     }
     
-    /// 重置回初始状态
+    // MARK: - Feedback Logic
+    
+    func handleCorrectFeedback() {
+        print("User confirmed result was correct.")
+        self.reset()
+    }
+    
+    func prepareForIncorrectFeedback(wrongResult: TrashAnalysisResult) {
+        appState = .collectingFeedback(wrongResult)
+    }
+
+    func submitCorrection(originalResult: TrashAnalysisResult, correctedCategory: String, correctedName: String?) async {
+        print("--- REPORT SUBMITTED ---")
+        print("User corrected to: \(correctedCategory)")
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        self.reset()
+    }
+    
     func reset() {
         self.appState = .idle
     }
     
-    // MARK: - Gamification (RPC Call)
+    // MARK: - Gamification
     
-    /// 调用数据库函数增加积分
     func grantPoints(amount: Int) {
         Task {
             do {
-                // 调用 Supabase 的 increment_credits 函数
-                try await client.rpc("increment_credits", params: ["amount": amount])
-                print("✅ [Gamification]积分增加成功: +\(amount)")
+                // 🔥 Fix:
+                // 1. 添加 .execute() 确保请求真正发送
+                // 2. 使用 _ = 消除 "result unused" 警告
+                _ = try await client.rpc("increment_credits", params: ["amount": amount]).execute()
             } catch {
-                print("❌ [Gamification]积分增加失败: \(error)")
+                print("❌ [Gamification] Error: \(error)")
             }
         }
     }

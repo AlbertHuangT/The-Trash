@@ -2,82 +2,165 @@
 //  CameraView.swift
 //  The Trash
 //
-//  Created by Albert Huang on 1/20/26.
+//  Created by Albert Huang on 2/3/26.
 //
 
 import SwiftUI
-import UIKit
+import AVFoundation
+import Combine
 
-// 这是一个“桥梁”，把 UIKit 的相机功能包装给 SwiftUI 使用
-struct CameraView: UIViewControllerRepresentable {
+// MARK: - 1. Camera Manager (相机逻辑控制器)
+class CameraManager: NSObject, ObservableObject {
+    @Published var session = AVCaptureSession()
+    @Published var capturedImage: UIImage?
+    @Published var permissionGranted = false
     
-    // 用来把拍到的照片传回给父视图
-    @Binding var selectedImage: UIImage?
-    // 用来控制相机界面的关闭
-    @Environment(\.presentationMode) var presentationMode
+    private let photoOutput = AVCapturePhotoOutput()
+    private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.delegate = context.coordinator
-        // 核心设置：使用相机，而不是相册
-        // 如果是在模拟器上跑，这里会崩溃（模拟器没相机），所以为了安全可以加个判断
-        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-            picker.sourceType = .camera
-        } else {
-            print("⚠️ 警告：当前设备不支持相机，正在回退到相册模式")
-            picker.sourceType = .photoLibrary
-        }
-        picker.allowsEditing = false
-        return picker
+    override init() {
+        super.init()
+        checkPermission()
     }
     
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+    func checkPermission() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            // 已经授权
+            DispatchQueue.main.async { self.permissionGranted = true }
+            self.setupSession()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    self?.permissionGranted = granted
+                    if granted { self?.setupSession() }
+                }
+            }
+        default:
+            DispatchQueue.main.async { self.permissionGranted = false }
+        }
     }
     
-    // 协调器：负责处理“拍完照片后干什么”
-    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        let parent: CameraView
-        
-        init(_ parent: CameraView) {
-            self.parent = parent
-        }
-        
-        // ✅ 这是 UIImagePickerController 唯一会调用的“拍照完成”回调
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+    private func setupSession() {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.session.beginConfiguration()
             
-            // 1. 拿到原始照片
-            if let image = info[.originalImage] as? UIImage {
-                
-                // 🔥 关键修改：在这里立刻缩小图片！(防止内存爆炸)
-                // 注意：这需要你之前创建了 UIImage+Extensions.swift 文件
-                // 如果没有那个文件，请把 .resized(toWidth: 512) 去掉，直接赋值 image
-                let smallImage = image.resized(toWidth: 512) ?? image
-                
-                parent.selectedImage = smallImage
+            guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                  let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
+                  self.session.canAddInput(videoDeviceInput) else {
+                self.session.commitConfiguration()
+                return
+            }
+            self.session.addInput(videoDeviceInput)
+            
+            if self.session.canAddOutput(self.photoOutput) {
+                self.session.addOutput(self.photoOutput)
             }
             
-            // 2. 关闭相机界面
-            parent.presentationMode.wrappedValue.dismiss()
+            self.session.commitConfiguration()
+            self.session.startRunning()
         }
-        
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.presentationMode.wrappedValue.dismiss()
+    }
+    
+    func takePhoto() {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            if !self.session.isRunning { return }
+            
+            let photoSettings = AVCapturePhotoSettings()
+            if let photoOutputConnection = self.photoOutput.connection(with: .video) {
+                // 🔥 Fix: 修复 iOS 17 videoOrientation 过期警告
+                if #available(iOS 17.0, *) {
+                    // 90度通常对应 Portrait，具体取决于设备方向逻辑
+                    if photoOutputConnection.isVideoRotationAngleSupported(90) {
+                        photoOutputConnection.videoRotationAngle = 90
+                    }
+                } else {
+                    photoOutputConnection.videoOrientation = .portrait
+                }
+            }
+            self.photoOutput.capturePhoto(with: photoSettings, delegate: self)
         }
-        
-        // ❌ 已删除：photoOutput 方法
-        // (那个方法是给 AVCaptureSession 用的，UIImagePickerController 用不着)
+    }
+    
+    func reset() {
+        DispatchQueue.main.async {
+            self.capturedImage = nil
+        }
+        self.start()
+    }
+    
+    func stop() {
+        sessionQueue.async {
+            if self.session.isRunning {
+                self.session.stopRunning()
+            }
+        }
+    }
+    
+    func start() {
+        sessionQueue.async {
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
+        }
     }
 }
 
-extension UIImage {
-    func resized(toWidth width: CGFloat) -> UIImage? {
-        let canvasSize = CGSize(width: width, height: CGFloat(ceil(width/size.width * size.height)))
-        UIGraphicsBeginImageContextWithOptions(canvasSize, false, scale)
-        defer { UIGraphicsEndImageContext() }
-        draw(in: CGRect(origin: .zero, size: canvasSize))
-        return UIGraphicsGetImageFromCurrentImageContext()
+// 🔥 Fix: 标记为 nonisolated 以符合 Swift 6 并发要求
+// 因为这个代理方法是由 AVFoundation 在任意线程调用的
+extension CameraManager: AVCapturePhotoCaptureDelegate {
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error = error {
+            print("Error capturing photo: \(error)")
+            return
+        }
+        
+        guard let imageData = photo.fileDataRepresentation(),
+              let image = UIImage(data: imageData) else { return }
+        
+        // 拍照后停止流（定格）
+        // 注意：访问 self.session 需要回到 sessionQueue 或 MainActor，
+        // 但这里我们直接用 Task @MainActor 来更新 UI 和停止 Session
+        Task { @MainActor in
+            self.stop() // 停止预览流
+            self.capturedImage = image // 更新 UI 显示照片
+        }
     }
+}
+
+// MARK: - 2. Camera Preview View
+struct CameraPreview: UIViewRepresentable {
+    class VideoPreviewView: UIView {
+        override class var layerClass: AnyClass {
+            AVCaptureVideoPreviewLayer.self
+        }
+        
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+            return layer as! AVCaptureVideoPreviewLayer
+        }
+    }
+    
+    @ObservedObject var cameraManager: CameraManager
+    
+    func makeUIView(context: Context) -> VideoPreviewView {
+        let view = VideoPreviewView()
+        view.backgroundColor = .black
+        view.videoPreviewLayer.session = cameraManager.session
+        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        
+        // 🔥 Fix: 修复 iOS 17 videoOrientation 过期警告
+        if #available(iOS 17.0, *) {
+            // iOS 17+ 预览层通常会自动处理，或者使用 RotationAngle
+            if view.videoPreviewLayer.connection?.isVideoRotationAngleSupported(90) == true {
+                view.videoPreviewLayer.connection?.videoRotationAngle = 90
+            }
+        } else {
+            view.videoPreviewLayer.connection?.videoOrientation = .portrait
+        }
+        return view
+    }
+    
+    func updateUIView(_ uiView: VideoPreviewView, context: Context) {}
 }

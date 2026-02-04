@@ -1,213 +1,311 @@
 import SwiftUI
 import Supabase
 import Auth
-import Contacts // 需要引入 Contacts 框架（虽然逻辑在 Service 里，但 View 可能需要相关类型）
+import Contacts
 
 struct ContentView: View {
-    // 选中的 Tab 索引
     @State private var selectedTab = 0
     
     var body: some View {
-        // 使用 TabView 实现底部导航栏
         TabView(selection: $selectedTab) {
             
-            // --- Tab 1: Verify (核心功能 + 游戏化动画) ---
+            // --- Tab 1: Verify (核心功能：Tinder交互 + 相机定格) ---
             VerifyView()
                 .tabItem {
                     Label("Verify", systemImage: "camera.viewfinder")
                 }
                 .tag(0)
             
-            // --- Tab 2: Friend (排行榜) ---
+            // --- Tab 2: Friend (排行榜 + 权限控制) ---
             FriendView()
                 .tabItem {
                     Label("Friends", systemImage: "person.2.fill")
                 }
                 .tag(1)
             
-            // --- Tab 3: Reward (奖励) ---
+            // --- Tab 3: Reward ---
             RewardView()
                 .tabItem {
                     Label("Reward", systemImage: "gift.fill")
                 }
                 .tag(2)
             
-            // --- Tab 4: My Account (个人中心) ---
+            // --- Tab 4: Account ---
             AccountView()
                 .tabItem {
                     Label("Account", systemImage: "person.circle.fill")
                 }
                 .tag(3)
         }
-        // 设置 Tab 选中时的颜色
         .accentColor(.blue)
     }
 }
 
-// MARK: - 1. Verify View (核心 + 积分动画)
+// MARK: - 1. Verify View (核心重构)
 struct VerifyView: View {
     @StateObject private var viewModel = TrashViewModel(classifier: RealClassifierService.shared)
-    @EnvironmentObject var authVM: AuthViewModel
+    @StateObject private var cameraManager = CameraManager()
     
-    @State private var showCamera = false
-    @State private var capturedImage: UIImage?
-    @State private var showReportSheet = false
+    // MARK: UI State
+    // 控制滑动卡片的偏移量
+    @State private var cardOffset: CGSize = .zero
+    // 控制反馈表单的显示动画
+    @State private var showingFeedbackForm = false
     
-    // 🔥 游戏化动画状态
-    @State private var showPointsAnimation = false
-    @State private var pointsOpacity = 0.0
-    @State private var pointsOffset: CGFloat = 0
+    // MARK: Form Data (反馈表单数据)
+    @State private var selectedFeedbackCategory = "General Trash"
+    @State private var feedbackItemName = ""
+    let trashCategories = ["Recyclable", "Hazardous", "Compostable", "General Trash", "Electronic"]
     
+    // MARK: - Computed Properties for UI Logic
+    
+    // 状态 A: 预览/闲置 (可以拍照)
+    var isPreviewState: Bool {
+        cameraManager.capturedImage == nil && viewModel.appState == .idle
+    }
+    
+    // 状态 B: 显示结果卡片 (分析完成，且没有进入表单模式)
+    var showResultCard: Bool {
+        if case .finished = viewModel.appState, cameraManager.capturedImage != nil, !showingFeedbackForm {
+            return true
+        }
+        return false
+    }
+    
+    // 状态 C: 显示反馈表单 (用户右滑后)
+    var showFeedbackForm: Bool {
+        if case .collectingFeedback = viewModel.appState, showingFeedbackForm {
+            return true
+        }
+        return false
+    }
+
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             
-            VStack(spacing: 30) {
+            VStack(spacing: 20) {
                 // 顶部标题
                 Text("The Trash")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding(.top, 40)
                 
-                // --- 取景/图片区域 ---
+                // --- 1. 相机/图片区域 ---
                 ZStack {
                     RoundedRectangle(cornerRadius: 24)
-                        .fill(Color(.tertiarySystemFill))
-                        .frame(height: 350)
+                        .fill(Color.black)
+                        .frame(height: 380)
                         .shadow(radius: 10)
                     
-                    if viewModel.appState == .analyzing {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                    } else if let image = capturedImage {
+                    if let image = cameraManager.capturedImage {
+                        // 显示定格照片
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
-                            .frame(height: 350)
+                            .frame(height: 380)
                             .cornerRadius(24)
                             .clipped()
+                            .overlay(
+                                // 分析时的 Loading 遮罩
+                                Group {
+                                    if viewModel.appState == .analyzing {
+                                        ZStack {
+                                            Color.black.opacity(0.4)
+                                            ProgressView("Analyzing...")
+                                                .tint(.white)
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                }
+                            )
                     } else {
-                        VStack {
-                            Image(systemName: "camera.viewfinder")
-                                .font(.system(size: 60))
-                                .foregroundColor(.secondary)
-                            Text("Tap Camera to Scan")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                        }
+                        // 显示相机预览
+                        CameraPreview(cameraManager: cameraManager)
+                            .frame(height: 380)
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                            .overlay(
+                                Group {
+                                    if !cameraManager.permissionGranted {
+                                        Text("Camera access needed").foregroundColor(.white)
+                                    }
+                                }
+                            )
                     }
                 }
                 .padding(.horizontal)
-                .onTapGesture {
-                    showCamera = true
-                }
+                // 当表单出现时，稍微上移一点腾出空间
+                .offset(y: showFeedbackForm ? -20 : 0)
+                .animation(.spring(), value: showFeedbackForm)
                 
-                // --- 结果卡片 ---
-                if case .finished(let result) = viewModel.appState {
-                    ResultCard(result: result, onReport: {
-                        self.showReportSheet = true
-                    })
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                // --- 2. 动态内容区域 (高度固定，避免布局跳动) ---
+                ZStack {
+                    // 情况 A: 结果卡片 (可滑动)
+                    if showResultCard, case .finished(let result) = viewModel.appState {
+                        SwipeableResultCard(result: result, offset: $cardOffset) { direction in
+                            handleSwipe(direction: direction, result: result)
+                        }
+                        // 覆盖在卡片上的提示字 (Like Tinder)
+                        .overlay(
+                            Text(cardOffset.width < 0 ? "✅ Accurate" : (cardOffset.width > 0 ? "❌ Inaccurate" : ""))
+                                .font(.title2.bold())
+                                .foregroundColor(cardOffset.width < 0 ? .green : .red)
+                                .opacity(abs(cardOffset.width) > 50 ? 1 : 0) // 滑动一定距离才显示
+                                .offset(y: -100)
+                        )
+                        // 卡片下方的滑动操作提示
+                        .overlay(
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Image(systemName: "arrow.left")
+                                    Text("Accurate")
+                                    Spacer()
+                                    Text("Inaccurate")
+                                    Image(systemName: "arrow.right")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .padding(.bottom, -30)
+                            }
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                        .zIndex(2) // 确保在表单上层
+                    }
+                    
+                    // 情况 B: 反馈表单
+                    if showFeedbackForm {
+                        FeedbackFormView(
+                            selectedCategory: $selectedFeedbackCategory,
+                            itemName: $feedbackItemName,
+                            categories: trashCategories
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(1)
+                    }
                 }
+                .frame(height: 150) // 固定高度区域
                 
                 Spacer()
                 
-                // --- 底部大按钮 ---
-                Button(action: {
-                    showCamera = true
-                }) {
+                // --- 3. 底部大按钮 (动态变化) ---
+                Button(action: handleMainButtonTap) {
                     HStack {
-                        Image(systemName: "camera.fill")
-                        Text("Identify Trash")
+                        if showFeedbackForm {
+                            Image(systemName: "paperplane.fill")
+                            Text("Submit Feedback")
+                        } else {
+                            Image(systemName: "camera.shutter.button.fill")
+                            Text("Identify Trash")
+                        }
                     }
                     .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.blue)
+                    // 绿色=提交，蓝色=拍照
+                    .background(showFeedbackForm ? Color.green : Color.blue)
                     .cornerRadius(16)
                     .shadow(radius: 5)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 30)
+                // 只有在 "预览状态" 或 "填写表单状态" 按钮才可用
+                // 在滑动卡片做决定时，按钮禁用
+                .disabled(!isPreviewState && !showFeedbackForm)
+                .opacity((!isPreviewState && !showFeedbackForm) ? 0.5 : 1.0)
             }
+        }
+        // 生命周期管理
+        .onAppear {
+            cameraManager.start()
+            resetUIState()
+        }
+        .onDisappear { cameraManager.stop() }
+        // 监听拍照 -> 分析
+        .onReceive(cameraManager.$capturedImage) { img in
+            if let img = img { viewModel.analyzeImage(image: img) }
+        }
+    }
+    
+    // MARK: - 逻辑处理函数
+    
+    // 1. 处理滑动
+    private func handleSwipe(direction: SwipeDirection, result: TrashAnalysisResult) {
+        if direction == .left {
+            // 左滑：准确 ✅
+            viewModel.handleCorrectFeedback()
+            // 动画：卡片向左飞走
+            withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = -500 }
             
-            // --- 🔥 游戏化：积分弹窗动画层 ---
-            if showPointsAnimation {
-                VStack {
-                    Text("+ 20 Credits!")
-                        .font(.system(size: 36, weight: .heavy, design: .rounded))
-                        .foregroundColor(.yellow)
-                        .shadow(color: .orange, radius: 2, x: 1, y: 1)
-                        .padding()
-                        .background(
-                            Capsule()
-                                .fill(Color.black.opacity(0.7))
-                                .shadow(radius: 10)
-                        )
-                        .scaleEffect(showPointsAnimation ? 1.1 : 0.5)
-                }
-                .offset(y: pointsOffset)
-                .opacity(pointsOpacity)
-                .zIndex(100) // 确保在最上层
-                .onAppear {
-                    // 动画逻辑：向上飘动并消失
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                        pointsOffset = -100 // 向上飘
-                        pointsOpacity = 1.0
-                    }
-                    
-                    // 1.5秒后消失
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        withAnimation(.easeOut) {
-                            pointsOpacity = 0.0
-                            pointsOffset = -200
-                        }
-                        // 重置状态
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            showPointsAnimation = false
-                        }
-                    }
+            // 延迟一点重置整个流程
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                finishFlowAndReset()
+            }
+        } else {
+            // 右滑：不准确 ❌ -> 触发填表
+            withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = 500 } // 向右飞走
+            
+            // ViewModel 状态变更
+            viewModel.prepareForIncorrectFeedback(wrongResult: result)
+            
+            // 延迟显示表单
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.spring()) {
+                    self.showingFeedbackForm = true
+                    self.cardOffset = .zero // 重置偏移量供下次使用
                 }
             }
         }
-        .sheet(isPresented: $showCamera) {
-            CameraView(selectedImage: $capturedImage)
+    }
+    
+    // 2. 处理按钮点击
+    private func handleMainButtonTap() {
+        if showFeedbackForm {
+            submitFeedback()
+        } else if isPreviewState {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            cameraManager.takePhoto()
         }
-        // 监听图片变化，开始分析
-        .onChange(of: capturedImage) { newImage in
-            if let img = newImage {
-                viewModel.analyzeImage(image: img)
-            }
+    }
+    
+    // 3. 提交反馈
+    private func submitFeedback() {
+        guard case .collectingFeedback(let originalResult) = viewModel.appState else { return }
+        
+        Task {
+            await viewModel.submitCorrection(
+                originalResult: originalResult,
+                correctedCategory: selectedFeedbackCategory,
+                correctedName: feedbackItemName
+            )
+            // 提交完成后重置
+            finishFlowAndReset()
         }
-        // 🔥 监听状态变化，触发动画
-        .onChange(of: viewModel.appState) { newState in
-            if case .finished(let result) = newState {
-                // 只有识别成功才弹动画
-                if result.confidence > 0.4 {
-                    // 重置初始位置并触发
-                    pointsOffset = 0
-                    pointsOpacity = 0
-                    showPointsAnimation = true
-                }
-            }
+    }
+    
+    // 4. 重置流程 (回到拍照界面)
+    private func finishFlowAndReset() {
+        withAnimation {
+            showingFeedbackForm = false
+            cardOffset = .zero
+            selectedFeedbackCategory = "General Trash"
+            feedbackItemName = ""
         }
-        .sheet(isPresented: $showReportSheet) {
-            if case .finished(let result) = viewModel.appState,
-               let image = capturedImage {
-                ReportView(
-                    predictedResult: result,
-                    image: image,
-                    userId: authVM.session?.user.id
-                )
-            }
-        }
-        .animation(.spring(), value: viewModel.appState)
+        // 重置业务逻辑和相机
+        viewModel.reset()
+        cameraManager.reset()
+    }
+    
+    private func resetUIState() {
+        showingFeedbackForm = false
+        cardOffset = .zero
     }
 }
 
-// MARK: - 2. Friend View (排行榜)
+// MARK: - 2. Friend View (排行榜 + 权限)
 struct FriendView: View {
     @StateObject private var friendService = FriendService()
     
@@ -217,7 +315,6 @@ struct FriendView: View {
                 Section(header: Text("Leaderboard")) {
                     if friendService.friends.isEmpty {
                         VStack(alignment: .center, spacing: 12) {
-                            // ✨ 根据权限状态切换提示文案
                             if friendService.isAuthorized {
                                 Text("No friends found yet.")
                                     .foregroundColor(.secondary)
@@ -234,7 +331,7 @@ struct FriendView: View {
                             }
                         }
                         .padding(.vertical)
-                        .frame(maxWidth: .infinity) // 居中对齐
+                        .frame(maxWidth: .infinity)
                     } else {
                         ForEach(friendService.friends) { friend in
                             HStack {
@@ -247,14 +344,11 @@ struct FriendView: View {
                                         .frame(width: 25)
                                         .foregroundColor(.secondary)
                                 }
-                                
                                 VStack(alignment: .leading) {
                                     Text(friend.username ?? "User \(friend.rank)")
                                         .fontWeight(.semibold)
                                 }
-                                
                                 Spacer()
-                                
                                 Text("\(friend.credits) pts")
                                     .bold()
                                     .foregroundColor(.blue)
@@ -264,7 +358,7 @@ struct FriendView: View {
                     }
                 }
                 
-                // ✨ 只有在未获得权限时，才显示“Find Friends”按钮
+                // 只有未授权时显示按钮
                 if !friendService.isAuthorized {
                     Section {
                         Button(action: {
@@ -282,13 +376,10 @@ struct FriendView: View {
             }
             .navigationTitle("Friends & Rankings")
             .refreshable {
-                // 下拉刷新时，如果已有权限，直接刷新列表
                 await friendService.findFriendsFromContacts()
             }
             .onAppear {
-                // 每次进入页面检查一下权限状态（防止用户在设置里改了）
                 friendService.checkAuthorizationStatus()
-                // 自动尝试加载（可选）
                 if friendService.isAuthorized && friendService.friends.isEmpty {
                     Task { await friendService.findFriendsFromContacts() }
                 }
@@ -296,7 +387,8 @@ struct FriendView: View {
         }
     }
 }
-// MARK: - 3. Reward View (保持占位，等待未来开发兑换功能)
+
+// MARK: - 3. Reward View
 struct RewardView: View {
     var body: some View {
         NavigationView {
@@ -325,11 +417,10 @@ struct RewardView: View {
     }
 }
 
-// MARK: - 4. Account View (保持原有的绑定逻辑)
+// MARK: - 4. Account View
 struct AccountView: View {
     @EnvironmentObject var authVM: AuthViewModel
     
-    // 绑定弹窗状态
     @State private var showBindPhoneSheet = false
     @State private var showBindEmailSheet = false
     @State private var inputPhone = "+1"
@@ -362,7 +453,6 @@ struct AccountView: View {
                 }
                 
                 Section(header: Text("Linked Accounts")) {
-                    // Email Link
                     if let email = authVM.session?.user.email, !email.isEmpty {
                         HStack {
                             Label("Email", systemImage: "envelope.fill")
@@ -379,7 +469,6 @@ struct AccountView: View {
                         }
                     }
                     
-                    // Phone Link
                     if let phone = authVM.session?.user.phone, !phone.isEmpty {
                         HStack {
                             Label("Phone", systemImage: "phone.fill")
@@ -407,7 +496,6 @@ struct AccountView: View {
                 }
             }
             .navigationTitle("My Account")
-            // --- Sheets ---
             .sheet(isPresented: $showBindPhoneSheet) {
                 VStack(spacing: 20) {
                     Text("Link Phone Number").font(.headline)
@@ -460,11 +548,43 @@ struct AccountView: View {
     }
 }
 
-// MARK: - Result Card (UI 组件)
-struct ResultCard: View {
+// MARK: - Supporting Views (组件)
+
+enum SwipeDirection { case left, right }
+
+// 1. 可滑动的卡片组件
+struct SwipeableResultCard: View {
     let result: TrashAnalysisResult
-    var onReport: () -> Void
+    @Binding var offset: CGSize
+    var onSwiped: (SwipeDirection) -> Void
     
+    var body: some View {
+        ResultCardContent(result: result)
+            .offset(x: offset.width, y: 0)
+            .rotationEffect(.degrees(Double(offset.width / 20)))
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        offset = gesture.translation
+                    }
+                    .onEnded { gesture in
+                        if gesture.translation.width < -100 {
+                            onSwiped(.left)
+                        } else if gesture.translation.width > 100 {
+                            onSwiped(.right)
+                        } else {
+                            withAnimation(.spring()) {
+                                offset = .zero
+                            }
+                        }
+                    }
+            )
+    }
+}
+
+// 2. 卡片视觉内容 (ResultCard)
+struct ResultCardContent: View {
+    let result: TrashAnalysisResult
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -473,40 +593,64 @@ struct ResultCard: View {
                     .fontWeight(.bold)
                     .foregroundColor(result.color)
                 Spacer()
-                Text(String(format: "Confidence: %.0f%%", result.confidence * 100))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Text(String(format: "%.0f%% Confidence", result.confidence * 100))
+                    .font(.caption).foregroundColor(.secondary)
             }
             Divider()
             HStack {
-                Text("Item:")
-                    .fontWeight(.semibold)
+                Text("Detected:").fontWeight(.semibold)
                 Text(result.itemName)
             }
-            HStack(alignment: .top) {
-                Text("Tip:")
-                    .fontWeight(.semibold)
-                Text(result.actionTip)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            Text(result.actionTip)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .padding(.horizontal)
+    }
+}
+
+// 3. 反馈表单组件
+struct FeedbackFormView: View {
+    @Binding var selectedCategory: String
+    @Binding var itemName: String
+    let categories: [String]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Help us improve!")
+                .font(.headline)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("What is this actually? (Required)")
+                    .font(.caption).foregroundColor(.secondary)
+                
+                Picker("Category", selection: $selectedCategory) {
+                    ForEach(categories, id: \.self) { cat in
+                        Text(cat).tag(cat)
+                    }
+                }
+                .pickerStyle(.menu)
+                .padding(8)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
             }
             
-            Divider()
-            
-            Button(action: onReport) {
-                HStack {
-                    Image(systemName: "exclamationmark.bubble.fill")
-                    Text("Report Incorrect Result")
-                }
-                .font(.footnote)
-                .foregroundColor(.red.opacity(0.8))
-                .padding(.top, 4)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Item Name (Optional)")
+                    .font(.caption).foregroundColor(.secondary)
+                TextField("e.g., Plastic Bottle Brand X", text: $itemName)
+                    .textFieldStyle(.roundedBorder)
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
         .padding(.horizontal)
     }
 }

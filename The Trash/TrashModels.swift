@@ -8,8 +8,7 @@
 import Foundation
 import SwiftUI
 
-// 1. 修改结构体：加上 ", Equatable"
-// 这样 Swift 就能自动比较两个垃圾结果是否相同
+// 1. 垃圾分析结果
 struct TrashAnalysisResult: Identifiable, Equatable {
     let id = UUID()
     let itemName: String
@@ -19,10 +18,13 @@ struct TrashAnalysisResult: Identifiable, Equatable {
     let color: Color
 }
 
-// 2. 修改枚举：加上 ": Equatable"
-// 这样 .animation 就能监听状态变化了
+// 2. App 运行状态 (统一在这里定义)
+// 注意：移除了 TrashViewModel.swift 里的重复定义
 enum AppState: Equatable {
     case idle
     case analyzing
     case finished(TrashAnalysisResult)
+    // ✨ 新增：Tinder 交互需要的状态
+    case collectingFeedback(TrashAnalysisResult)
+    case error(String)
 }

@@ -20,15 +20,14 @@ struct AppUser: Codable, Identifiable {
 class FriendService: ObservableObject {
     @Published var friends: [AppUser] = []
     @Published var permissionError: Bool = false
-    @Published var isAuthorized: Bool = false // ✨ 新增：记录权限状态
+    @Published var isAuthorized: Bool = false
     
     private let client = SupabaseManager.shared.client
     
     init() {
-        checkAuthorizationStatus() // 初始化时检查权限
+        checkAuthorizationStatus()
     }
     
-    // ✨ 新增：检查当前权限状态
     func checkAuthorizationStatus() {
         let status = CNContactStore.authorizationStatus(for: .contacts)
         DispatchQueue.main.async {
@@ -45,27 +44,30 @@ class FriendService: ObservableObject {
             let granted = try await store.requestAccess(for: .contacts)
             
             await MainActor.run {
-                self.isAuthorized = granted // 更新权限状态
+                self.isAuthorized = granted
                 if !granted { self.permissionError = true }
             }
             
             if !granted { return }
             
-            // 2. 提取手机号
-            let keys = [CNContactPhoneNumbersKey] as [CNKeyDescriptor]
-            let request = CNContactFetchRequest(keysToFetch: keys)
-            
-            var phoneNumbers: [String] = []
-            
-            try store.enumerateContacts(with: request) { contact, stop in
-                for number in contact.phoneNumbers {
-                    let raw = number.value.stringValue
-                    let digits = raw.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-                    if digits.count >= 10 {
-                        phoneNumbers.append(String(digits.suffix(10)))
+            // 🔥 Fix: 将耗时的通讯录遍历移到后台线程，避免阻塞主线程
+            // 使用 Task.detached 确保不在 MainActor 上运行
+            let phoneNumbers = try await Task.detached(priority: .userInitiated) { () -> [String] in
+                let keys = [CNContactPhoneNumbersKey] as [CNKeyDescriptor]
+                let request = CNContactFetchRequest(keysToFetch: keys)
+                var numbers: [String] = []
+                
+                try store.enumerateContacts(with: request) { contact, stop in
+                    for number in contact.phoneNumbers {
+                        let raw = number.value.stringValue
+                        let digits = raw.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                        if digits.count >= 10 {
+                            numbers.append(String(digits.suffix(10)))
+                        }
                     }
                 }
-            }
+                return numbers
+            }.value
             
             if phoneNumbers.isEmpty { return }
             
