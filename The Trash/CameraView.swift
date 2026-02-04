@@ -59,7 +59,8 @@ class CameraManager: NSObject, ObservableObject {
             }
             
             self.session.commitConfiguration()
-            self.session.startRunning()
+            // 修改点：初始化后不自动启动流，等待 View 层明确调用 start()
+            // self.session.startRunning()
         }
     }
     

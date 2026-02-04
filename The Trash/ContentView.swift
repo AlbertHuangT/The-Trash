@@ -47,7 +47,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: - 1. Verify View (Fixed)
+// MARK: - 1. Verify View (Fixed & Optimized)
 struct VerifyView: View {
     @StateObject private var viewModel = TrashViewModel(classifier: RealClassifierService.shared)
     @StateObject private var cameraManager = CameraManager()
@@ -55,6 +55,8 @@ struct VerifyView: View {
     // UI State
     @State private var cardOffset: CGSize = .zero
     @State private var showingFeedbackForm = false
+    // 控制相机激活状态
+    @State private var isCameraActive = false
     
     // Form Data
     @State private var selectedFeedbackCategory = "General Trash"
@@ -126,20 +128,34 @@ struct VerifyView: View {
                                     }
                                 )
                         } else {
-                            CameraPreview(cameraManager: cameraManager)
-                                .frame(width: geo.size.width, height: geo.size.height)
-                                .clipShape(RoundedRectangle(cornerRadius: 24))
-                                .overlay(
-                                    Group {
-                                        if !cameraManager.permissionGranted {
-                                            Text("Camera access needed")
-                                                .foregroundColor(.white)
-                                                .padding()
-                                                .background(Color.black.opacity(0.6))
-                                                .cornerRadius(10)
+                            // 相机预览或待机占位
+                            if isCameraActive {
+                                CameraPreview(cameraManager: cameraManager)
+                                    .frame(width: geo.size.width, height: geo.size.height)
+                                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                                    .overlay(
+                                        Group {
+                                            if !cameraManager.permissionGranted {
+                                                Text("Camera access needed")
+                                                    .foregroundColor(.white)
+                                                    .padding()
+                                                    .background(Color.black.opacity(0.6))
+                                                    .cornerRadius(10)
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                            } else {
+                                // 待机状态：显示占位图
+                                VStack(spacing: 16) {
+                                    Image(systemName: "camera.aperture")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(.secondary.opacity(0.5))
+                                    Text("Tap button to scan trash")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(width: geo.size.width, height: geo.size.height)
+                            }
                             
                             RoundedRectangle(cornerRadius: 24)
                                 .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
@@ -158,7 +174,6 @@ struct VerifyView: View {
                             handleSwipe(direction: direction, result: result)
                         }
                         .zIndex(2)
-                        // FIX: Explicitly specify AnyTransition to fix inference error
                         .transition(AnyTransition.asymmetric(
                             insertion: AnyTransition.scale.combined(with: AnyTransition.opacity),
                             removal: AnyTransition.opacity
@@ -175,7 +190,7 @@ struct VerifyView: View {
                         .zIndex(3)
                     }
                     
-                    if isPreviewState {
+                    if isPreviewState && isCameraActive {
                         Text("Point at trash and snap")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -192,7 +207,12 @@ struct VerifyView: View {
                         if showFeedbackForm {
                             Image(systemName: "paperplane.fill")
                             Text("Submit")
+                        } else if !isCameraActive {
+                            // 相机未激活
+                            Image(systemName: "camera.fill")
+                            Text("Open Camera")
                         } else {
+                            // 相机已激活，准备拍照
                             Image(systemName: "camera.shutter.button.fill")
                             Text("Identify")
                         }
@@ -215,17 +235,19 @@ struct VerifyView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
-                .disabled(!isPreviewState && !showFeedbackForm)
-                .opacity((!isPreviewState && !showFeedbackForm) ? 0.6 : 1.0)
-                .scaleEffect((!isPreviewState && !showFeedbackForm) ? 0.98 : 1.0)
+                .disabled((!isPreviewState && !showFeedbackForm) && isCameraActive)
+                .opacity(((!isPreviewState && !showFeedbackForm) && isCameraActive) ? 0.6 : 1.0)
+                .scaleEffect(((!isPreviewState && !showFeedbackForm) && isCameraActive) ? 0.98 : 1.0)
                 .animation(.easeInOut, value: isPreviewState)
             }
         }
         .onAppear {
-            cameraManager.start()
             resetUIState()
         }
-        .onDisappear { cameraManager.stop() }
+        .onDisappear {
+            cameraManager.stop()
+            isCameraActive = false
+        }
         .onReceive(cameraManager.$capturedImage) { img in
             if let img = img { viewModel.analyzeImage(image: img) }
         }
@@ -236,17 +258,20 @@ struct VerifyView: View {
     private func handleSwipe(direction: SwipeDirection, result: TrashAnalysisResult) {
         let generator = UINotificationFeedbackGenerator()
         
-        if direction == .left {
+        // 🔥 修复逻辑：右滑 (Right) = 准确 (Accurate)，左滑 (Left) = 不准确 (Inaccurate)
+        if direction == .right {
+            // Right: Accurate -> Green
             generator.notificationOccurred(.success)
             viewModel.handleCorrectFeedback()
-            withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = -500 }
+            withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = 500 } // 向右飞出
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 finishFlowAndReset()
             }
         } else {
+            // Left: Inaccurate -> Red
             generator.notificationOccurred(.warning)
-            withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = 500 }
+            withAnimation(.easeIn(duration: 0.3)) { cardOffset.width = -500 } // 向左飞出
             
             viewModel.prepareForIncorrectFeedback(wrongResult: result)
             
@@ -265,6 +290,9 @@ struct VerifyView: View {
         
         if showFeedbackForm {
             submitFeedback()
+        } else if !isCameraActive {
+            withAnimation { isCameraActive = true }
+            cameraManager.start()
         } else if isPreviewState {
             cameraManager.takePhoto()
         }
@@ -302,7 +330,7 @@ struct VerifyView: View {
     }
 }
 
-// MARK: - 2. Friend View (Fixed)
+// MARK: - 2. Friend View (Unchanged)
 struct FriendView: View {
     @StateObject private var friendService = FriendService()
     
@@ -641,24 +669,26 @@ struct SwipeableResultCard: View {
             ResultCardContent(result: result)
             
             // Swipe Overlay
-            if offset.width < -20 {
-                // Left: Correct
+            if offset.width > 20 {
+                // 🔥 修复：右滑 (Right) 显示绿色 Checkmark (Accurate)
+                // 图标显示在左侧，跟随卡片向右移动
                 HStack {
-                    Spacer()
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 80))
                         .foregroundColor(.green)
                         .padding()
+                    Spacer()
                 }
                 .opacity(min(abs(offset.width)/150.0, 1.0))
-            } else if offset.width > 20 {
-                // Right: Incorrect
+            } else if offset.width < -20 {
+                // 🔥 修复：左滑 (Left) 显示红色 Xmark (Inaccurate)
+                // 图标显示在右侧，跟随卡片向左移动
                 HStack {
+                    Spacer()
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 80))
                         .foregroundColor(.red)
                         .padding()
-                    Spacer()
                 }
                 .opacity(min(abs(offset.width)/150.0, 1.0))
             }
@@ -672,9 +702,9 @@ struct SwipeableResultCard: View {
                 }
                 .onEnded { gesture in
                     if gesture.translation.width < -100 {
-                        onSwiped(.left)
+                        onSwiped(.left) // 触发左滑
                     } else if gesture.translation.width > 100 {
-                        onSwiped(.right)
+                        onSwiped(.right) // 触发右滑
                     } else {
                         withAnimation(.spring()) {
                             offset = .zero
@@ -738,15 +768,15 @@ struct ResultCardContent: View {
             .cornerRadius(12)
             
             // Bottom hints
+            // 🔥 修复：底部提示文字对调，左=不准，右=准
             HStack {
                 Image(systemName: "arrow.left")
-                Text("Accurate")
+                Text("Accurate") // 左边：不准确
                 Spacer()
-                Text("Inaccurate")
+                Text("Inaccurate")   // 右边：准确
                 Image(systemName: "arrow.right")
             }
             .font(.caption)
-            // FIX: Use Color(uiColor:) for UIKit colors
             .foregroundColor(Color(uiColor: .tertiaryLabel))
             .padding(.top, 4)
         }
