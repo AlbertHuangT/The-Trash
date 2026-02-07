@@ -32,34 +32,58 @@ struct CommunityTabView: View {
     @State private var searchText = ""
     @State private var showLocationPicker = false
     @State private var showCreateEventSheet = false
+    @State private var showCreateCommunitySheet = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 🎨 App Store 风格头部
-            appStoreHeader(title: "Communities")
-            
-            // 匿名用户限制
-            if authVM.isAnonymous {
-                anonymousRestrictionView
-            } else {
-                // Section Picker
-                sectionPicker
+        NavigationStack {
+            ZStack {
+                VStack(spacing: 0) {
+                    // 🎨 App Store 风格头部
+                    appStoreHeader(title: "Communities")
+                    
+                    // 匿名用户限制
+                    if authVM.isAnonymous {
+                        anonymousRestrictionView
+                    } else {
+                        // Section Picker
+                        sectionPicker
+                        
+                        // Content
+                        switch selectedSection {
+                        case .nearby:
+                            nearbyCommunitiesContent
+                        case .joined:
+                            joinedCommunitiesContent
+                        }
+                    }
+                }
+                .background(Color(.systemGroupedBackground))
                 
-                // Content
-                switch selectedSection {
-                case .nearby:
-                    nearbyCommunitiesContent
-                case .joined:
-                    joinedCommunitiesContent
+                // 🚀 浮动加号按钮 (FAB)
+                if !authVM.isAnonymous {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            FloatingActionButton(icon: "plus") {
+                                showCreateCommunitySheet = true
+                            }
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 20)
+                        }
+                    }
                 }
             }
+            .navigationBarHidden(true)
         }
-        .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerSheet(isPresented: $showLocationPicker)
         }
         .sheet(isPresented: $showCreateEventSheet) {
             CreateEventSheet(isPresented: $showCreateEventSheet)
+        }
+        .sheet(isPresented: $showCreateCommunitySheet) {
+            CreateCommunitySheet(isPresented: $showCreateCommunitySheet)
         }
     }
     
@@ -329,11 +353,12 @@ struct JoinedCommunityRowExpanded: View {
     let onCreateEvent: () -> Void
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var isLoading = false
-    @State private var isAdmin = false // TODO: 从后端获取用户在该社区的角色
+    @State private var showDetail = false  // 🚀 使用 sheet 展示详情
     
     var body: some View {
-        NavigationLink(destination: CommunityDetailView(community: community)) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            // 可点击区域
+            Button(action: { showDetail = true }) {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
@@ -350,7 +375,7 @@ struct JoinedCommunityRowExpanded: View {
                                 .font(.headline)
                                 .foregroundColor(.primary)
                             
-                            if isAdmin {
+                            if community.isAdmin {
                                 Text("Admin")
                                     .font(.caption2)
                                     .foregroundColor(.orange)
@@ -375,64 +400,73 @@ struct JoinedCommunityRowExpanded: View {
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
-                
-                if !community.description.isEmpty {
+            }
+            .buttonStyle(.plain)
+            
+            if !community.description.isEmpty {
+                Button(action: { showDetail = true }) {
                     Text(community.description)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                
-                // Action Buttons
-                HStack(spacing: 12) {
-                    // Admin: Create Event Button
-                    if isAdmin {
-                        Button(action: onCreateEvent) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                Text("Create Event")
-                            }
-                            .font(.subheadline.bold())
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.green)
-                            .cornerRadius(10)
-                        }
-                    }
-                    
-                    // Leave Button
-                    Button(action: {
-                        Task {
-                            isLoading = true
-                            _ = await userSettings.leaveCommunity(community)
-                            isLoading = false
-                        }
-                    }) {
+                .buttonStyle(.plain)
+            }
+            
+            // Action Buttons
+            HStack(spacing: 12) {
+                // Admin: Create Event Button
+                if community.isAdmin {
+                    Button(action: onCreateEvent) {
                         HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            } else {
-                                Image(systemName: "xmark.circle.fill")
-                                Text("Leave")
-                            }
+                            Image(systemName: "plus.circle.fill")
+                            Text("Create Event")
                         }
                         .font(.subheadline.bold())
-                        .foregroundColor(.red)
-                        .frame(maxWidth: isAdmin ? nil : .infinity)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .padding(.horizontal, isAdmin ? 20 : 0)
-                        .background(Color.red.opacity(0.1))
+                        .background(Color.green)
                         .cornerRadius(10)
                     }
-                    .disabled(isLoading)
+                    .buttonStyle(.plain)
                 }
+                
+                // Leave Button
+                Button(action: {
+                    Task {
+                        isLoading = true
+                        _ = await userSettings.leaveCommunity(community)
+                        isLoading = false
+                    }
+                }) {
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "xmark.circle.fill")
+                            Text("Leave")
+                        }
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundColor(.red)
+                    .frame(maxWidth: community.isAdmin ? nil : .infinity)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, community.isAdmin ? 20 : 0)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+                .disabled(isLoading)
             }
-            .padding(.vertical, 8)
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 8)
+        .sheet(isPresented: $showDetail) {
+            CommunityDetailView(community: community)
+        }
     }
 }
 
@@ -442,15 +476,24 @@ struct LocationPickerSheet: View {
     @Binding var isPresented: Bool
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var searchText = ""
+    @State private var isSelecting = false // 🚀 防止重复点击
+    @State private var showLocationPermissionAlert = false // 🚀 新增：显示定位权限请求弹窗
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
+                // 🚀 新增：使用当前位置选项
+                if userSettings.locationPermissionStatus != .denied && userSettings.locationPermissionStatus != .restricted {
+                    useCurrentLocationSection
+                }
+                
                 // Search Bar
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                     TextField("Search cities...", text: $searchText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
                 .padding(12)
                 .background(Color(.tertiarySystemGroupedBackground))
@@ -458,44 +501,31 @@ struct LocationPickerSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 
+                // Section Header
+                HStack {
+                    Text("Or select a city")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+                
                 // Location List
                 List {
                     ForEach(PredefinedLocations.search(query: searchText), id: \.city) { location in
-                        Button(action: {
+                        LocationRow(
+                            location: location,
+                            isSelected: userSettings.selectedLocation?.city == location.city,
+                            isDisabled: isSelecting
+                        ) {
+                            guard !isSelecting else { return }
+                            isSelecting = true
                             Task {
                                 await userSettings.selectLocation(location)
                                 isPresented = false
                             }
-                        }) {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.blue.opacity(0.15))
-                                        .frame(width: 40, height: 40)
-                                    Image(systemName: "mappin.circle.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.blue)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(location.city)
-                                        .font(.subheadline.bold())
-                                        .foregroundColor(.primary)
-                                    Text(location.state)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                if userSettings.selectedLocation?.city == location.city {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                }
-                            }
-                            .padding(.vertical, 4)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .listStyle(.plain)
@@ -509,7 +539,183 @@ struct LocationPickerSheet: View {
                     }
                 }
             }
+            .alert("Enable Location Services", isPresented: $showLocationPermissionAlert) {
+                Button("Not Now", role: .cancel) { }
+                Button("Enable") {
+                    userSettings.requestLocationPermission()
+                }
+            } message: {
+                Text("Allow location access to enable distance-based sorting for nearby events. This helps you find events closest to you.")
+            }
+            .onChange(of: userSettings.locationPermissionStatus) { newStatus in
+                // 权限授予后自动获取位置
+                if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
+                    userSettings.requestCurrentLocation()
+                }
+            }
+            .onChange(of: userSettings.preciseLocation) { newLocation in
+                // 获取到精确位置后，找到最近的城市
+                if let location = newLocation, !isSelecting {
+                    isSelecting = true
+                    Task {
+                        let nearestCity = findNearestCity(to: location)
+                        await userSettings.selectLocation(nearestCity)
+                        isPresented = false
+                    }
+                }
+            }
         }
+    }
+    
+    // 🚀 新增：使用当前位置区域
+    private var useCurrentLocationSection: some View {
+        VStack(spacing: 0) {
+            Button(action: handleUseCurrentLocation) {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.blue, .cyan],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 44, height: 44)
+                        
+                        if userSettings.isRequestingLocation {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Use Current Location")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text(locationSubtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    if userSettings.hasLocationPermission {
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Enable")
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                }
+                .padding(16)
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(16)
+            }
+            .buttonStyle(.plain)
+            .disabled(userSettings.isRequestingLocation)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+            
+            Divider()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+        }
+    }
+    
+    private var locationSubtitle: String {
+        switch userSettings.locationPermissionStatus {
+        case .notDetermined:
+            return "Enable for distance-based event sorting"
+        case .authorizedWhenInUse, .authorizedAlways:
+            return "Find the nearest city automatically"
+        case .denied, .restricted:
+            return "Location access denied"
+        @unknown default:
+            return "Enable for better experience"
+        }
+    }
+    
+    private func handleUseCurrentLocation() {
+        if userSettings.hasLocationPermission {
+            // 已有权限，直接获取位置
+            userSettings.requestCurrentLocation()
+        } else if userSettings.locationPermissionStatus == .notDetermined {
+            // 未请求过，显示说明弹窗
+            showLocationPermissionAlert = true
+        }
+    }
+    
+    // 根据精确位置找到最近的预定义城市
+    private func findNearestCity(to location: CLLocation) -> UserLocation {
+        var nearestCity = PredefinedLocations.all[0]
+        var minDistance = Double.infinity
+        
+        for city in PredefinedLocations.all {
+            let cityLocation = CLLocation(latitude: city.latitude, longitude: city.longitude)
+            let distance = location.distance(from: cityLocation)
+            if distance < minDistance {
+                minDistance = distance
+                nearestCity = city
+            }
+        }
+        
+        return nearestCity
+    }
+}
+
+// 🚀 提取为单独组件解决点击问题
+private struct LocationRow: View {
+    let location: UserLocation
+    let isSelected: Bool
+    let isDisabled: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.blue)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(location.city)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.primary)
+                Text(location.state)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle()) // 🚀 关键：扩大点击区域
+        .onTapGesture {
+            onTap()
+        }
+        .opacity(isDisabled ? 0.6 : 1.0)
     }
 }
 
@@ -561,6 +767,208 @@ struct CreateEventSheet: View {
                         isPresented = false
                     }
                     .disabled(title.isEmpty || location.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Floating Action Button (FAB)
+
+struct FloatingActionButton: View {
+    let icon: String
+    let action: () -> Void
+    
+    @State private var isPressed = false
+    
+    var body: some View {
+        Button(action: {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            action()
+        }) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .cyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 60, height: 60)
+                    .shadow(color: .blue.opacity(0.4), radius: 10, y: 5)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+        }
+        .scaleEffect(isPressed ? 0.9 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+    }
+}
+
+// MARK: - Create Community Sheet
+
+struct CreateCommunitySheet: View {
+    @Binding var isPresented: Bool
+    @ObservedObject private var userSettings = UserSettings.shared
+    
+    @State private var name = ""
+    @State private var description = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showSuccessAlert = false
+    
+    // 使用用户当前选择的位置
+    private var selectedCity: String {
+        userSettings.selectedLocation?.city ?? ""
+    }
+    
+    private var selectedState: String {
+        userSettings.selectedLocation?.state ?? ""
+    }
+    
+    private var canCreate: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && !selectedCity.isEmpty
+    }
+    
+    // 生成社区 ID (slug)
+    private var communityId: String {
+        let slug = name.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-")).inverted)
+            .joined()
+        return "\(slug)-\(selectedCity.lowercased())"
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                // Location Info
+                Section {
+                    if userSettings.selectedLocation != nil {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(selectedCity)
+                                    .font(.headline)
+                                Text(selectedState)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        }
+                    } else {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Please select a location first")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Location")
+                } footer: {
+                    Text("Your community will be created in this city")
+                }
+                
+                // Community Details
+                Section("Community Details") {
+                    TextField("Community Name", text: $name)
+                        .textInputAutocapitalization(.words)
+                    
+                    TextField("Description (optional)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+                
+                // Info Section
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.blue)
+                        Text("You can create up to 3 communities. You will automatically become the admin of this community.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Error Message
+                if let error = errorMessage {
+                    Section {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Create Community")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .disabled(isLoading)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: createCommunity) {
+                        if isLoading {
+                            ProgressView()
+                        } else {
+                            Text("Create")
+                        }
+                    }
+                    .disabled(!canCreate || isLoading)
+                }
+            }
+            .alert("Community Created!", isPresented: $showSuccessAlert) {
+                Button("OK") {
+                    isPresented = false
+                }
+            } message: {
+                Text("Your community \"\(name)\" has been created. You are now the admin!")
+            }
+        }
+    }
+    
+    private func createCommunity() {
+        guard canCreate else { return }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            let result = await CommunityService.shared.createCommunity(
+                id: communityId,
+                name: name.trimmingCharacters(in: .whitespaces),
+                city: selectedCity,
+                state: selectedState,
+                description: description.isEmpty ? nil : description,
+                latitude: userSettings.selectedLocation?.latitude,
+                longitude: userSettings.selectedLocation?.longitude
+            )
+            
+            await MainActor.run {
+                isLoading = false
+                
+                if result.success {
+                    showSuccessAlert = true
+                    // 刷新社区列表
+                    Task {
+                        await userSettings.loadCommunitiesForCity(selectedCity)
+                        await userSettings.loadMyCommunities()
+                    }
+                } else {
+                    errorMessage = result.message
                 }
             }
         }

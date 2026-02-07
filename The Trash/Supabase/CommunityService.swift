@@ -42,10 +42,11 @@ struct EventResponse: Codable, Identifiable {
     let iconName: String?
     let maxParticipants: Int
     let participantCount: Int
-    let communityId: String
+    let communityId: String?  // 🔥 修复：可能为 NULL（个人活动）
     let communityName: String?
     let distanceKm: Double?
     let isRegistered: Bool?
+    let isPersonal: Bool?  // 🔥 新增：是否为个人活动
     
     enum CodingKeys: String, CodingKey {
         case id, title, description, organizer, category, location, latitude, longitude
@@ -57,6 +58,7 @@ struct EventResponse: Codable, Identifiable {
         case communityName = "community_name"
         case distanceKm = "distance_km"
         case isRegistered = "is_registered"
+        case isPersonal = "is_personal"
     }
 }
 
@@ -94,9 +96,14 @@ struct MyCommunityResponse: Codable, Identifiable {
     let description: String?
     let memberCount: Int
     let joinedAt: Date
+    let status: String  // 'member' or 'admin'
+    
+    var isAdmin: Bool {
+        status == "admin"
+    }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, city, state, description
+        case id, name, city, state, description, status
         case memberCount = "member_count"
         case joinedAt = "joined_at"
     }
@@ -105,6 +112,20 @@ struct MyCommunityResponse: Codable, Identifiable {
 struct APIResult: Codable {
     let success: Bool
     let message: String
+}
+
+// 🔥 新增：用于解析 can_user_create 函数的返回值
+struct CanCreateResult: Codable {
+    let allowed: Bool
+    let reason: String?
+    let currentCount: Int
+    let maxAllowed: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case allowed, reason
+        case currentCount = "current_count"
+        case maxAllowed = "max_allowed"
+    }
 }
 
 // MARK: - RPC Parameter Structs (Sendable for safe cross-actor usage)
@@ -116,6 +137,67 @@ private struct NearbyEventsParams: Sendable {
     let p_category: String?
     let p_only_joined_communities: Bool
     let p_sort_by: String
+}
+
+private struct CreateCommunityParams: Sendable {
+    let p_id: String
+    let p_name: String
+    let p_city: String
+    let p_state: String
+    let p_description: String?
+    let p_latitude: Double?
+    let p_longitude: Double?
+}
+
+extension CreateCommunityParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_id, forKey: .p_id)
+        try container.encode(p_name, forKey: .p_name)
+        try container.encode(p_city, forKey: .p_city)
+        try container.encode(p_state, forKey: .p_state)
+        try container.encodeIfPresent(p_description, forKey: .p_description)
+        try container.encodeIfPresent(p_latitude, forKey: .p_latitude)
+        try container.encodeIfPresent(p_longitude, forKey: .p_longitude)
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case p_id, p_name, p_city, p_state, p_description, p_latitude, p_longitude
+    }
+}
+
+private struct CreateEventParams: Sendable {
+    let p_title: String
+    let p_description: String
+    let p_category: String
+    let p_event_date: String
+    let p_location: String
+    let p_latitude: Double
+    let p_longitude: Double
+    let p_max_participants: Int
+    let p_community_id: String?
+    let p_icon_name: String
+}
+
+extension CreateEventParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_title, forKey: .p_title)
+        try container.encode(p_description, forKey: .p_description)
+        try container.encode(p_category, forKey: .p_category)
+        try container.encode(p_event_date, forKey: .p_event_date)
+        try container.encode(p_location, forKey: .p_location)
+        try container.encode(p_latitude, forKey: .p_latitude)
+        try container.encode(p_longitude, forKey: .p_longitude)
+        try container.encode(p_max_participants, forKey: .p_max_participants)
+        try container.encodeIfPresent(p_community_id, forKey: .p_community_id)
+        try container.encode(p_icon_name, forKey: .p_icon_name)
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case p_title, p_description, p_category, p_event_date, p_location
+        case p_latitude, p_longitude, p_max_participants, p_community_id, p_icon_name
+    }
 }
 
 extension NearbyEventsParams: Encodable {
@@ -459,4 +541,174 @@ class CommunityService: ObservableObject {
             return []
         }
     }
+    
+    // MARK: - Create Content Methods
+    
+    /// 检查用户是否可以创建社区（最多3个）
+    func canCreateCommunity() async -> (allowed: Bool, currentCount: Int, maxAllowed: Int, reason: String?) {
+        do {
+            let result: CanCreateResult = try await client
+                .rpc("can_user_create_community")
+                .execute()
+                .value
+            
+            return (result.allowed, result.currentCount, result.maxAllowed, result.reason)
+        } catch {
+            print("❌ Check create community error: \(error)")
+            return (false, 0, 3, "Failed to check limit")
+        }
+    }
+    
+    /// 检查用户是否可以创建活动（每周最多7个）
+    func canCreateEvent() async -> (allowed: Bool, currentCount: Int, maxAllowed: Int, reason: String?) {
+        do {
+            let result: CanCreateResult = try await client
+                .rpc("can_user_create_event")
+                .execute()
+                .value
+            
+            return (result.allowed, result.currentCount, result.maxAllowed, result.reason)
+        } catch {
+            print("❌ Check create event error: \(error)")
+            return (false, 0, 7, "Failed to check limit")
+        }
+    }
+    
+    /// 创建社区
+    func createCommunity(
+        id: String,
+        name: String,
+        city: String,
+        state: String,
+        description: String?,
+        latitude: Double?,
+        longitude: Double?
+    ) async -> (success: Bool, message: String, communityId: String?) {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        
+        do {
+            let result: APIResult = try await createCommunityRPC(
+                client: client,
+                id: id,
+                name: name,
+                city: city,
+                state: state,
+                description: description,
+                latitude: latitude,
+                longitude: longitude
+            )
+            
+            if !result.success {
+                errorMessage = result.message
+            }
+            return (result.success, result.message, result.success ? id : nil)
+        } catch {
+            print("❌ Create community error: \(error)")
+            errorMessage = "Failed to create community"
+            return (false, "Failed to create community: \(error.localizedDescription)", nil)
+        }
+    }
+    
+    /// 创建活动（社区或个人）
+    func createEvent(
+        title: String,
+        description: String,
+        category: String,
+        eventDate: Date,
+        location: String,
+        latitude: Double,
+        longitude: Double,
+        maxParticipants: Int = 50,
+        communityId: String? = nil,  // nil = 个人活动
+        iconName: String = "calendar"
+    ) async -> (success: Bool, message: String, eventId: UUID?) {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        
+        do {
+            let result: APIResult = try await createEventRPC(
+                client: client,
+                title: title,
+                description: description,
+                category: category,
+                eventDate: eventDate,
+                location: location,
+                latitude: latitude,
+                longitude: longitude,
+                maxParticipants: maxParticipants,
+                communityId: communityId,
+                iconName: iconName
+            )
+            
+            if !result.success {
+                errorMessage = result.message
+            }
+            return (result.success, result.message, nil)
+        } catch {
+            print("❌ Create event error: \(error)")
+            errorMessage = "Failed to create event"
+            return (false, "Failed to create event: \(error.localizedDescription)", nil)
+        }
+    }
+}
+
+// MARK: - Nonisolated RPC Helpers for Create Operations
+
+private func createCommunityRPC(
+    client: SupabaseClient,
+    id: String,
+    name: String,
+    city: String,
+    state: String,
+    description: String?,
+    latitude: Double?,
+    longitude: Double?
+) async throws -> APIResult {
+    let params = CreateCommunityParams(
+        p_id: id,
+        p_name: name,
+        p_city: city,
+        p_state: state,
+        p_description: description,
+        p_latitude: latitude,
+        p_longitude: longitude
+    )
+    return try await client
+        .rpc("create_community", params: params)
+        .execute()
+        .value
+}
+
+private func createEventRPC(
+    client: SupabaseClient,
+    title: String,
+    description: String,
+    category: String,
+    eventDate: Date,
+    location: String,
+    latitude: Double,
+    longitude: Double,
+    maxParticipants: Int,
+    communityId: String?,
+    iconName: String
+) async throws -> APIResult {
+    let params = CreateEventParams(
+        p_title: title,
+        p_description: description,
+        p_category: category,
+        p_event_date: ISO8601DateFormatter().string(from: eventDate),
+        p_location: location,
+        p_latitude: latitude,
+        p_longitude: longitude,
+        p_max_participants: maxParticipants,
+        p_community_id: communityId,
+        p_icon_name: iconName
+    )
+    return try await client
+        .rpc("create_event", params: params)
+        .execute()
+        .value
 }

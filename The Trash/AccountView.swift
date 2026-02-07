@@ -61,7 +61,6 @@ struct AccountButton: View {
     }
 }
 
-
 // MARK: - Profile ViewModel
 @MainActor
 class ProfileViewModel: ObservableObject {
@@ -72,11 +71,27 @@ class ProfileViewModel: ObservableObject {
     // 🔥 添加错误消息，让用户知道发生了什么
     @Published var errorMessage: String?
     
+    // 🚀 优化：添加缓存
+    private var lastFetchTime: Date?
+    private let cacheValidDuration: TimeInterval = 30 // 缓存有效期30秒
+    private var hasFetchedOnce = false
+    
     private let client = SupabaseManager.shared.client
     
-    func fetchProfile() async {
+    func fetchProfile(forceRefresh: Bool = false) async {
         guard let userId = client.auth.currentUser?.id else { return }
-        isLoading = true
+        
+        // 🚀 优化：检查缓存
+        if !forceRefresh && hasFetchedOnce,
+           let lastTime = lastFetchTime,
+           Date().timeIntervalSince(lastTime) < cacheValidDuration {
+            return // 使用缓存数据
+        }
+        
+        // 🚀 优化：只在首次加载时显示 loading
+        if !hasFetchedOnce {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             struct UserProfile: Decodable {
@@ -94,6 +109,8 @@ class ProfileViewModel: ObservableObject {
             
             self.credits = profile.credits ?? 0
             self.username = profile.username ?? ""
+            self.lastFetchTime = Date() // 🚀 更新缓存时间
+            self.hasFetchedOnce = true
             calculateLevel()
         } catch {
             print("❌ Fetch profile error: \(error)")
@@ -166,24 +183,30 @@ struct AccountView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 🔥 显示错误提示
-                if let error = profileVM.errorMessage {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
-                        Text(error)
-                            .font(.caption)
-                        Spacer()
-                        Button(action: { profileVM.errorMessage = nil }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+                // 🔥 显示错误提示 - 使用固定高度的容器防止布局跳动
+                ZStack {
+                    if let error = profileVM.errorMessage {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption)
+                            Spacer()
+                            Button(action: { profileVM.errorMessage = nil }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(10)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 16)
+                        .transition(.opacity)
                     }
-                    .padding(10)
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(10)
-                    .padding(.horizontal, 16)
                 }
+                .frame(height: profileVM.errorMessage != nil ? nil : 0) // 🚀 无错误时高度为0
+                .clipped()
+                .animation(.easeInOut(duration: 0.2), value: profileVM.errorMessage != nil)
                 
                 // 1. 紧凑型头部卡片
                 compactHeaderView
@@ -239,9 +262,13 @@ struct AccountView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationBarHidden(true)
-            .onAppear {
-                Task { await profileVM.fetchProfile() }
+            .task {
+                await profileVM.fetchProfile()
             }
+            // 🚀 禁用因数据加载导致的布局动画
+            .animation(.none, value: profileVM.credits)
+            .animation(.none, value: profileVM.username)
+            .animation(.none, value: profileVM.levelName)
             // Sheets
             .sheet(isPresented: $showBindPhoneSheet) {
                 BindPhoneSheet(inputPhone: $inputPhone, inputOTP: $inputOTP, authVM: authVM, isPresented: $showBindPhoneSheet)
@@ -357,16 +384,23 @@ struct AccountView: View {
                     // Name & Level
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            if !profileVM.username.isEmpty {
-                                Text(profileVM.username)
-                                    .font(.title3.bold())
-                                    .foregroundColor(.white)
-                            } else {
-                                Text(authVM.session?.user.email ?? authVM.session?.user.phone ?? "Guest")
-                                    .font(.title3.bold())
-                                    .foregroundColor(.white)
-                                    .lineLimit(1)
+                            // 🚀 优化：使用固定占位符防止加载时跳动
+                            Group {
+                                if !profileVM.username.isEmpty {
+                                    Text(profileVM.username)
+                                } else if let email = authVM.session?.user.email, !email.isEmpty {
+                                    Text(email)
+                                        .lineLimit(1)
+                                } else if let phone = authVM.session?.user.phone, !phone.isEmpty {
+                                    Text(phone)
+                                } else {
+                                    Text("Guest")
+                                }
                             }
+                            .font(.title3.bold())
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .frame(minWidth: 60, alignment: .leading) // 🚀 固定最小宽度
                             
                             if !authVM.isAnonymous {
                                 Button(action: {
@@ -381,7 +415,7 @@ struct AccountView: View {
                         }
                         
                         if !authVM.isAnonymous {
-                            // 🎨 美化等级标签
+                            // 🎨 美化等级标签 - 使用固定高度防止跳动
                             HStack(spacing: 4) {
                                 Image(systemName: "star.fill")
                                     .font(.caption2)
@@ -395,8 +429,11 @@ struct AccountView: View {
                                     .fill(.ultraThinMaterial)
                             )
                             .foregroundColor(.white)
+                            .frame(height: 26) // 🚀 固定高度
                         }
                     }
+                    .animation(.none, value: profileVM.username) // 🚀 禁用用户名变化动画
+                    .animation(.none, value: profileVM.levelName) // 🚀 禁用等级变化动画
                     
                     Spacer()
                 }
@@ -644,6 +681,8 @@ struct EnhancedStatCard: View {
                 Text(value)
                     .font(.title3.bold())
                     .foregroundColor(.primary)
+                    .frame(minWidth: 50, alignment: .leading) // 🚀 固定最小宽度防止跳动
+                    .animation(.none, value: value) // 🚀 禁用数值变化动画
                 Text(title)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -653,6 +692,7 @@ struct EnhancedStatCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
+        .frame(height: 72) // 🚀 固定高度防止跳动
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground))
@@ -1333,14 +1373,16 @@ struct CommunityCardView: View {
     let community: Community
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var isLoading = false
+    @State private var showDetail = false  // 🚀 新增：控制详情 sheet
     
     var isMember: Bool {
         userSettings.isMember(of: community)
     }
     
     var body: some View {
-        NavigationLink(destination: CommunityDetailView(community: community)) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            // 可点击进入详情的区域
+            Button(action: { showDetail = true }) {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
@@ -1369,48 +1411,57 @@ struct CommunityCardView: View {
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
-                
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $showDetail) {
+                CommunityDetailView(community: community)
+            }
+            
+            // 描述文字也可点击
+            Button(action: { showDetail = true }) {
                 Text(community.description)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                
-                // Join/Leave Button
-                Button(action: {
-                    Task {
-                        isLoading = true
-                        if isMember {
-                            _ = await userSettings.leaveCommunity(community)
-                        } else {
-                            _ = await userSettings.joinCommunity(community)
-                        }
-                        isLoading = false
-                    }
-                }) {
-                    HStack {
-                        if isLoading {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: isMember ? "checkmark.circle.fill" : "plus.circle.fill")
-                        }
-                        Text(isMember ? "Joined" : "Join Community")
-                    }
-                    .font(.subheadline.bold())
-                    .foregroundColor(isMember ? .green : .white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(isMember ? Color.green.opacity(0.1) : Color.cyan)
-                    .cornerRadius(10)
-                }
-                .disabled(isLoading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(16)
+            .buttonStyle(.plain)
+            
+            // Join/Leave Button - 独立于详情按钮
+            Button(action: {
+                Task {
+                    isLoading = true
+                    if isMember {
+                        _ = await userSettings.leaveCommunity(community)
+                    } else {
+                        _ = await userSettings.joinCommunity(community)
+                    }
+                    isLoading = false
+                }
+            }) {
+                HStack {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: isMember ? "checkmark.circle.fill" : "plus.circle.fill")
+                    }
+                    Text(isMember ? "Joined" : "Join Community")
+                }
+                .font(.subheadline.bold())
+                .foregroundColor(isMember ? .green : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(isMember ? Color.green.opacity(0.1) : Color.cyan)
+                .cornerRadius(10)
+            }
+            .buttonStyle(.plain) // 🚀 防止按钮触发 NavigationLink
+            .disabled(isLoading)
         }
-        .buttonStyle(.plain)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(16)
     }
 }
 
@@ -1419,9 +1470,10 @@ struct JoinedCommunityRow: View {
     let community: Community
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var isLoading = false
+    @State private var showDetail = false  // 🔥 使用 sheet
     
     var body: some View {
-        NavigationLink(destination: CommunityDetailView(community: community)) {
+        Button(action: { showDetail = true }) {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
@@ -1467,11 +1519,19 @@ struct JoinedCommunityRow: View {
                             .cornerRadius(8)
                     }
                 }
+                .buttonStyle(.plain)
                 .disabled(isLoading)
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray)
             }
             .padding(.vertical, 6)
         }
         .buttonStyle(.plain)
+        .sheet(isPresented: $showDetail) {
+            CommunityDetailView(community: community)
+        }
     }
 }
 

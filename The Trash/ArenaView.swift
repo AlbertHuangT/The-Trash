@@ -317,14 +317,16 @@ struct ArenaView: View {
                 }
             }
         }
-        .onAppear {
+        .task {
             pulseAnimation = true
-            if !authViewModel.isAnonymous {
-                Task { await viewModel.fetchQuestions() }
+            // 🚀 优化：只在数据为空且未完成 session 时请求
+            if !authViewModel.isAnonymous && viewModel.questions.isEmpty && !viewModel.sessionCompleted {
+                await viewModel.fetchQuestions()
             }
         }
         .onReceive(authViewModel.$session) { _ in
-            if !authViewModel.isAnonymous && viewModel.questions.isEmpty {
+            // 🚀 优化：只在从匿名变为登录用户时请求
+            if !authViewModel.isAnonymous && viewModel.questions.isEmpty && !viewModel.sessionCompleted {
                 Task { await viewModel.fetchQuestions() }
             }
         }

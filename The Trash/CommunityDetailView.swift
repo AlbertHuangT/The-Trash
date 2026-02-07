@@ -23,30 +23,45 @@ struct CommunityDetailView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Header
-                headerSection
-                
-                // Description
-                descriptionSection
-                
-                // Stats
-                statsSection
-                
-                // Events
-                eventsSection
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header
+                    headerSection
+                    
+                    // Description
+                    descriptionSection
+                    
+                    // Stats
+                    statsSection
+                    
+                    // Events
+                    eventsSection
+                }
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle(community.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .task {
+                await viewModel.loadEvents(communityId: community.id)
+            }
+            .sheet(item: $showEventDetail) { event in
+                EventDetailSheetForCommunity(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
             }
         }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle(community.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await viewModel.loadEvents(communityId: community.id)
-        }
-        .sheet(item: $showEventDetail) { event in
-            EventDetailSheetForCommunity(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
-        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(24)
+        .presentationBackground(.regularMaterial)
     }
     
     // MARK: - Header Section

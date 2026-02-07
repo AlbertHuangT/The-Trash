@@ -68,6 +68,7 @@ struct Community: Identifiable, Hashable, Codable {
     let latitude: Double
     let longitude: Double
     var isMember: Bool = false
+    var isAdmin: Bool = false  // 🚀 新增：是否为管理员
     
     var displayName: String { name }
     var fullLocation: String { "\(city), \(state)" }
@@ -83,9 +84,10 @@ struct Community: Identifiable, Hashable, Codable {
         self.latitude = response.latitude ?? 0
         self.longitude = response.longitude ?? 0
         self.isMember = response.isMember ?? false
+        self.isAdmin = false
     }
     
-    init(id: String, name: String, city: String, state: String, description: String, memberCount: Int, latitude: Double, longitude: Double, isMember: Bool = false) {
+    init(id: String, name: String, city: String, state: String, description: String, memberCount: Int, latitude: Double, longitude: Double, isMember: Bool = false, isAdmin: Bool = false) {
         self.id = id
         self.name = name
         self.city = city
@@ -95,6 +97,7 @@ struct Community: Identifiable, Hashable, Codable {
         self.latitude = latitude
         self.longitude = longitude
         self.isMember = isMember
+        self.isAdmin = isAdmin
     }
 }
 
@@ -106,6 +109,50 @@ enum MembershipStatus: String, Codable {
     case member = "member"
 }
 
+// MARK: - Location Manager Helper
+
+class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    
+    var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)?
+    var onLocationUpdate: ((CLLocation) -> Void)?
+    var onLocationError: ((Error) -> Void)?
+    
+    var authorizationStatus: CLAuthorizationStatus {
+        manager.authorizationStatus
+    }
+    
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+    }
+    
+    func requestPermission() {
+        manager.requestWhenInUseAuthorization()
+    }
+    
+    func requestLocation() {
+        manager.requestLocation()
+    }
+    
+    // MARK: - CLLocationManagerDelegate
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        onAuthorizationChange?(manager.authorizationStatus)
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.last {
+            onLocationUpdate?(location)
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        onLocationError?(error)
+    }
+}
+
 // MARK: - User Settings Manager
 
 @MainActor
@@ -114,6 +161,11 @@ class UserSettings: ObservableObject {
     
     // 用户选择的位置
     @Published var selectedLocation: UserLocation?
+    
+    // 🚀 新增：精确定位相关
+    @Published var preciseLocation: CLLocation?
+    @Published var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
+    @Published var isRequestingLocation = false
     
     // 用户已加入的社区 ID 集合 (本地缓存)
     @Published var joinedCommunityIds: Set<String> = []
@@ -130,12 +182,53 @@ class UserSettings: ObservableObject {
     private let locationKey = "selectedLocation"
     private let joinedCommunitiesKey = "joinedCommunityIds"
     
+    // 🚀 新增：定位管理器
+    private let locationManager = LocationManager()
+    
     private var communityService: CommunityService {
         CommunityService.shared
     }
     
     private init() {
         loadSavedData()
+        setupLocationManager()
+    }
+    
+    // 🚀 新增：设置定位管理器
+    private func setupLocationManager() {
+        locationManager.onAuthorizationChange = { [weak self] status in
+            Task { @MainActor in
+                self?.locationPermissionStatus = status
+            }
+        }
+        locationManager.onLocationUpdate = { [weak self] location in
+            Task { @MainActor in
+                self?.preciseLocation = location
+                self?.isRequestingLocation = false
+            }
+        }
+        locationManager.onLocationError = { [weak self] _ in
+            Task { @MainActor in
+                self?.isRequestingLocation = false
+            }
+        }
+        locationPermissionStatus = locationManager.authorizationStatus
+    }
+    
+    // 🚀 新增：请求定位权限
+    func requestLocationPermission() {
+        locationManager.requestPermission()
+    }
+    
+    // 🚀 新增：获取当前位置
+    func requestCurrentLocation() {
+        isRequestingLocation = true
+        locationManager.requestLocation()
+    }
+    
+    // 🚀 新增：检查是否有定位权限
+    var hasLocationPermission: Bool {
+        locationPermissionStatus == .authorizedWhenInUse || locationPermissionStatus == .authorizedAlways
     }
     
     private func loadSavedData() {
@@ -221,7 +314,8 @@ class UserSettings: ObservableObject {
                 memberCount: resp.memberCount,
                 latitude: 0,
                 longitude: 0,
-                isMember: true
+                isMember: true,
+                isAdmin: resp.isAdmin  // 🚀 设置管理员状态
             )
         }
         
@@ -230,6 +324,11 @@ class UserSettings: ObservableObject {
         saveJoinedCommunities()
         
         isLoadingCommunities = false
+    }
+    
+    // 🚀 新增：获取用户管理的社区
+    var adminCommunities: [Community] {
+        joinedCommunities.filter { $0.isAdmin }
     }
     
     /// 加入社区

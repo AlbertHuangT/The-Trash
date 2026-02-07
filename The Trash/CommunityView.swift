@@ -40,10 +40,11 @@ struct CommunityEvent: Identifiable {
     let category: EventCategory
     var participantCount: Int
     let maxParticipants: Int
-    let communityId: String
+    let communityId: String?  // 🔥 修复：个人活动时为 nil
     var communityName: String?
     var distanceKm: Double?
     var isRegistered: Bool = false
+    var isPersonal: Bool = false  // 🔥 新增：是否为个人活动
     
     enum EventCategory: String, CaseIterable {
         case cleanup = "Cleanup"
@@ -70,11 +71,20 @@ struct CommunityEvent: Identifiable {
         }
     }
     
-    // 计算距离（公里）
-    func distance(from userLocation: UserLocation?) -> Double {
+    // 计算距离（公里）- 优先使用后端计算的距离，其次使用精确GPS，最后使用城市中心
+    func distance(from userLocation: UserLocation?, preciseLocation: CLLocation? = nil) -> Double {
+        // 1. 优先使用后端返回的距离
         if let distanceKm = distanceKm {
             return distanceKm
         }
+        
+        // 2. 如果有精确 GPS 位置，使用它计算
+        if let precise = preciseLocation {
+            let eventLoc = CLLocation(latitude: latitude, longitude: longitude)
+            return eventLoc.distance(from: precise) / 1000.0
+        }
+        
+        // 3. 否则使用城市中心坐标
         guard let userLoc = userLocation else { return 0 }
         let eventLoc = CLLocation(latitude: latitude, longitude: longitude)
         let userCLLoc = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
@@ -95,13 +105,14 @@ struct CommunityEvent: Identifiable {
         self.category = EventCategory(rawValue: response.category.capitalized) ?? .cleanup
         self.participantCount = response.participantCount
         self.maxParticipants = response.maxParticipants
-        self.communityId = response.communityId
+        self.communityId = response.communityId  // 🔥 修复：可能为 nil
         self.communityName = response.communityName
         self.distanceKm = response.distanceKm
         self.isRegistered = response.isRegistered ?? false
+        self.isPersonal = response.isPersonal ?? false  // 🔥 新增
     }
     
-    init(id: UUID = UUID(), title: String, organizer: String, description: String, date: Date, location: String, latitude: Double, longitude: Double, imageSystemName: String, category: EventCategory, participantCount: Int, maxParticipants: Int, communityId: String, communityName: String? = nil, distanceKm: Double? = nil, isRegistered: Bool = false) {
+    init(id: UUID = UUID(), title: String, organizer: String, description: String, date: Date, location: String, latitude: Double, longitude: Double, imageSystemName: String, category: EventCategory, participantCount: Int, maxParticipants: Int, communityId: String?, communityName: String? = nil, distanceKm: Double? = nil, isRegistered: Bool = false, isPersonal: Bool = false) {
         self.id = id
         self.title = title
         self.organizer = organizer
@@ -118,6 +129,7 @@ struct CommunityEvent: Identifiable {
         self.communityName = communityName
         self.distanceKm = distanceKm
         self.isRegistered = isRegistered
+        self.isPersonal = isPersonal
     }
 }
 
@@ -131,37 +143,88 @@ class EventsViewModel: ObservableObject {
     @Published var sortOption: EventSortOption = .distance  // 🔥 默认按距离排序
     @Published var showOnlyJoinedCommunities: Bool = false
     @Published var errorMessage: String?
-    
+
+    // 🚀 优化：添加请求节流
+    private var loadTask: Task<Void, Never>?
+    private var lastLoadTime: Date?
+    private let minLoadInterval: TimeInterval = 0.5 // 最小请求间隔
+
     private var userSettings: UserSettings {
         UserSettings.shared
     }
-    
+
     private var communityService: CommunityService {
         CommunityService.shared
     }
-    
+
     var hasLocation: Bool {
         userSettings.selectedLocation != nil
     }
-    
+
     var locationName: String {
         userSettings.selectedLocation?.city ?? ""
     }
-    
+
+    /// 获取当前最佳位置坐标（优先使用精确GPS，否则使用城市中心）
+    private var currentCoordinates: (latitude: Double, longitude: Double)? {
+        // 优先使用精确GPS位置
+        if let precise = userSettings.preciseLocation {
+            return (precise.coordinate.latitude, precise.coordinate.longitude)
+        }
+        // 否则使用选择的城市中心
+        if let location = userSettings.selectedLocation {
+            return (location.latitude, location.longitude)
+        }
+        return nil
+    }
+
     init() {
         // 初始化时不加载，等待 onAppear
+    }
+
+    /// 请求精确GPS位置（如果有权限）
+    func requestPreciseLocation() {
+        if userSettings.hasLocationPermission {
+            userSettings.requestCurrentLocation()
+        } else if userSettings.locationPermissionStatus == .notDetermined {
+            userSettings.requestLocationPermission()
+        }
+    }
+
+    /// 使用精确GPS重新排序事件（客户端排序）
+    func sortEventsByPreciseDistance() {
+        guard sortOption == .distance,
+              let precise = userSettings.preciseLocation else { return }
+
+        events.sort { event1, event2 in
+            let dist1 = event1.distance(from: userSettings.selectedLocation, preciseLocation: precise)
+            let dist2 = event2.distance(from: userSettings.selectedLocation, preciseLocation: precise)
+            return dist1 < dist2
+        }
     }
     
     /// 从后端加载附近活动
     func loadEvents() async {
-        guard let location = userSettings.selectedLocation else {
+        // 🚀 优化：取消之前的请求任务
+        loadTask?.cancel()
+
+        // 🚀 优化：请求节流 - 防止短时间内多次请求
+        if let lastTime = lastLoadTime, Date().timeIntervalSince(lastTime) < minLoadInterval {
+            try? await Task.sleep(nanoseconds: UInt64(minLoadInterval * 1_000_000_000))
+        }
+
+        guard let coords = currentCoordinates else {
             events = []
             return
         }
-        
-        isLoading = true
+
+        // 🚀 优化：防止重复显示 loading（如果已有数据）
+        if events.isEmpty {
+            isLoading = true
+        }
         errorMessage = nil
-        
+        lastLoadTime = Date()
+
         let categoryParam: String? = selectedCategory?.rawValue.lowercased()
         let sortByParam: String
         switch sortOption {
@@ -169,17 +232,31 @@ class EventsViewModel: ObservableObject {
         case .distance: sortByParam = "distance"
         case .participants: sortByParam = "popularity"
         }
-        
+
+        // 🚀 使用精确GPS坐标（如果有）进行后端查询
         let response = await communityService.getNearbyEvents(
-            latitude: location.latitude,
-            longitude: location.longitude,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
             maxDistanceKm: 50,
             category: categoryParam,
             onlyJoinedCommunities: showOnlyJoinedCommunities,
             sortBy: sortByParam
         )
-        
+
+        // 🚀 优化：检查任务是否被取消
+        guard !Task.isCancelled else { return }
+
         events = response.map { CommunityEvent(from: $0) }
+
+        // 🚀 如果有精确GPS且按距离排序，使用客户端精确排序
+        if sortOption == .distance, let precise = userSettings.preciseLocation {
+            events.sort { event1, event2 in
+                let dist1 = event1.distance(from: userSettings.selectedLocation, preciseLocation: precise)
+                let dist2 = event2.distance(from: userSettings.selectedLocation, preciseLocation: precise)
+                return dist1 < dist2
+            }
+        }
+
         isLoading = false
     }
     
@@ -228,6 +305,7 @@ struct CommunityView: View {
     @State private var showEventDetail: CommunityEvent? = nil
     @State private var showSortMenu = false
     @State private var showAccountSheet = false
+    @State private var showCreateEventSheet = false
     
     var body: some View {
         ZStack {
@@ -256,7 +334,8 @@ struct CommunityView: View {
                             ForEach(viewModel.events) { event in
                                 EventCard(
                                     event: event,
-                                    userLocation: userSettings.selectedLocation
+                                    userLocation: userSettings.selectedLocation,
+                                    preciseLocation: userSettings.preciseLocation
                                 ) {
                                     showEventDetail = event
                                 }
@@ -271,12 +350,37 @@ struct CommunityView: View {
                     }
                 }
             }
+            
+            // 🚀 浮动加号按钮 (FAB)
+            if !authVM.isAnonymous && viewModel.hasLocation {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        FloatingActionButton(icon: "plus") {
+                            showCreateEventSheet = true
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
+            }
         }
         .sheet(item: $showEventDetail) { event in
             EventDetailSheet(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
         }
-        .onAppear {
-            Task {
+        .sheet(isPresented: $showCreateEventSheet) {
+            CreateEventFormSheet(isPresented: $showCreateEventSheet, userSettings: userSettings) {
+                // 刷新活动列表
+                Task { await viewModel.loadEvents() }
+            }
+        }
+        .task {
+            // 🚀 请求精确GPS位置（如果有权限）
+            viewModel.requestPreciseLocation()
+
+            // 🚀 优化：只在首次加载或数据为空时请求
+            if viewModel.events.isEmpty {
                 await viewModel.loadEvents()
             }
         }
@@ -288,6 +392,18 @@ struct CommunityView: View {
         }
         .onChange(of: viewModel.showOnlyJoinedCommunities) { _ in
             Task { await viewModel.loadEvents() }
+        }
+        .onChange(of: userSettings.preciseLocation) { newLocation in
+            // 🚀 当精确GPS位置更新时，重新按距离排序
+            if newLocation != nil {
+                viewModel.sortEventsByPreciseDistance()
+            }
+        }
+        .onChange(of: userSettings.locationPermissionStatus) { status in
+            // 🚀 当用户授予位置权限时，请求精确位置
+            if status == .authorizedWhenInUse || status == .authorizedAlways {
+                viewModel.requestPreciseLocation()
+            }
         }
     }
     
@@ -343,21 +459,22 @@ struct CommunityView: View {
             
             // 仅显示已加入社区 Toggle
             Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    viewModel.showOnlyJoinedCommunities.toggle()
-                }
+                viewModel.showOnlyJoinedCommunities.toggle()
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: viewModel.showOnlyJoinedCommunities ? "person.3.fill" : "globe")
                         .font(.caption)
+                        .frame(width: 14) // 🚀 固定宽度防止图标切换导致的布局跳动
                     Text(viewModel.showOnlyJoinedCommunities ? "Joined" : "All")
                         .font(.caption.bold())
+                        .frame(minWidth: 36, alignment: .leading) // 🚀 固定最小宽度
                 }
                 .foregroundColor(viewModel.showOnlyJoinedCommunities ? .cyan : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(viewModel.showOnlyJoinedCommunities ? Color.cyan.opacity(0.1) : Color(.secondarySystemGroupedBackground))
                 .cornerRadius(16)
+                .animation(.easeInOut(duration: 0.2), value: viewModel.showOnlyJoinedCommunities) // 🚀 轻量动画
             }
             
             // 排序按钮
@@ -366,9 +483,13 @@ struct CommunityView: View {
                     Button(action: {
                         viewModel.sortOption = option
                     }) {
-                        Label(option.rawValue, systemImage: option.icon)
-                        if viewModel.sortOption == option {
-                            Image(systemName: "checkmark")
+                        HStack {
+                            Label(option.rawValue, systemImage: option.icon)
+                            Spacer()
+                            if viewModel.sortOption == option {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
                         }
                     }
                 }
@@ -376,11 +497,9 @@ struct CommunityView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.caption)
-                    // 非默认排序时显示排序方式文字
-                    if viewModel.sortOption != .distance {
-                        Text(viewModel.sortOption.rawValue)
-                            .font(.caption.bold())
-                    }
+                    Text(viewModel.sortOption.rawValue)
+                        .font(.caption.bold())
+                        .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption2)
                 }
@@ -389,45 +508,57 @@ struct CommunityView: View {
                 .padding(.vertical, 6)
                 .background(viewModel.sortOption != .distance ? Color.blue : Color(.secondarySystemGroupedBackground))
                 .cornerRadius(16)
+                .animation(.none, value: viewModel.sortOption) // 🚀 禁用按钮内部动画防止卡顿
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
+        .animation(.none, value: viewModel.sortOption) // 🚀 禁用整个控制栏的布局动画
     }
     
     // MARK: - Category Filter
     private var categoryFilter: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                CategoryPill(
-                    title: "All",
-                    icon: "square.grid.2x2.fill",
-                    color: .gray,
-                    isSelected: viewModel.selectedCategory == nil
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    CategoryPill(
+                        title: "All",
+                        icon: "square.grid.2x2.fill",
+                        color: .gray,
+                        isSelected: viewModel.selectedCategory == nil
+                    ) {
                         viewModel.selectedCategory = nil
                     }
-                }
-                
-                ForEach(CommunityEvent.EventCategory.allCases, id: \.self) { category in
-                    CategoryPill(
-                        title: category.rawValue,
-                        icon: category.icon,
-                        color: category.color,
-                        isSelected: viewModel.selectedCategory == category
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    .id("all")
+                    
+                    ForEach(CommunityEvent.EventCategory.allCases, id: \.self) { category in
+                        CategoryPill(
+                            title: category.rawValue,
+                            icon: category.icon,
+                            color: category.color,
+                            isSelected: viewModel.selectedCategory == category
+                        ) {
                             viewModel.selectedCategory = category
                         }
+                        .id(category.rawValue)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .background(Color(.systemBackground))
+            // 🚀 优化：选中时自动滚动到选中项
+            .onChange(of: viewModel.selectedCategory) { newValue in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if let category = newValue {
+                        proxy.scrollTo(category.rawValue, anchor: .center)
+                    } else {
+                        proxy.scrollTo("all", anchor: .center)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
         }
-        .background(Color(.systemBackground))
     }
     
     // MARK: - No Location View
@@ -525,6 +656,7 @@ struct CategoryPill: View {
             .padding(.vertical, 8)
             .background(isSelected ? color : color.opacity(0.1))
             .cornerRadius(20)
+            .animation(.easeInOut(duration: 0.15), value: isSelected) // 🚀 轻量快速动画
         }
         .buttonStyle(.plain)
     }
@@ -535,6 +667,7 @@ struct CategoryPill: View {
 struct EventCard: View {
     let event: CommunityEvent
     let userLocation: UserLocation?
+    let preciseLocation: CLLocation?  // 🚀 新增：精确GPS位置
     let onTap: () -> Void
     
     private var dateFormatter: DateFormatter {
@@ -544,8 +677,9 @@ struct EventCard: View {
     }
     
     private var distanceText: String {
-        guard let loc = userLocation else { return "" }
-        let dist = event.distance(from: loc)
+        // 优先使用精确位置计算距离
+        let dist = event.distance(from: userLocation, preciseLocation: preciseLocation)
+        if dist <= 0 { return "" }
         if dist < 1 {
             return String(format: "%.0f m", dist * 1000)
         } else {
@@ -672,6 +806,7 @@ struct EventDetailSheet: View {
     let event: CommunityEvent
     @ObservedObject var viewModel: EventsViewModel
     let userLocation: UserLocation?
+    @ObservedObject private var userSettings = UserSettings.shared  // 🚀 新增：获取精确位置
     @Environment(\.dismiss) var dismiss
     
     private var dateFormatter: DateFormatter {
@@ -686,8 +821,8 @@ struct EventDetailSheet: View {
     }
     
     private var distanceText: String {
-        guard let loc = userLocation else { return "Unknown" }
-        let dist = event.distance(from: loc)
+        let dist = event.distance(from: userLocation, preciseLocation: userSettings.preciseLocation)
+        if dist <= 0 { return "Location unknown" }
         if dist < 1 {
             return String(format: "%.0f meters away", dist * 1000)
         } else {
@@ -824,5 +959,201 @@ struct InfoRow: View {
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Create Event Form Sheet
+
+struct CreateEventFormSheet: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var userSettings: UserSettings
+    var onCreated: () -> Void
+    
+    @State private var title = ""
+    @State private var description = ""
+    @State private var eventDate = Date().addingTimeInterval(86400) // 默认明天
+    @State private var location = ""
+    @State private var category = "cleanup"
+    @State private var maxParticipants = 50
+    @State private var isPersonalEvent = true
+    @State private var selectedCommunityId: String? = nil
+    
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showSuccessAlert = false
+    
+    let categories = ["cleanup", "workshop", "competition", "education", "other"]
+    
+    private var canCreate: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !location.trimmingCharacters(in: .whitespaces).isEmpty &&
+        eventDate > Date()
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                // Event Type Picker
+                Section {
+                    Picker("Event Type", selection: $isPersonalEvent) {
+                        Text("Personal Event").tag(true)
+                        Text("Community Event").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    if !isPersonalEvent {
+                        if userSettings.adminCommunities.isEmpty {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text("You need to be a community admin to create community events")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            Picker("Select Community", selection: $selectedCommunityId) {
+                                Text("Select...").tag(nil as String?)
+                                ForEach(userSettings.adminCommunities) { community in
+                                    Text(community.name).tag(community.id as String?)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Event Host")
+                } footer: {
+                    Text(isPersonalEvent ? "You will be shown as the organizer" : "Only community admins can create community events")
+                }
+                
+                // Event Details
+                Section("Event Details") {
+                    TextField("Event Title", text: $title)
+                        .textInputAutocapitalization(.words)
+                    
+                    TextField("Description", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    DatePicker("Date & Time", selection: $eventDate, in: Date()...)
+                    
+                    TextField("Location", text: $location)
+                        .textInputAutocapitalization(.words)
+                }
+                
+                // Settings
+                Section("Settings") {
+                    Picker("Category", selection: $category) {
+                        ForEach(categories, id: \.self) { cat in
+                            Label(cat.capitalized, systemImage: iconForCategory(cat))
+                                .tag(cat)
+                        }
+                    }
+                    
+                    Stepper("Max Participants: \(maxParticipants)", value: $maxParticipants, in: 5...500, step: 5)
+                }
+                
+                // Info Section
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.blue)
+                        Text("You can create up to 7 events per week.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Error Message
+                if let error = errorMessage {
+                    Section {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Create Event")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .disabled(isLoading)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: createEvent) {
+                        if isLoading {
+                            ProgressView()
+                        } else {
+                            Text("Create")
+                        }
+                    }
+                    .disabled(!canCreate || isLoading || (!isPersonalEvent && selectedCommunityId == nil))
+                }
+            }
+            .alert("Event Created!", isPresented: $showSuccessAlert) {
+                Button("OK") {
+                    isPresented = false
+                    onCreated()
+                }
+            } message: {
+                Text("Your event \"\(title)\" has been created successfully!")
+            }
+            .task {
+                // 加载用户已加入的社区
+                if userSettings.joinedCommunities.isEmpty {
+                    await userSettings.loadMyCommunities()
+                }
+            }
+        }
+    }
+    
+    private func createEvent() {
+        guard canCreate else { return }
+        guard let userLocation = userSettings.selectedLocation else {
+            errorMessage = "Please select a location first"
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            let result = await CommunityService.shared.createEvent(
+                title: title.trimmingCharacters(in: .whitespaces),
+                description: description,
+                category: category,
+                eventDate: eventDate,
+                location: location.trimmingCharacters(in: .whitespaces),
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+                maxParticipants: maxParticipants,
+                communityId: isPersonalEvent ? nil : selectedCommunityId,
+                iconName: iconForCategory(category)
+            )
+            
+            await MainActor.run {
+                isLoading = false
+                
+                if result.success {
+                    showSuccessAlert = true
+                } else {
+                    errorMessage = result.message
+                }
+            }
+        }
+    }
+    
+    private func iconForCategory(_ category: String) -> String {
+        switch category {
+        case "cleanup": return "leaf.fill"
+        case "workshop": return "hammer.fill"
+        case "competition": return "trophy.fill"
+        case "education": return "book.fill"
+        default: return "calendar"
+        }
     }
 }

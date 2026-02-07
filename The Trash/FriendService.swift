@@ -31,6 +31,11 @@ class FriendService: ObservableObject {
     // 🔥 添加错误消息
     @Published var errorMessage: String?
     
+    // 🚀 优化：添加缓存和节流
+    private var lastFetchTime: Date?
+    private let cacheValidDuration: TimeInterval = 60 // 缓存有效期60秒
+    private var fetchTask: Task<Void, Never>?
+    
     private let contactStore = CNContactStore()
     private let client = SupabaseManager.shared.client
     
@@ -69,13 +74,24 @@ class FriendService: ObservableObject {
         }
     }
     
-    func fetchContactsAndSync() async {
+    func fetchContactsAndSync(forceRefresh: Bool = false) async {
         // 🔥 先检查权限
         checkPermission()
         guard permissionStatus == .authorized else {
             errorMessage = "Contact permission not granted"
             return
         }
+        
+        // 🚀 优化：检查缓存是否有效
+        if !forceRefresh, 
+           !friends.isEmpty,
+           let lastTime = lastFetchTime,
+           Date().timeIntervalSince(lastTime) < cacheValidDuration {
+            return // 使用缓存数据
+        }
+        
+        // 🚀 优化：取消之前的请求
+        fetchTask?.cancel()
         
         self.isLoading = true
         self.errorMessage = nil
@@ -124,11 +140,20 @@ class FriendService: ObservableObject {
                 .execute()
                 .value
             
+            // 🚀 优化：检查任务是否被取消
+            guard !Task.isCancelled else {
+                self.isLoading = false
+                return
+            }
+            
             self.friends = matchedFriends
+            self.lastFetchTime = Date() // 🚀 更新缓存时间
         } catch {
             print("❌ Failed to sync contacts: \(error)")
-            // 🔥 FIX: 设置错误消息让用户知道发生了什么
-            self.errorMessage = "Failed to load friends: \(error.localizedDescription)"
+            // 🔥 FIX: 只在非取消错误时设置错误消息
+            if !Task.isCancelled {
+                self.errorMessage = "Failed to load friends: \(error.localizedDescription)"
+            }
         }
         
         self.isLoading = false

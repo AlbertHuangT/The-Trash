@@ -85,12 +85,28 @@ struct LeaderboardView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
-        .onAppear {
-            loadData()
+        .task {
+            // 🚀 优化：只在首次加载时请求数据
+            loadDataIfNeeded()
         }
         .onChange(of: selectedType) { newType in
             if newType == .community && myCommunities.isEmpty {
                 Task { await loadMyCommunities() }
+            }
+        }
+    }
+    
+    // 🚀 新增：避免重复请求的数据加载方法
+    private func loadDataIfNeeded() {
+        friendService.checkPermission()
+        
+        if !authVM.isAnonymous && friendService.permissionStatus == .authorized {
+            // 只在数据为空时请求
+            if friendService.friends.isEmpty || currentUserVM.myProfile == nil {
+                Task {
+                    await friendService.fetchContactsAndSync()
+                    await currentUserVM.fetchMyScore()
+                }
             }
         }
     }
@@ -296,17 +312,6 @@ struct LeaderboardView: View {
     }
     
     // MARK: - Data Loading
-    
-    private func loadData() {
-        friendService.checkPermission()
-        
-        if !authVM.isAnonymous && friendService.permissionStatus == .authorized {
-            Task {
-                await friendService.fetchContactsAndSync()
-                await currentUserVM.fetchMyScore()
-            }
-        }
-    }
     
     private func loadMyCommunities() async {
         let communities = await CommunityService.shared.getMyCommunities()
@@ -535,14 +540,42 @@ struct MyRankBar: View {
 @MainActor
 class CurrentUserViewModel: ObservableObject {
     @Published var myProfile: UserProfile?
+    
+    // 🚀 优化：添加缓存
+    private var lastFetchTime: Date?
+    private let cacheValidDuration: TimeInterval = 30
+    
     struct UserProfile: Decodable {
         let username: String?
         let credits: Int
     }
     
-    func fetchMyScore() async {
+    func fetchMyScore(forceRefresh: Bool = false) async {
+        // 🚀 优化：检查缓存
+        if !forceRefresh,
+           myProfile != nil,
+           let lastTime = lastFetchTime,
+           Date().timeIntervalSince(lastTime) < cacheValidDuration {
+            return
+        }
+        
         guard let uid = SupabaseManager.shared.client.auth.currentUser?.id else { return }
-        try? self.myProfile = await SupabaseManager.shared.client
-            .from("profiles").select("username, credits").eq("id", value: uid).single().execute().value
+        
+        do {
+            let profile: UserProfile = try await SupabaseManager.shared.client
+                .from("profiles")
+                .select("username, credits")
+                .eq("id", value: uid)
+                .single()
+                .execute()
+                .value
+            
+            self.myProfile = profile
+            self.lastFetchTime = Date()
+        } catch {
+            if !Task.isCancelled {
+                print("❌ Failed to fetch my score: \(error)")
+            }
+        }
     }
 }
