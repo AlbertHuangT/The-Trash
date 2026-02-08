@@ -118,6 +118,107 @@ extension LocationParams: Encodable {
     }
 }
 
+// MARK: - Admin RPC Parameter Structs
+
+private struct UpdateCommunityInfoParams: Sendable {
+    let p_community_id: String
+    let p_description: String?
+    let p_welcome_message: String?
+    let p_rules: String?
+    let p_requires_approval: Bool?
+}
+
+extension UpdateCommunityInfoParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_community_id, forKey: .p_community_id)
+        try container.encodeIfPresent(p_description, forKey: .p_description)
+        try container.encodeIfPresent(p_welcome_message, forKey: .p_welcome_message)
+        try container.encodeIfPresent(p_rules, forKey: .p_rules)
+        try container.encodeIfPresent(p_requires_approval, forKey: .p_requires_approval)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case p_community_id, p_description, p_welcome_message, p_rules, p_requires_approval
+    }
+}
+
+private struct ReviewApplicationParams: Sendable {
+    let p_application_id: String
+    let p_approve: Bool
+    let p_rejection_reason: String?
+}
+
+extension ReviewApplicationParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_application_id, forKey: .p_application_id)
+        try container.encode(p_approve, forKey: .p_approve)
+        try container.encodeIfPresent(p_rejection_reason, forKey: .p_rejection_reason)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case p_application_id, p_approve, p_rejection_reason
+    }
+}
+
+private struct RemoveMemberParams: Sendable {
+    let p_community_id: String
+    let p_user_id: String
+    let p_reason: String?
+}
+
+extension RemoveMemberParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_community_id, forKey: .p_community_id)
+        try container.encode(p_user_id, forKey: .p_user_id)
+        try container.encodeIfPresent(p_reason, forKey: .p_reason)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case p_community_id, p_user_id, p_reason
+    }
+}
+
+private struct GrantCreditsParams: Sendable {
+    let p_event_id: String
+    let p_user_ids: [String]
+    let p_credits_per_user: Int
+    let p_reason: String
+}
+
+extension GrantCreditsParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_event_id, forKey: .p_event_id)
+        try container.encode(p_user_ids, forKey: .p_user_ids)
+        try container.encode(p_credits_per_user, forKey: .p_credits_per_user)
+        try container.encode(p_reason, forKey: .p_reason)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case p_event_id, p_user_ids, p_credits_per_user, p_reason
+    }
+}
+
+private struct GetAdminLogsParams: Sendable {
+    let p_community_id: String
+    let p_limit: Int
+}
+
+extension GetAdminLogsParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_community_id, forKey: .p_community_id)
+        try container.encode(p_limit, forKey: .p_limit)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case p_community_id, p_limit
+    }
+}
+
 // MARK: - Nonisolated RPC Helpers
 
 /// Helper to call RPC for nearby events outside of @MainActor context
@@ -207,6 +308,8 @@ class CommunityService: ObservableObject {
             return response
         } catch {
             print("❌ Get communities error: \(error)")
+            // 🔥 Fix: Expose error to UI
+            self.errorMessage = "Failed to load communities: \(error.localizedDescription)"
             return []
         }
     }
@@ -221,30 +324,31 @@ class CommunityService: ObservableObject {
             return response
         } catch {
             print("❌ Get my communities error: \(error)")
+            self.errorMessage = "Failed to load your communities."
             return []
         }
     }
     
-    /// 加入社区
-    func joinCommunity(_ communityId: String) async -> Bool {
+    /// 加入社区（支持审批流程）
+    func joinCommunity(_ communityId: String, message: String? = nil) async -> JoinCommunityResult {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        
+
         do {
-            let result: APIResult = try await client
-                .rpc("join_community", params: ["p_community_id": communityId])
+            let result: JoinCommunityResult = try await client
+                .rpc("apply_to_join_community", params: ["p_community_id": communityId])
                 .execute()
                 .value
-            
+
             if !result.success {
                 errorMessage = result.message
             }
-            return result.success
+            return result
         } catch {
             print("❌ Join community error: \(error)")
             errorMessage = "Failed to join community"
-            return false
+            return JoinCommunityResult(success: false, message: "Failed to join community", requiresApproval: false)
         }
     }
     
@@ -294,6 +398,7 @@ class CommunityService: ObservableObject {
             )
         } catch {
             print("❌ Get nearby events error: \(error)")
+            // Not setting global error here as it might be part of a larger dashboard
             return []
         }
     }
@@ -354,6 +459,7 @@ class CommunityService: ObservableObject {
             return response
         } catch {
             print("❌ Get my registrations error: \(error)")
+            self.errorMessage = "Failed to load registrations."
             return []
         }
     }
@@ -387,8 +493,10 @@ class CommunityService: ObservableObject {
                 .execute()
                 .value
             return response
+            return response
         } catch {
             print("❌ Get community events error: \(error)")
+            self.errorMessage = "Failed to load community events."
             return []
         }
     }
@@ -419,6 +527,7 @@ class CommunityService: ObservableObject {
             }
         } catch {
             print("❌ Get all communities error: \(error)")
+            self.errorMessage = "Failed to load all communities."
             return []
         }
     }
@@ -534,6 +643,179 @@ class CommunityService: ObservableObject {
             return (false, "Failed to create event: \(error.localizedDescription)", nil)
         }
     }
+
+    // MARK: - Admin Methods
+
+    /// Check if current user is admin of a community
+    func isAdmin(communityId: String) async -> Bool {
+        do {
+            let result: Bool = try await client
+                .rpc("is_community_admin", params: ["p_community_id": communityId])
+                .execute()
+                .value
+            return result
+        } catch {
+            print("❌ Check admin error: \(error)")
+            return false
+        }
+    }
+
+    /// Get pending join applications (admin only)
+    func getPendingApplications(communityId: String) async -> [JoinApplicationResponse] {
+        do {
+            let applications: [JoinApplicationResponse] = try await client
+                .rpc("get_pending_applications", params: ["p_community_id": communityId])
+                .execute()
+                .value
+            return applications
+        } catch {
+            print("❌ Get applications error: \(error)")
+            return []
+        }
+    }
+
+    /// Review a join application (admin only)
+    func reviewApplication(
+        applicationId: UUID,
+        approve: Bool,
+        rejectionReason: String? = nil
+    ) async -> APIResult {
+        do {
+            let params = ReviewApplicationParams(
+                p_application_id: applicationId.uuidString,
+                p_approve: approve,
+                p_rejection_reason: rejectionReason
+            )
+            let result: APIResult = try await reviewApplicationRPC(client: client, params: params)
+            return result
+        } catch {
+            print("❌ Review application error: \(error)")
+            return APIResult(success: false, message: "Operation failed")
+        }
+    }
+
+    /// Update community info (admin only)
+    func updateCommunityInfo(
+        communityId: String,
+        description: String? = nil,
+        welcomeMessage: String? = nil,
+        rules: String? = nil,
+        requiresApproval: Bool? = nil
+    ) async -> APIResult {
+        do {
+            let params = UpdateCommunityInfoParams(
+                p_community_id: communityId,
+                p_description: description,
+                p_welcome_message: welcomeMessage,
+                p_rules: rules,
+                p_requires_approval: requiresApproval
+            )
+            let result: APIResult = try await updateCommunityInfoRPC(client: client, params: params)
+            return result
+        } catch {
+            print("❌ Update community error: \(error)")
+            return APIResult(success: false, message: "Update failed")
+        }
+    }
+
+    /// Get community members list (admin only)
+    func getCommunityMembersAdmin(communityId: String) async -> [CommunityMemberResponse] {
+        do {
+            let members: [CommunityMemberResponse] = try await client
+                .rpc("get_community_members_admin", params: ["p_community_id": communityId])
+                .execute()
+                .value
+            return members
+        } catch {
+            print("❌ Get members error: \(error)")
+            return []
+        }
+    }
+
+    /// Remove a member from community (admin only)
+    func removeMember(communityId: String, userId: UUID, reason: String? = nil) async -> APIResult {
+        do {
+            let params = RemoveMemberParams(
+                p_community_id: communityId,
+                p_user_id: userId.uuidString,
+                p_reason: reason
+            )
+            let result: APIResult = try await removeMemberRPC(client: client, params: params)
+            return result
+        } catch {
+            print("❌ Remove member error: \(error)")
+            return APIResult(success: false, message: "Remove failed")
+        }
+    }
+
+    /// Grant credits to event participants (admin only)
+    func grantEventCredits(
+        eventId: UUID,
+        userIds: [UUID],
+        creditsPerUser: Int,
+        reason: String
+    ) async -> GrantCreditsResult {
+        do {
+            let params = GrantCreditsParams(
+                p_event_id: eventId.uuidString,
+                p_user_ids: userIds.map { $0.uuidString },
+                p_credits_per_user: creditsPerUser,
+                p_reason: reason
+            )
+            let result: GrantCreditsResult = try await grantCreditsRPC(client: client, params: params)
+            return result
+        } catch {
+            print("❌ Grant credits error: \(error)")
+            return GrantCreditsResult(success: false, message: "Grant failed", grantedCount: 0)
+        }
+    }
+
+    /// Get admin action logs (admin only)
+    func getAdminLogs(communityId: String, limit: Int = 50) async -> [AdminActionLogResponse] {
+        do {
+            let params = GetAdminLogsParams(p_community_id: communityId, p_limit: limit)
+            let logs: [AdminActionLogResponse] = try await client
+                .rpc("get_admin_action_logs", params: params)
+                .execute()
+                .value
+            return logs
+        } catch {
+            print("❌ Get admin logs error: \(error)")
+            return []
+        }
+    }
+
+    /// Get event participants
+    func getEventParticipants(eventId: UUID) async -> [EventParticipantResponse] {
+        do {
+            let participants: [EventParticipantResponse] = try await client
+                .rpc("get_event_participants", params: ["p_event_id": eventId.uuidString])
+                .execute()
+                .value
+            return participants
+        } catch {
+            print("❌ Get event participants error: \(error)")
+            self.errorMessage = "Failed to load participants."
+            return []
+        }
+    }
+
+    /// Get community settings (for admin edit view)
+    func getCommunitySettings(communityId: String) async -> CommunitySettingsResponse? {
+        do {
+            let response: CommunitySettingsResponse = try await client
+                .from("communities")
+                .select("id, description, welcome_message, rules, requires_approval")
+                .eq("id", value: communityId)
+                .single()
+                .execute()
+                .value
+            return response
+        } catch {
+            print("❌ Get community settings error: \(error)")
+            return nil
+        }
+    }
 }
 
 // MARK: - Nonisolated RPC Helpers for Create Operations
@@ -590,6 +872,36 @@ private func createEventRPC(
     )
     return try await client
         .rpc("create_event", params: params)
+        .execute()
+        .value
+}
+
+// MARK: - Nonisolated RPC Helpers for Admin Operations
+
+private func reviewApplicationRPC(client: SupabaseClient, params: ReviewApplicationParams) async throws -> APIResult {
+    return try await client
+        .rpc("review_join_application", params: params)
+        .execute()
+        .value
+}
+
+private func updateCommunityInfoRPC(client: SupabaseClient, params: UpdateCommunityInfoParams) async throws -> APIResult {
+    return try await client
+        .rpc("update_community_info", params: params)
+        .execute()
+        .value
+}
+
+private func removeMemberRPC(client: SupabaseClient, params: RemoveMemberParams) async throws -> APIResult {
+    return try await client
+        .rpc("remove_community_member", params: params)
+        .execute()
+        .value
+}
+
+private func grantCreditsRPC(client: SupabaseClient, params: GrantCreditsParams) async throws -> GrantCreditsResult {
+    return try await client
+        .rpc("grant_event_credits", params: params)
         .execute()
         .value
 }

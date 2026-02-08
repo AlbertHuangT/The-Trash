@@ -17,7 +17,9 @@ struct CommunityDetailView: View {
     @ObservedObject private var userSettings = UserSettings.shared
     @Environment(\.dismiss) var dismiss
     @State private var showEventDetail: CommunityEvent? = nil
-    
+    @State private var showAdminDashboard = false
+    @State private var showApprovalAlert = false
+
     var isMember: Bool {
         userSettings.isMember(of: community)
     }
@@ -35,6 +37,11 @@ struct CommunityDetailView: View {
                     // Stats
                     statsSection
                     
+                    // Admin Section
+                    if community.isAdmin {
+                        adminSection
+                    }
+
                     // Events
                     eventsSection
                 }
@@ -56,6 +63,14 @@ struct CommunityDetailView: View {
             }
             .sheet(item: $showEventDetail) { event in
                 EventDetailSheetForCommunity(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
+            }
+            .sheet(isPresented: $showAdminDashboard) {
+                CommunityAdminDashboard(community: community)
+            }
+            .alert("Application Submitted", isPresented: $showApprovalAlert) {
+                Button("OK") {}
+            } message: {
+                Text("Your request to join has been submitted. An admin will review it shortly.")
             }
         }
         .presentationDetents([.large])
@@ -114,7 +129,10 @@ struct CommunityDetailView: View {
                 if isMember {
                     _ = await userSettings.leaveCommunity(community)
                 } else {
-                    _ = await userSettings.joinCommunity(community)
+                    let result = await userSettings.joinCommunity(community)
+                    if result.requiresApproval {
+                        showApprovalAlert = true
+                    }
                 }
             }
         }) {
@@ -261,6 +279,34 @@ struct CommunityDetailView: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 40)
+    }
+
+    // MARK: - Admin Section
+
+    private var adminSection: some View {
+        Button(action: { showAdminDashboard = true }) {
+            HStack(spacing: 12) {
+                Image(systemName: "gearshape.fill")
+                    .font(.title3)
+                    .foregroundColor(.orange)
+
+                Text("Admin Dashboard")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(16)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
     }
 }
 

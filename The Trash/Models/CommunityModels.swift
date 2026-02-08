@@ -125,3 +125,121 @@ struct CanCreateResult: Codable {
         case maxAllowed = "max_allowed"
     }
 }
+
+// MARK: - Admin Feature Models
+
+struct JoinCommunityResult: Codable {
+    let success: Bool
+    let message: String
+    let requiresApproval: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case success, message
+        case requiresApproval = "requires_approval"
+    }
+}
+
+struct JoinApplicationResponse: Identifiable, Codable {
+    let id: UUID
+    let userId: UUID
+    let username: String
+    let userCredits: Int
+    let message: String?
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case username
+        case userCredits = "user_credits"
+        case message
+        case createdAt = "created_at"
+    }
+}
+
+struct CommunityMemberResponse: Identifiable, Codable {
+    let userId: UUID
+    let username: String
+    let credits: Int
+    let status: String
+    let joinedAt: Date
+    let isAdmin: Bool
+
+    var id: UUID { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case username, credits, status
+        case joinedAt = "joined_at"
+        case isAdmin = "is_admin"
+    }
+}
+
+struct AdminActionLogResponse: Identifiable, Codable {
+    let id: UUID
+    let adminUsername: String
+    let actionType: String
+    let targetUsername: String?
+    let createdAt: Date
+
+    var actionDescription: String {
+        switch actionType {
+        case "approve_member": return "Approved member"
+        case "reject_member": return "Rejected application"
+        case "remove_member": return "Removed member"
+        case "grant_credits": return "Granted credits"
+        case "edit_community": return "Edited community"
+        case "edit_event": return "Edited event"
+        case "delete_event": return "Deleted event"
+        default: return actionType
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case adminUsername = "admin_username"
+        case actionType = "action_type"
+        case targetUsername = "target_username"
+        case createdAt = "created_at"
+    }
+}
+
+struct GrantCreditsResult: Codable {
+    let success: Bool
+    let message: String
+    let grantedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case success, message
+        case grantedCount = "granted_count"
+    }
+}
+
+struct EventParticipantResponse: Identifiable, Codable {
+    let userId: UUID
+    let username: String
+    let credits: Int
+    let registeredAt: Date
+
+    var id: UUID { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case username, credits
+        case registeredAt = "registered_at"
+    }
+}
+
+struct CommunitySettingsResponse: Codable {
+    let id: String
+    let description: String?
+    let welcomeMessage: String?
+    let rules: String?
+    let requiresApproval: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id, description, rules
+        case welcomeMessage = "welcome_message"
+        case requiresApproval = "requires_approval"
+    }
+}

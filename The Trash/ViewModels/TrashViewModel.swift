@@ -13,6 +13,7 @@ import UIKit
 
 // MARK: - 1. Protocol
 protocol TrashClassifierService {
+    var initializationError: String? { get }
     func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void)
 }
 
@@ -33,6 +34,12 @@ class TrashViewModel: ObservableObject {
     func analyzeImage(image: UIImage) {
         guard appState != .analyzing else { return }
         
+        // 🔥 Fix: Check for initialization error immediately
+        if let initError = classifier.initializationError {
+            self.appState = .error(initError)
+            return
+        }
+        
         self.appState = .analyzing
         let startTime = Date()
         
@@ -43,10 +50,7 @@ class TrashViewModel: ObservableObject {
             
             // Explicitly jump back to MainActor to update UI
             Task { @MainActor [weak self] in
-                // Add artificial delay if needed
-                if delay > 0 {
-                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                }
+                // 🔥 Fix: Removed artificial delay for snappier UI
                 
                 self?.appState = .finished(result)
                 

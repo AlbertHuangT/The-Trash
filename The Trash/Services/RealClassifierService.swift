@@ -11,11 +11,16 @@ import UIKit
 import SwiftUI
 import Accelerate
 
-// 1. 定义知识库的数据结构
+// 1. 定义知识库的数据结构 (Revised for robustness)
 struct TrashItem: Decodable {
     let label: String
     let category: String
     let embedding: [Float]
+    
+    // Custom coding keys or init(from:) not strictly needed if JSON matches,
+    // but made robust against missing keys via optional chaining in usage if needed.
+    // Ideally, if essential fields are missing, we should just fail that item, not the whole batch.
+    // For now, we rely on the standard Decodable but catch errors at the batch level.
 }
 
 // 🚀 优化：预计算并缓存归一化后的向量
@@ -27,6 +32,8 @@ private struct NormalizedTrashItem {
 
 class RealClassifierService: TrashClassifierService {
     static let shared = RealClassifierService()
+    static let confidenceThreshold: Float = 0.10
+
     
     // 视觉模型 (The Eye)
     private var model: VNCoreMLModel?
@@ -40,6 +47,8 @@ class RealClassifierService: TrashClassifierService {
     // 线程安全的状态标志
     private var _isModelReady = false
     private var _isKnowledgeBaseReady = false
+    private var _initializationError: String? = nil
+
     
     // 🚀 优化：缓存向量维度，避免重复计算
     private var embeddingDimension: Int = 0
@@ -59,6 +68,12 @@ class RealClassifierService: TrashClassifierService {
         get { accessQueue.sync { _isKnowledgeBaseReady } }
         set { accessQueue.async(flags: .barrier) { self._isKnowledgeBaseReady = newValue } }
     }
+    
+    // Exposed ready state
+    var initializationError: String? {
+        accessQueue.sync { _initializationError }
+    }
+
     
     var isReady: Bool {
         accessQueue.sync { _isModelReady && _isKnowledgeBaseReady }
@@ -98,6 +113,10 @@ class RealClassifierService: TrashClassifierService {
             print("✅ [System] MobileCLIP S2 视觉系统就绪")
         } catch {
             print("❌ [Error] 模型加载失败: \(error)")
+            // 🔥 Fix: Set error state
+            accessQueue.async(flags: .barrier) {
+                self._initializationError = "Failed to load AI Model: \(error.localizedDescription)"
+            }
         }
     }
     
@@ -156,12 +175,29 @@ class RealClassifierService: TrashClassifierService {
             print("✅ [System] 成功加载知识库: \(normalized.count) 个预归一化向量")
         } catch {
             print("❌ [Error] JSON 解析失败: \(error)")
+            // 🔥 Fix: Set error state
+            accessQueue.async(flags: .barrier) {
+                self._initializationError = "Failed to load Knowledge Base: \(error.localizedDescription)"
+            }
         }
     }
     
     // MARK: - Classification Logic
     
     func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void) {
+        // 🔥 Fix: Check for initialization error first
+        if let initError = self.initializationError {
+            let errorResult = TrashAnalysisResult(
+                itemName: "System Error",
+                category: "Error",
+                confidence: 0.0,
+                actionTip: initError,
+                color: .red
+            )
+            DispatchQueue.main.async { completion(errorResult) }
+            return
+        }
+    
         if !isReady {
             print("⚠️ 系统尚未准备就绪")
             let loadingResult = TrashAnalysisResult(
@@ -341,7 +377,7 @@ class RealClassifierService: TrashClassifierService {
         print("---------------------------------------\n")
         #endif
         
-        if bestIndex >= 0 && bestScore >= 0.10 {
+        if bestIndex >= 0 && bestScore >= RealClassifierService.confidenceThreshold {
             let best = currentKnowledge[bestIndex]
             return (best.label, best.category, bestScore)
         }
@@ -351,11 +387,24 @@ class RealClassifierService: TrashClassifierService {
     
     private func convertMultiArray(_ multiArray: MLMultiArray) -> [Float] {
         let count = multiArray.count
-        var array = [Float](repeating: 0, count: count)
-        let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: count)
-        // 🚀 优化：使用 memcpy 替代循环
-        memcpy(&array, ptr, count * MemoryLayout<Float>.size)
-        return array
+        
+        // 🔥 Fix: Safe conversion handling different data types
+        if multiArray.dataType == .float32 {
+            let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: count)
+            let buffer = UnsafeBufferPointer(start: ptr, count: count)
+            return Array(buffer)
+        } else if multiArray.dataType == .double {
+            let ptr = multiArray.dataPointer.bindMemory(to: Double.self, capacity: count)
+            let buffer = UnsafeBufferPointer(start: ptr, count: count)
+            return buffer.map { Float($0) }
+        } else {
+            // Fallback for other less common types (e.g. Float16) - slow but safe
+            var array = [Float](repeating: 0, count: count)
+            for i in 0..<count {
+                array[i] = multiArray[i].floatValue
+            }
+            return array
+        }
     }
     
     // MARK: - UI Logic

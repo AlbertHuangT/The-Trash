@@ -14,12 +14,9 @@ final class SupabaseManager: @unchecked Sendable {
     let client: SupabaseClient
     
     private init() {
-        let projectURL = URL(string: "https://nwhdqiaepwhxepcygsmm.supabase.co")!
-        let apiKey = "sb_publishable_0ZwU2enz0hgtSYh72sVuwA_8ALK4tGd"
-        
         self.client = SupabaseClient(
-            supabaseURL: projectURL,
-            supabaseKey: apiKey,
+            supabaseURL: Secrets.supabaseUrl,
+            supabaseKey: Secrets.supabaseAnonKey,
             options: SupabaseClientOptions(
                 auth: .init(
                     emitLocalSessionAsInitialSession: true

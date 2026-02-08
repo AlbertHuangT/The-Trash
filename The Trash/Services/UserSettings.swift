@@ -187,24 +187,24 @@ class UserSettings: ObservableObject {
         joinedCommunities.filter { $0.isAdmin }
     }
     
-    /// 加入社区
-    func joinCommunity(_ community: Community) async -> Bool {
-        let success = await communityService.joinCommunity(community.id)
-        if success {
+    /// 加入社区（支持审批流程）
+    func joinCommunity(_ community: Community) async -> (success: Bool, requiresApproval: Bool) {
+        let result = await communityService.joinCommunity(community.id)
+        if result.success && !result.requiresApproval {
             joinedCommunityIds.insert(community.id)
             saveJoinedCommunities()
-            
+
             // 更新本地列表
             if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
                 communitiesInCity[index].isMember = true
             }
-            
+
             // 添加到已加入列表
             var updatedCommunity = community
             updatedCommunity.isMember = true
             joinedCommunities.append(updatedCommunity)
         }
-        return success
+        return (result.success, result.requiresApproval)
     }
     
     /// 离开社区

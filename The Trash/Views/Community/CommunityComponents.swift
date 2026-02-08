@@ -254,6 +254,7 @@ struct CommunityCardView: View {
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var isLoading = false
     @State private var showDetail = false
+    @State private var showApprovalAlert = false
 
     var isMember: Bool {
         userSettings.isMember(of: community)
@@ -312,7 +313,10 @@ struct CommunityCardView: View {
                     if isMember {
                         _ = await userSettings.leaveCommunity(community)
                     } else {
-                        _ = await userSettings.joinCommunity(community)
+                        let result = await userSettings.joinCommunity(community)
+                        if result.requiresApproval {
+                            showApprovalAlert = true
+                        }
                     }
                     isLoading = false
                 }
@@ -339,6 +343,11 @@ struct CommunityCardView: View {
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(16)
+        .alert("Application Submitted", isPresented: $showApprovalAlert) {
+            Button("OK") {}
+        } message: {
+            Text("Your request to join has been submitted. An admin will review it shortly.")
+        }
     }
 }
 
@@ -419,6 +428,7 @@ struct JoinedCommunityRowExpanded: View {
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var isLoading = false
     @State private var showDetail = false
+    @State private var showAdminDashboard = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -494,6 +504,20 @@ struct JoinedCommunityRowExpanded: View {
                         .cornerRadius(10)
                     }
                     .buttonStyle(.plain)
+
+                    Button(action: { showAdminDashboard = true }) {
+                        HStack {
+                            Image(systemName: "gearshape.fill")
+                            Text("Manage")
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundColor(.orange)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Button(action: {
@@ -527,6 +551,9 @@ struct JoinedCommunityRowExpanded: View {
         .padding(.vertical, 8)
         .sheet(isPresented: $showDetail) {
             CommunityDetailView(community: community)
+        }
+        .sheet(isPresented: $showAdminDashboard) {
+            CommunityAdminDashboard(community: community)
         }
     }
 }
