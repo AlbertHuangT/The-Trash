@@ -41,14 +41,8 @@ class TrashViewModel: ObservableObject {
         }
         
         self.appState = .analyzing
-        let startTime = Date()
-        
+
         classifier.classifyImage(image: image) { [weak self] result in
-            // Calculate delay on whatever thread we are on
-            let elapsedTime = Date().timeIntervalSince(startTime)
-            let delay = max(0, 0.5 - elapsedTime)
-            
-            // Explicitly jump back to MainActor to update UI
             Task { @MainActor [weak self] in
                 // 🔥 Fix: Removed artificial delay for snappier UI
                 
@@ -58,6 +52,7 @@ class TrashViewModel: ObservableObject {
                     self?.grantPoints(amount: 10)
                 }
             }
+
         }
     }
     

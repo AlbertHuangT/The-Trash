@@ -998,7 +998,7 @@ struct AnonymousRestrictionView: View {
     }
 }
 
-struct EmptyStateView: View {
+private struct ArenaEmptyStateView: View {
     var onRefresh: () -> Void
     var body: some View {
         EnhancedEmptyStateView(onRefresh: onRefresh)

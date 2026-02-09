@@ -194,7 +194,7 @@ struct CommunitySelectionSheet: View {
                 } else {
                     List {
                         ForEach(joinedCommunities) { community in
-                            JoinedCommunityRow(community: community)
+                            CommunityCardView(community: community)
                         }
                     }
                     .listStyle(.plain)
@@ -251,304 +251,152 @@ struct LocationRowView: View {
 // MARK: - Community Card View
 struct CommunityCardView: View {
     let community: Community
+    var onCreateEvent: (() -> Void)? = nil
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var isLoading = false
     @State private var showDetail = false
     @State private var showApprovalAlert = false
+    @State private var showAdminDashboard = false
 
     var isMember: Bool {
         userSettings.isMember(of: community)
     }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: { showDetail = true }) {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.cyan.opacity(0.15))
-                            .frame(width: 50, height: 50)
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.cyan)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(community.name)
-                            .font(.subheadline.bold())
-                            .foregroundColor(.primary)
-
-                        HStack(spacing: 8) {
-                            Label("\(community.memberCount)", systemImage: "person.2.fill")
-                        }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-            .buttonStyle(.plain)
-            .sheet(isPresented: $showDetail) {
-                CommunityDetailView(community: community)
-            }
-
-            Button(action: { showDetail = true }) {
-                Text(community.description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-
-            Button(action: {
-                Task {
-                    isLoading = true
-                    if isMember {
-                        _ = await userSettings.leaveCommunity(community)
-                    } else {
-                        let result = await userSettings.joinCommunity(community)
-                        if result.requiresApproval {
-                            showApprovalAlert = true
-                        }
-                    }
-                    isLoading = false
-                }
-            }) {
-                HStack {
-                    if isLoading {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: isMember ? "checkmark.circle.fill" : "plus.circle.fill")
-                    }
-                    Text(isMember ? "Joined" : "Join Community")
-                }
-                .font(.subheadline.bold())
-                .foregroundColor(isMember ? .green : .white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(isMember ? Color.green.opacity(0.1) : Color.cyan)
-                .cornerRadius(10)
-            }
-            .buttonStyle(.plain)
-            .disabled(isLoading)
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
-        .alert("Application Submitted", isPresented: $showApprovalAlert) {
-            Button("OK") {}
-        } message: {
-            Text("Your request to join has been submitted. An admin will review it shortly.")
-        }
+    
+    var isAdmin: Bool {
+        userSettings.isAdmin(of: community)
     }
-}
-
-// MARK: - Joined Community Row
-struct JoinedCommunityRow: View {
-    let community: Community
-    @ObservedObject private var userSettings = UserSettings.shared
-    @State private var isLoading = false
-    @State private var showDetail = false
 
     var body: some View {
         Button(action: { showDetail = true }) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Color.cyan.opacity(0.15))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "person.3.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.cyan)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(community.name)
-                        .font(.subheadline.bold())
-                        .foregroundColor(.primary)
-
-                    HStack(spacing: 8) {
-                        Label(community.fullLocation, systemImage: "mappin.circle.fill")
-                        Label("\(community.memberCount)", systemImage: "person.2.fill")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                Button(action: {
-                    Task {
-                        isLoading = true
-                        _ = await userSettings.leaveCommunity(community)
-                        isLoading = false
-                    }
-                }) {
-                    if isLoading {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    } else {
-                        Text("Leave")
+            VStack(alignment: .leading, spacing: 0) {
+                // 1. Header Image / Gradient
+                ZStack(alignment: .topLeading) {
+                    LinearGradient(
+                        colors: [Color.cyan.opacity(0.8), Color.blue],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(height: 120)
+                    .overlay(
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.white.opacity(0.3))
+                    )
+                    
+                    // Badges
+                    HStack {
+                        Spacer()
+                        
+                        if isMember {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Joined")
+                            }
                             .font(.caption.bold())
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.red.opacity(0.1))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white)
                             .cornerRadius(8)
+                            .shadow(radius: 2)
+                        }
+                        
+                        if isAdmin {
+                            Text("Admin")
+                                .font(.caption.bold())
+                                .badgeStyle(background: .orange)
+                                .shadow(radius: 2)
+                        }
+                    }
+                    .padding(12)
+                }
+                
+                // 2. Content
+                VStack(alignment: .leading, spacing: 10) {
+                    // Title & Member Count
+                    HStack(alignment: .top) {
+                        Text(community.name)
+                            .font(.title3.bold())
+                            .lineLimit(2)
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.2.fill")
+                                .font(.caption)
+                            Text("\(community.memberCount)")
+                                .font(.caption.bold())
+                        }
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.tertiarySystemGroupedBackground))
+                        .cornerRadius(6)
+                    }
+                    
+                    // Location
+                    HStack(spacing: 6) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .foregroundColor(.secondary)
+                        Text(community.fullLocation)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if !community.description.isEmpty {
+                        Text(community.description)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    
+                    // Admin Controls (Footer)
+                    if isAdmin {
+                        Divider()
+                            .padding(.vertical, 4)
+                            
+                        HStack(spacing: 12) {
+                            if let onCreateEvent = onCreateEvent {
+                                Button(action: onCreateEvent) {
+                                    HStack {
+                                        Image(systemName: "plus.circle.fill")
+                                        Text("Event")
+                                    }
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(Color.green)
+                                    .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            Button(action: { showAdminDashboard = true }) {
+                                HStack {
+                                    Image(systemName: "gearshape.fill")
+                                    Text("Manage")
+                                }
+                                .font(.subheadline.bold())
+                                .foregroundColor(.orange)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Color.orange.opacity(0.1))
+                                .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
-                .buttonStyle(.plain)
-                .disabled(isLoading)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                .padding(16)
+                .background(Color(.secondarySystemGroupedBackground))
             }
-            .padding(.vertical, 6)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
-        .sheet(isPresented: $showDetail) {
-            CommunityDetailView(community: community)
-        }
-    }
-}
-
-// MARK: - Joined Community Row with Admin Features
-struct JoinedCommunityRowExpanded: View {
-    let community: Community
-    let onCreateEvent: () -> Void
-    @ObservedObject private var userSettings = UserSettings.shared
-    @State private var isLoading = false
-    @State private var showDetail = false
-    @State private var showAdminDashboard = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: { showDetail = true }) {
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.cyan.opacity(0.15))
-                            .frame(width: 50, height: 50)
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.cyan)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(community.name)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-
-                            if community.isAdmin {
-                                Text("Admin")
-                                    .font(.caption2)
-                                    .foregroundColor(.orange)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.orange.opacity(0.15))
-                                    .cornerRadius(4)
-                            }
-                        }
-
-                        HStack(spacing: 8) {
-                            Label(community.fullLocation, systemImage: "mappin.circle.fill")
-                            Label("\(community.memberCount)", systemImage: "person.2.fill")
-                        }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-            .buttonStyle(.plain)
-
-            if !community.description.isEmpty {
-                Button(action: { showDetail = true }) {
-                    Text(community.description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-            }
-
-            HStack(spacing: 12) {
-                if community.isAdmin {
-                    Button(action: onCreateEvent) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Create Event")
-                        }
-                        .font(.subheadline.bold())
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.green)
-                        .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: { showAdminDashboard = true }) {
-                        HStack {
-                            Image(systemName: "gearshape.fill")
-                            Text("Manage")
-                        }
-                        .font(.subheadline.bold())
-                        .foregroundColor(.orange)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Button(action: {
-                    Task {
-                        isLoading = true
-                        _ = await userSettings.leaveCommunity(community)
-                        isLoading = false
-                    }
-                }) {
-                    HStack {
-                        if isLoading {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "xmark.circle.fill")
-                            Text("Leave")
-                        }
-                    }
-                    .font(.subheadline.bold())
-                    .foregroundColor(.red)
-                    .frame(maxWidth: community.isAdmin ? nil : .infinity)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, community.isAdmin ? 20 : 0)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(10)
-                }
-                .buttonStyle(.plain)
-                .disabled(isLoading)
-            }
-        }
-        .padding(.vertical, 8)
         .sheet(isPresented: $showDetail) {
             CommunityDetailView(community: community)
         }
@@ -557,3 +405,6 @@ struct JoinedCommunityRowExpanded: View {
         }
     }
 }
+
+// MARK: - Joined Community Row
+
