@@ -113,8 +113,7 @@ struct ReportView: View {
                     image: image,
                     predictedLabel: predictedResult.itemName,
                     predictedCategory: predictedResult.category,
-                    correctCategory: selectedBin,
-                    comment: itemName,
+                    correctedName: itemName,
                     userId: userId
                 )
                 await MainActor.run {

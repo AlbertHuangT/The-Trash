@@ -187,47 +187,89 @@ class UserSettings: ObservableObject {
         joinedCommunities.filter { $0.isAdmin }
     }
     
-    /// 加入社区（支持审批流程）
+    /// 加入社区（支持审批流程）- Optimistic UI
     func joinCommunity(_ community: Community) async -> (success: Bool, requiresApproval: Bool) {
-        let result = await communityService.joinCommunity(community.id)
-        if result.success && !result.requiresApproval {
-            joinedCommunityIds.insert(community.id)
-            saveJoinedCommunities()
-
-            // 更新本地列表
-            if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
-                communitiesInCity[index].isMember = true
-            }
-
-            // 添加到已加入列表
-            var updatedCommunity = community
-            updatedCommunity.isMember = true
-            joinedCommunities.append(updatedCommunity)
+        // 1. Optimistic Update
+        let originalIds = joinedCommunityIds
+        let originalCommunities = communitiesInCity
+        let originalJoined = joinedCommunities
+        
+        joinedCommunityIds.insert(community.id)
+        saveJoinedCommunities()
+        
+        // Update local list status
+        if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
+            communitiesInCity[index].isMember = true
+            communitiesInCity[index].memberCount += 1
         }
+        
+        // Add to joined list
+        var newCommunity = community
+        newCommunity.isMember = true
+        // If we don't have the member count correct from the list, increment it
+        if !communitiesInCity.contains(where: { $0.id == community.id }) {
+             newCommunity.memberCount += 1
+        }
+        joinedCommunities.append(newCommunity)
+        
+        // 2. Perform Network Request
+        let result = await communityService.joinCommunity(community.id)
+        
+        // 3. Handle Result
+        if result.success && !result.requiresApproval {
+            // Success: Keep optimistic state (maybe update with fresh data if needed, but simple counter is fine)
+            // No action needed
+        } else {
+            // Failure or Approval Required: Revert Optimistic State
+            // If approval is required, user is not yet a member, so revert "isMember" to false.
+            joinedCommunityIds = originalIds
+            communitiesInCity = originalCommunities
+            joinedCommunities = originalJoined
+            saveJoinedCommunities()
+        }
+        
         return (result.success, result.requiresApproval)
     }
     
-    /// 离开社区
+    /// 离开社区 - Optimistic UI
     func leaveCommunity(_ community: Community) async -> Bool {
-        let success = await communityService.leaveCommunity(community.id)
-        if success {
-            joinedCommunityIds.remove(community.id)
-            saveJoinedCommunities()
-            
-            // 更新本地列表
-            if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
-                communitiesInCity[index].isMember = false
-            }
-            
-            // 从已加入列表移除
-            joinedCommunities.removeAll { $0.id == community.id }
+        // 1. Optimistic Update
+        let originalIds = joinedCommunityIds
+        let originalCommunities = communitiesInCity
+        let originalJoined = joinedCommunities
+        
+        joinedCommunityIds.remove(community.id)
+        saveJoinedCommunities()
+        
+        if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
+            communitiesInCity[index].isMember = false
+            communitiesInCity[index].memberCount = max(0, communitiesInCity[index].memberCount - 1)
         }
+        
+        joinedCommunities.removeAll { $0.id == community.id }
+        
+        // 2. Perform Network Request
+        let success = await communityService.leaveCommunity(community.id)
+        
+        // 3. Revert on Failure
+        if !success {
+            joinedCommunityIds = originalIds
+            communitiesInCity = originalCommunities
+            joinedCommunities = originalJoined
+            saveJoinedCommunities()
+        }
+        
         return success
     }
     
     /// 检查是否是社区成员
     func isMember(of community: Community) -> Bool {
         joinedCommunityIds.contains(community.id)
+    }
+    
+    /// 检查是否是社区管理员
+    func isAdmin(of community: Community) -> Bool {
+        joinedCommunities.first(where: { $0.id == community.id })?.isAdmin ?? false
     }
     
     /// 获取已加入的社区 (本地缓存)

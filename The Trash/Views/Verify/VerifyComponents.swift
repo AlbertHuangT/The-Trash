@@ -230,37 +230,18 @@ struct ErrorCard: View {
 // MARK: - Enhanced Feedback Form
 
 struct EnhancedFeedbackForm: View {
-    @Binding var selectedCategory: String
     @Binding var itemName: String
-    let categories: [String]
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("What's the correct category?")
+            Text("What is this item?")
                 .font(.subheadline.bold())
                 .foregroundColor(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(categories, id: \.self) { category in
-                        CategoryChip(
-                            title: category,
-                            isSelected: selectedCategory == category,
-                            color: colorForCategory(category)
-                        ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedCategory = category
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 4)
-            }
 
             HStack {
                 Image(systemName: "tag.fill")
                     .foregroundColor(.secondary)
-                TextField("Item name (optional)", text: $itemName)
+                TextField("e.g. Plastic bottle, Battery...", text: $itemName)
             }
             .padding(12)
             .background(Color(.tertiarySystemGroupedBackground))
@@ -271,41 +252,5 @@ struct EnhancedFeedbackForm: View {
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
         .padding(.horizontal, 16)
-    }
-
-    private func colorForCategory(_ category: String) -> Color {
-        switch category {
-        case "Recyclable": return .blue
-        case "Compostable": return .green
-        case "Hazardous": return .red
-        case "Electronic": return .purple
-        default: return .gray
-        }
-    }
-}
-
-// MARK: - Category Chip
-
-struct CategoryChip: View {
-    let title: String
-    let isSelected: Bool
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.bold())
-                .foregroundColor(isSelected ? .white : color)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(isSelected ? color : color.opacity(0.1))
-                .cornerRadius(20)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(color, lineWidth: isSelected ? 0 : 1)
-                )
-        }
-        .buttonStyle(.plain)
     }
 }

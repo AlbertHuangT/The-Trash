@@ -71,24 +71,22 @@ class TrashViewModel: ObservableObject {
     func submitCorrection(
         image: UIImage,
         originalResult: TrashAnalysisResult,
-        correctedCategory: String,
-        correctedName: String?
+        correctedName: String
     ) async {
         // 🔥 FIX: 防止重复提交
         guard case .collectingFeedback = appState else { return }
-        
+
         print("--- 📤 SUBMITTING REPORT ---")
-        
+
         // 🔥 FIX: 设置中间状态防止重复提交
         self.appState = .analyzing
-        
+
         do {
             try await FeedbackService.shared.submitFeedback(
                 image: image,
                 predictedLabel: originalResult.itemName,
                 predictedCategory: originalResult.category,
-                correctCategory: correctedCategory,
-                comment: correctedName ?? "",
+                correctedName: correctedName,
                 userId: client.auth.currentUser?.id
             )
             print("✅ Report uploaded successfully")

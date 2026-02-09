@@ -221,8 +221,18 @@ struct LeaderboardView: View {
                             rankView(rank: index + 1)
                                 .frame(width: 35)
                             
-                            Text(user.username)
-                                .font(.headline)
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Text(user.username)
+                                        .font(.headline)
+                                    
+                                    if let icon = user.achievementIcon {
+                                        Image(systemName: icon)
+                                            .font(.caption)
+                                            .foregroundColor(.purple)
+                                    }
+                                }
+                            }
                             
                             Spacer()
                             

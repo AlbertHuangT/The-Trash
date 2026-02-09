@@ -20,9 +20,7 @@ struct VerifyView: View {
     @State private var showAccountSheet = false
     
     // Form Data
-    @State private var selectedFeedbackCategory = "Landfill"
     @State private var feedbackItemName = ""
-    let trashCategories = ["Recyclable", "Hazardous", "Compostable", "Landfill", "Electronic"]
     
     var showFeedbackForm: Bool {
         if case .collectingFeedback = viewModel.appState, showingFeedbackForm { return true }
@@ -213,12 +211,8 @@ struct VerifyView: View {
             }
             
             if showFeedbackForm {
-                EnhancedFeedbackForm(
-                    selectedCategory: $selectedFeedbackCategory,
-                    itemName: $feedbackItemName,
-                    categories: trashCategories
-                )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                EnhancedFeedbackForm(itemName: $feedbackItemName)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .frame(height: 220)
@@ -362,7 +356,6 @@ struct VerifyView: View {
             await viewModel.submitCorrection(
                 image: currentImage,
                 originalResult: originalResult,
-                correctedCategory: selectedFeedbackCategory,
                 correctedName: feedbackItemName
             )
             if viewModel.appState == .idle {
@@ -380,7 +373,6 @@ struct VerifyView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             showingFeedbackForm = false
             cardOffset = .zero
-            selectedFeedbackCategory = "Landfill"
             feedbackItemName = ""
             if closeCamera {
                 isCameraActive = false

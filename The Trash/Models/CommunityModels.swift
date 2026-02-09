@@ -28,7 +28,7 @@ struct CommunityResponse: Codable, Identifiable, Hashable {
     }
 }
 
-struct EventResponse: Codable, Identifiable {
+struct EventResponse: Codable, Identifiable, Hashable, Equatable {
     let id: UUID
     let title: String
     let description: String?
@@ -58,6 +58,14 @@ struct EventResponse: Codable, Identifiable {
         case distanceKm = "distance_km"
         case isRegistered = "is_registered"
         case isPersonal = "is_personal"
+    }
+
+    static func == (lhs: EventResponse, rhs: EventResponse) -> Bool {
+        return lhs.id == rhs.id
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

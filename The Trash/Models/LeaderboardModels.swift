@@ -28,9 +28,11 @@ struct CommunityLeaderboardUser: Identifiable, Decodable {
     let username: String
     let credits: Int
     let communityName: String?
+    let achievementIcon: String?
 
     enum CodingKeys: String, CodingKey {
         case id, username, credits
         case communityName = "community_name"
+        case achievementIcon = "achievement_icon"
     }
 }

@@ -493,7 +493,6 @@ class CommunityService: ObservableObject {
                 .execute()
                 .value
             return response
-            return response
         } catch {
             print("❌ Get community events error: \(error)")
             self.errorMessage = "Failed to load community events."

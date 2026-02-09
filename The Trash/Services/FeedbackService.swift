@@ -31,8 +31,7 @@ class FeedbackService {
         image: UIImage,
         predictedLabel: String,
         predictedCategory: String,
-        correctCategory: String,
-        comment: String,
+        correctedName: String,
         userId: UUID?
     ) async throws {
         
@@ -75,8 +74,8 @@ class FeedbackService {
             user_id: userId,
             predicted_label: predictedLabel,
             predicted_category: predictedCategory,
-            user_correction: correctCategory,
-            user_comment: comment,
+            user_correction: correctedName,
+            user_comment: "",
             image_path: filePath
         )
         

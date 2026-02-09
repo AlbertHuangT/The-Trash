@@ -24,6 +24,10 @@ struct CommunityDetailView: View {
         userSettings.isMember(of: community)
     }
     
+    var isAdmin: Bool {
+        community.isAdmin
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -34,13 +38,13 @@ struct CommunityDetailView: View {
                     // Description
                     descriptionSection
                     
-                    // Stats
-                    statsSection
-                    
                     // Admin Section
-                    if community.isAdmin {
+                    if isAdmin {
                         adminSection
                     }
+                    
+                    // Stats
+                    statsSection
 
                     // Events
                     eventsSection
@@ -62,7 +66,11 @@ struct CommunityDetailView: View {
                 await viewModel.loadEvents(communityId: community.id)
             }
             .sheet(item: $showEventDetail) { event in
-                EventDetailSheetForCommunity(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
+                if isAdmin {
+                    GrantCreditsView(event: event)
+                } else {
+                    EventDetailSheetForCommunity(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
+                }
             }
             .sheet(isPresented: $showAdminDashboard) {
                 CommunityAdminDashboard(community: community)
@@ -241,7 +249,11 @@ struct CommunityDetailView: View {
             
             LazyVStack(spacing: 12) {
                 ForEach(events) { event in
-                    CommunityEventCard(event: event) {
+                    EnhancedEventCard(
+                        event: event,
+                        userLocation: userSettings.selectedLocation,
+                        preciseLocation: userSettings.preciseLocation
+                    ) {
                         showEventDetail = event
                     }
                 }
@@ -296,6 +308,9 @@ struct CommunityDetailView: View {
 
                 Spacer()
 
+                // Badge for pending applications
+                // In a real app, this count would be dynamic
+                
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundColor(.secondary)

@@ -17,6 +17,7 @@ struct EventsMapView: View {
 
     @State private var dragOffset = CGSize.zero
     @State private var selectedEvent: CommunityEvent? = nil
+    @State private var isDragging = false
 
     init(events: [CommunityEvent], userSettings: UserSettings, onEventSelected: @escaping (CommunityEvent) -> Void) {
         self.events = events
@@ -78,47 +79,61 @@ struct EventsMapView: View {
             
             // Selected Event Card
             if let event = selectedEvent {
-                VStack(spacing: 12) {
-                    // Grabber Handle
+                VStack(spacing: 8) {
                     Capsule()
-                        .fill(Color.secondary.opacity(0.5))
+                        .fill(Color.secondary)
                         .frame(width: 40, height: 5)
-                        .padding(.top, 10)
-                    
+                        .padding(.top, 8)
+
                     EnhancedEventCard(
                         event: event,
                         userLocation: userSettings.selectedLocation,
                         preciseLocation: userSettings.preciseLocation,
-                        onTap: {
-                            onEventSelected(event)
-                        }
+                        onTap: {}
                     )
+                    .allowsHitTesting(false)
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 20) // Extra padding for safe area
+                    .padding(.bottom, 20)
                 }
-                .background(.ultraThinMaterial)
-                .cornerRadius(20)
-                .offset(y: dragOffset.height)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .contentShape(Rectangle())
+                .offset(y: max(0, dragOffset.height))
+                .transition(.move(edge: .bottom))
                 .gesture(
-                    DragGesture()
+                    DragGesture(minimumDistance: 15)
                         .onChanged { value in
-                            if value.translation.height > 0 {
-                                dragOffset = value.translation
-                            }
+                            isDragging = true
+                            dragOffset = value.translation
                         }
                         .onEnded { value in
                             if value.translation.height > 100 {
-                                withAnimation {
+                                // Animate off-screen
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    dragOffset = CGSize(width: 0, height: 1000)
+                                }
+                                
+                                // Reset state after animation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     selectedEvent = nil
+                                    // Reset offset without animation so it's ready for next time
+                                    dragOffset = .zero
+                                }
+                            } else {
+                                // Snap back
+                                withAnimation(.spring()) {
+                                    dragOffset = .zero
                                 }
                             }
-                            withAnimation {
-                                dragOffset = .zero
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                isDragging = false
                             }
                         }
                 )
-                .id(event.id) 
+                .onTapGesture {
+                    if !isDragging {
+                        onEventSelected(event)
+                    }
+                }
+                .id(event.id)
             }
         }
         .onChange(of: selectedEvent) { newValue in

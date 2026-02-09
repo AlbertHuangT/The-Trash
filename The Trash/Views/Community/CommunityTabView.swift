@@ -80,6 +80,12 @@ struct CommunityTabView: View {
         .sheet(isPresented: $showCreateCommunitySheet) {
             CreateCommunitySheet(isPresented: $showCreateCommunitySheet)
         }
+        .task {
+            // Eagerly load joined communities to ensure Admin status is known for Nearby list
+            if userSettings.joinedCommunities.isEmpty {
+                await userSettings.loadMyCommunities()
+            }
+        }
     }
 
     // MARK: - App Store Style Header
@@ -236,7 +242,12 @@ struct CommunityTabView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(userSettings.communitiesInCity) { community in
-                    CommunityCardView(community: community)
+                    CommunityCardView(
+                        community: community,
+                        onCreateEvent: {
+                            showCreateEventSheet = true
+                        }
+                    )
                 }
             }
             .padding(.horizontal, 16)
@@ -294,17 +305,20 @@ struct CommunityTabView: View {
     }
 
     private var joinedCommunitiesList: some View {
-        List {
-            ForEach(userSettings.joinedCommunities) { community in
-                JoinedCommunityRowExpanded(
-                    community: community,
-                    onCreateEvent: {
-                        showCreateEventSheet = true
-                    }
-                )
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(userSettings.joinedCommunities) { community in
+                    CommunityCardView(
+                        community: community,
+                        onCreateEvent: {
+                            showCreateEventSheet = true
+                        }
+                    )
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .listStyle(.insetGrouped)
         .refreshable {
             await userSettings.loadMyCommunities()
         }

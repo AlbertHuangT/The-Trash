@@ -435,6 +435,12 @@ struct AccountView: View {
                 .padding(.bottom, 10)
 
                 VStack(spacing: 0) {
+                    NavigationLink(destination: AchievementsListView()) {
+                        EnhancedSettingsRow(icon: "trophy.fill", gradient: [.purple, .indigo], title: "Achievements")
+                    }
+                    
+                    Divider().padding(.leading, 52)
+                    
                     NavigationLink(destination: RewardView()) {
                         EnhancedSettingsRow(icon: "gift.fill", gradient: [.orange, .yellow], title: "Rewards")
                     }

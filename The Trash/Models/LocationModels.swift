@@ -62,7 +62,7 @@ struct Community: Identifiable, Hashable, Codable {
     let city: String
     let state: String
     let description: String
-    let memberCount: Int
+    var memberCount: Int
     let latitude: Double
     let longitude: Double
     var isMember: Bool = false

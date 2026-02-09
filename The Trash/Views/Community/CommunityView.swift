@@ -27,7 +27,7 @@ enum EventSortOption: String, CaseIterable {
 
 // MARK: - Models
 
-struct CommunityEvent: Identifiable {
+struct CommunityEvent: Identifiable, Hashable, Equatable {
     var id: UUID
     let title: String
     let organizer: String
@@ -46,7 +46,7 @@ struct CommunityEvent: Identifiable {
     var isRegistered: Bool = false
     var isPersonal: Bool = false  // 🔥 新增：是否为个人活动
     
-    enum EventCategory: String, CaseIterable {
+    enum EventCategory: String, CaseIterable, Codable {
         case cleanup = "Cleanup"
         case workshop = "Workshop"
         case competition = "Competition"
@@ -69,6 +69,14 @@ struct CommunityEvent: Identifiable {
             case .education: return "book.fill"
             }
         }
+    }
+    
+    static func == (lhs: CommunityEvent, rhs: CommunityEvent) -> Bool {
+        return lhs.id == rhs.id
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
     
     // 计算距离（公里）- 优先使用后端计算的距离，其次使用精确GPS，最后使用城市中心
@@ -306,6 +314,7 @@ struct CommunityView: View {
     @State private var showSortMenu = false
     @State private var showAccountSheet = false
     @State private var showCreateEventSheet = false
+    @State private var isMapView = false
     
     var body: some View {
         ZStack {
@@ -328,31 +337,44 @@ struct CommunityView: View {
                 } else if viewModel.events.isEmpty {
                     emptyState
                 } else {
-                    // 活动列表
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(viewModel.events) { event in
-                                EventCard(
-                                    event: event,
-                                    userLocation: userSettings.selectedLocation,
-                                    preciseLocation: userSettings.preciseLocation
-                                ) {
-                                    showEventDetail = event
+                    if isMapView {
+                        // 地图视图
+                        EventsMapView(
+                            events: viewModel.events,
+                            userSettings: userSettings,
+                            onEventSelected: { event in
+                                showEventDetail = event
+                            }
+                        )
+                        .transition(.opacity)
+                    } else {
+                        // 活动列表
+                        ScrollView {
+                            LazyVStack(spacing: 16) {
+                                ForEach(viewModel.events) { event in
+                                    EnhancedEventCard(
+                                        event: event,
+                                        userLocation: userSettings.selectedLocation,
+                                        preciseLocation: userSettings.preciseLocation
+                                    ) {
+                                        showEventDetail = event
+                                    }
                                 }
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .padding(.bottom, 20)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 20)
-                    }
-                    .refreshable {
-                        await viewModel.loadEvents()
+                        .refreshable {
+                            await viewModel.loadEvents()
+                        }
+                        .transition(.opacity)
                     }
                 }
             }
             
             // 🚀 浮动加号按钮 (FAB)
-            if !authVM.isAnonymous && viewModel.hasLocation {
+            if !authVM.isAnonymous && viewModel.hasLocation && !isMapView {
                 VStack {
                     Spacer()
                     HStack {
@@ -457,6 +479,20 @@ struct CommunityView: View {
             
             Spacer()
             
+            // Map/List Toggle
+            Button(action: {
+                withAnimation {
+                    isMapView.toggle()
+                }
+            }) {
+                Image(systemName: isMapView ? "map.fill" : "list.bullet") // 🚀 修复：显示当前模式或反转逻辑（根据用户反馈调整）
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding(8)
+                    .background(Color.blue)
+                    .clipShape(Circle())
+            }
+            
             // 仅显示已加入社区 Toggle
             Button(action: {
                 viewModel.showOnlyJoinedCommunities.toggle()
@@ -464,17 +500,17 @@ struct CommunityView: View {
                 HStack(spacing: 4) {
                     Image(systemName: viewModel.showOnlyJoinedCommunities ? "person.3.fill" : "globe")
                         .font(.caption)
-                        .frame(width: 14) // 🚀 固定宽度防止图标切换导致的布局跳动
+                        .frame(width: 14) // 🚀 固定宽度
                     Text(viewModel.showOnlyJoinedCommunities ? "Joined" : "All")
                         .font(.caption.bold())
-                        .frame(minWidth: 36, alignment: .leading) // 🚀 固定最小宽度
+                        .frame(width: 45, alignment: .center) // 🚀 固定宽度并居中，"Joined"大约需45pt
                 }
                 .foregroundColor(viewModel.showOnlyJoinedCommunities ? .cyan : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(viewModel.showOnlyJoinedCommunities ? Color.cyan.opacity(0.1) : Color(.secondarySystemGroupedBackground))
                 .cornerRadius(16)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.showOnlyJoinedCommunities) // 🚀 轻量动画
+                .animation(.easeInOut(duration: 0.2), value: viewModel.showOnlyJoinedCommunities)
             }
             
             // 排序按钮
@@ -499,6 +535,7 @@ struct CommunityView: View {
                         .font(.caption)
                     Text(viewModel.sortOption.rawValue)
                         .font(.caption.bold())
+                        .frame(width: 70, alignment: .center) // 🚀 固定宽度防止跳动
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption2)
@@ -508,7 +545,7 @@ struct CommunityView: View {
                 .padding(.vertical, 6)
                 .background(viewModel.sortOption != .distance ? Color.blue : Color(.secondarySystemGroupedBackground))
                 .cornerRadius(16)
-                .animation(.none, value: viewModel.sortOption) // 🚀 禁用按钮内部动画防止卡顿
+                .animation(.none, value: viewModel.sortOption)
             }
         }
         .padding(.horizontal, 16)
