@@ -116,24 +116,9 @@ class ArenaViewModel: ObservableObject {
     }
 
     private func preloadImages() async {
-        let priorityQuestions = Array(questions.prefix(3))
-        for question in priorityQuestions {
-            await loadImage(for: question)
-        }
-
+        // Load all images concurrently (only 10 questions)
         await withTaskGroup(of: Void.self) { group in
-            var activeCount = 0
-            let maxConcurrent = 3
-
-            for question in questions.dropFirst(3) {
-                if imageCache[question.id] != nil { continue }
-
-                if activeCount >= maxConcurrent {
-                    await group.next()
-                    activeCount -= 1
-                }
-
-                activeCount += 1
+            for question in questions {
                 group.addTask { [weak self] in
                     await self?.loadImage(for: question)
                 }

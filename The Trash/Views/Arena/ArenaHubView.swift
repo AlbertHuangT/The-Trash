@@ -219,7 +219,7 @@ struct GameModeCard: View {
                     .foregroundColor(.neuSecondaryText)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(height: 30, alignment: .top)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)

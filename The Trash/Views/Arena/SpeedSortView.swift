@@ -33,8 +33,15 @@ struct SpeedSortView: View {
                 if viewModel.sessionCompleted {
                     speedSortSummary
                 } else {
-                    mainContent
+                    gameOrCountdown
                 }
+            }
+
+            // Countdown overlay
+            if let countdown = viewModel.countdownValue {
+                SpeedSortCountdownOverlay(value: countdown)
+                    .transition(.scale.combined(with: .opacity))
+                    .zIndex(10)
             }
 
             // Combo overlays
@@ -154,6 +161,21 @@ struct SpeedSortView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
+    // MARK: - Main Content (conditional on countdown)
+
+    private var gameOrCountdown: some View {
+        Group {
+            if viewModel.isCountingDown {
+                // Show the card area dimmed behind countdown
+                mainContent
+                    .opacity(0.3)
+                    .allowsHitTesting(false)
+            } else {
+                mainContent
+            }
+        }
+    }
+
     // MARK: - Summary
 
     private var speedSortSummary: some View {
@@ -174,5 +196,50 @@ struct SpeedSortView: View {
                 Task { await viewModel.startNewSession() }
             }
         )
+    }
+}
+
+// MARK: - Countdown Overlay
+
+struct SpeedSortCountdownOverlay: View {
+    let value: Int
+    @State private var scale: CGFloat = 0.3
+
+    var displayText: String {
+        value > 0 ? "\(value)" : "GO!"
+    }
+
+    var displayColor: Color {
+        switch value {
+        case 3: return .red
+        case 2: return .orange
+        case 1: return .yellow
+        default: return .green
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+
+            Text(displayText)
+                .font(.system(size: value > 0 ? 120 : 80, weight: .black, design: .rounded))
+                .foregroundStyle(displayColor)
+                .shadow(color: displayColor.opacity(0.6), radius: 20)
+                .scaleEffect(scale)
+        }
+        .onAppear {
+            scale = 0.3
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                scale = 1.0
+            }
+        }
+        .onChange(of: value) { _ in
+            scale = 0.3
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                scale = 1.0
+            }
+        }
     }
 }

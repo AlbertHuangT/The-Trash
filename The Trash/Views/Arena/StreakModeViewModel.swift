@@ -200,24 +200,10 @@ class StreakModeViewModel: ObservableObject {
     // MARK: - Image Loading
 
     private func preloadImages(for questionList: [QuizQuestion]) async {
-        let priority = Array(questionList.prefix(3))
-        for q in priority {
-            await loadImage(for: q)
-        }
-
+        // Load all images in the batch concurrently
         await withTaskGroup(of: Void.self) { group in
-            var activeCount = 0
-            let maxConcurrent = 3
-
-            for q in questionList.dropFirst(3) {
+            for q in questionList {
                 if imageCache[q.id] != nil { continue }
-
-                if activeCount >= maxConcurrent {
-                    await group.next()
-                    activeCount -= 1
-                }
-
-                activeCount += 1
                 group.addTask { [weak self] in
                     await self?.loadImage(for: q)
                 }

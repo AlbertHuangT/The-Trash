@@ -29,6 +29,10 @@ class SpeedSortViewModel: ObservableObject {
     let timePerQuestion: Double = 5.0
     private var timerCancellable: AnyCancellable?
 
+    // Countdown before game starts
+    @Published var countdownValue: Int? = nil
+    @Published var isCountingDown = false
+
     // Animation states
     @Published var showCorrectFeedback = false
     @Published var showWrongFeedback = false
@@ -70,12 +74,33 @@ class SpeedSortViewModel: ObservableObject {
 
             self.questions = fetched
             await preloadImages()
-            startTimer()
+            await startCountdown()
         } catch {
             errorMessage = "Failed to load quiz: \(error.localizedDescription)"
             showError = true
         }
         isLoading = false
+    }
+
+    // MARK: - Countdown
+
+    private func startCountdown() async {
+        isCountingDown = true
+        for i in stride(from: 3, through: 1, by: -1) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                countdownValue = i
+            }
+            try? await Task.sleep(nanoseconds: 800_000_000)
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            countdownValue = 0 // "GO!"
+        }
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        withAnimation {
+            countdownValue = nil
+            isCountingDown = false
+        }
+        startTimer()
     }
 
     // MARK: - Timer
@@ -225,6 +250,8 @@ class SpeedSortViewModel: ObservableObject {
         showComboBreak = false
         timeRemaining = timePerQuestion
         lastTimeBonus = 0
+        countdownValue = nil
+        isCountingDown = false
         imageCache.removeAll()
         stopTimer()
     }
@@ -236,24 +263,9 @@ class SpeedSortViewModel: ObservableObject {
     // MARK: - Image Loading
 
     private func preloadImages() async {
-        let priorityQuestions = Array(questions.prefix(3))
-        for question in priorityQuestions {
-            await loadImage(for: question)
-        }
-
+        // Load all images concurrently (only 10 questions)
         await withTaskGroup(of: Void.self) { group in
-            var activeCount = 0
-            let maxConcurrent = 3
-
-            for question in questions.dropFirst(3) {
-                if imageCache[question.id] != nil { continue }
-
-                if activeCount >= maxConcurrent {
-                    await group.next()
-                    activeCount -= 1
-                }
-
-                activeCount += 1
+            for question in questions {
                 group.addTask { [weak self] in
                     await self?.loadImage(for: question)
                 }
