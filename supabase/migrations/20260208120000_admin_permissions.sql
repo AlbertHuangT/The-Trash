@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS public.community_join_applications (
     UNIQUE(community_id, user_id) -- 每个用户每个社区只能有一个pending申请
 );
 
-CREATE INDEX idx_applications_community ON public.community_join_applications(community_id, status);
-CREATE INDEX idx_applications_user ON public.community_join_applications(user_id);
-CREATE INDEX idx_applications_status ON public.community_join_applications(status);
+CREATE INDEX IF NOT EXISTS idx_applications_community ON public.community_join_applications(community_id, status);
+CREATE INDEX IF NOT EXISTS idx_applications_user ON public.community_join_applications(user_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON public.community_join_applications(status);
 
 COMMENT ON TABLE public.community_join_applications IS '社区加入申请表';
 
@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS public.admin_action_logs (
     created_at TIMESTAMPTZ DEFAULT timezone('utc', now())
 );
 
-CREATE INDEX idx_admin_logs_community ON public.admin_action_logs(community_id, created_at DESC);
-CREATE INDEX idx_admin_logs_admin ON public.admin_action_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_community ON public.admin_action_logs(community_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_admin ON public.admin_action_logs(admin_id);
 
 COMMENT ON TABLE public.admin_action_logs IS '管理员操作日志，用于审计';
 
@@ -82,9 +82,9 @@ CREATE TABLE IF NOT EXISTS public.credit_grants (
     created_at TIMESTAMPTZ DEFAULT timezone('utc', now())
 );
 
-CREATE INDEX idx_credit_grants_user ON public.credit_grants(user_id);
-CREATE INDEX idx_credit_grants_community ON public.credit_grants(community_id);
-CREATE INDEX idx_credit_grants_event ON public.credit_grants(event_id);
+CREATE INDEX IF NOT EXISTS idx_credit_grants_user ON public.credit_grants(user_id);
+CREATE INDEX IF NOT EXISTS idx_credit_grants_community ON public.credit_grants(community_id);
+CREATE INDEX IF NOT EXISTS idx_credit_grants_event ON public.credit_grants(event_id);
 
 COMMENT ON TABLE public.credit_grants IS '管理员手动发放积分的记录';
 

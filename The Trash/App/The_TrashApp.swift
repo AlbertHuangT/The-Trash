@@ -42,6 +42,10 @@ struct The_TrashApp: App {
             // Observe URL
             .onOpenURL { url in
                 print("🔗 Received Deep Link: \(url)")
+                // Try arena challenge deep link first
+                if ArenaRouter.shared.handleDeepLink(url: url) {
+                    return
+                }
                 Task {
                     // Pass to ViewModel for Overlay animation
                     await authVM.handleIncomingURL(url)

@@ -4,6 +4,7 @@ import Auth
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    @ObservedObject private var arenaRouter = ArenaRouter.shared
 
     init() {
         // Configure TabBar appearance for Neumorphism (dark mode adaptive)
@@ -35,7 +36,7 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            ArenaView()
+            ArenaHubView()
                 .tabItem {
                     Label("Arena", systemImage: "flame.fill")
                 }
@@ -54,5 +55,10 @@ struct ContentView: View {
                 .tag(3)
         }
         .tint(Color.neuAccentBlue)
+        .onChange(of: arenaRouter.pendingChallengeId) { newValue in
+            if newValue != nil {
+                selectedTab = 1 // Switch to Arena tab
+            }
+        }
     }
 }
