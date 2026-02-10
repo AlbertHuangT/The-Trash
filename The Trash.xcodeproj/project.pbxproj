@@ -7,58 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		02662CE5BB7D1F5966444144 /* DuelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F6EA19EE19AB1A5686FC55 /* DuelView.swift */; };
-		0A43D101B27E1D2BE778C154 /* DailyChallengeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCF40923142719A665ED581 /* DailyChallengeModels.swift */; };
-		321C0E5F76FBDB68D9B1B6DE /* DuelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDE54C3D4FB0BEA0BFDE3FE0 /* DuelViewModel.swift */; };
-		35A2789556673D05FB5F3DD8 /* ArenaRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781E17C4049E54D7123223BD /* ArenaRouter.swift */; };
-		3653A7995051A6F3DA7050C9 /* StreakModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146C381ABD36F17E0E7C4D21 /* StreakModeView.swift */; };
-		4AFC43D57F4DCD93C1DBA7F1 /* ArenaSharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C53AAE91070AE82FAB3C5F /* ArenaSharedComponents.swift */; };
-		664ACDCF3CC2D4B2DDA2436F /* SpeedSortView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E005CEB567D4607337626B54 /* SpeedSortView.swift */; };
-		720DBF16D2EBA3E3E29EA8CF /* ChallengeAcceptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59B0576B24BE7613C59CD64 /* ChallengeAcceptView.swift */; };
-		83E6F4F0EACB3B77F9FB54C5 /* StreakLeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6BD1E8FAECC551607A522D /* StreakLeaderboardView.swift */; };
 		88D1B1B92F32B4D1007C44A2 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 88D1B1B82F32B4D1007C44A2 /* Auth */; };
 		88D1B1BB2F32B4D1007C44A2 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 88D1B1BA2F32B4D1007C44A2 /* Functions */; };
 		88D1B1BD2F32B4D1007C44A2 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 88D1B1BC2F32B4D1007C44A2 /* PostgREST */; };
 		88D1B1BF2F32B4D1007C44A2 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 88D1B1BE2F32B4D1007C44A2 /* Realtime */; };
 		88D1B1C12F32B4D1007C44A2 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 88D1B1C02F32B4D1007C44A2 /* Storage */; };
 		88D1B1C32F32B4D1007C44A2 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 88D1B1C22F32B4D1007C44A2 /* Supabase */; };
-		92F99354928A3F7834E3FE8E /* DailyLeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FE6DDC0DF99BA4392D22C4C /* DailyLeaderboardView.swift */; };
-		9AF4DB3B788C4DA520C36F40 /* DailyChallengeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0E484B7E6C6518D25FDAFE /* DailyChallengeView.swift */; };
-		A493EA6A6381D3DD1499660C /* DuelRealtimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E121219BEE70E4F21AADD00E /* DuelRealtimeManager.swift */; };
-		A9623EB8EB421F1900D28DEF /* StreakModeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07596B8601B890F8BAC63F07 /* StreakModeViewModel.swift */; };
-		B2867FD134F0205455B203A6 /* ChallengeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E849B010B82CF5C685206E /* ChallengeListView.swift */; };
-		BAAA001664462C3AE76A1A6A /* ArenaHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED4C35C24315B5CC9FAD3A07 /* ArenaHubView.swift */; };
-		D80DEEC7FB134FAED21E6F76 /* DuelModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A294BA9A7EB2AD78C76ACE /* DuelModels.swift */; };
-		D9A119DEB7DD9AD12B064112 /* SpeedSortViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFD8D794F607C4FB38EB1767 /* SpeedSortViewModel.swift */; };
-		DFE86FC66465663D8FA41FB4 /* ArenaModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA08C48993BCA836D4A2F3F9 /* ArenaModels.swift */; };
-		F37668A7B04099EAB9576225 /* ArenaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C363C5F8616CEEDD904840E /* ArenaService.swift */; };
-		F5A458AF62E58D5B6E38D858 /* ChallengeInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EF2C461A9FF1AD5451B5AF /* ChallengeInviteSheet.swift */; };
-		FB61D3B00F90CFB8B2F68C6A /* DailyChallengeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0015A7F883C22085BEB85F /* DailyChallengeViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		07596B8601B890F8BAC63F07 /* StreakModeViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StreakModeViewModel.swift; path = "The Trash/Views/Arena/StreakModeViewModel.swift"; sourceTree = "<group>"; };
-		10A294BA9A7EB2AD78C76ACE /* DuelModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DuelModels.swift; path = "The Trash/Models/DuelModels.swift"; sourceTree = "<group>"; };
-		146C381ABD36F17E0E7C4D21 /* StreakModeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StreakModeView.swift; path = "The Trash/Views/Arena/StreakModeView.swift"; sourceTree = "<group>"; };
-		2C363C5F8616CEEDD904840E /* ArenaService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ArenaService.swift; path = "The Trash/Services/ArenaService.swift"; sourceTree = "<group>"; };
-		3F6BD1E8FAECC551607A522D /* StreakLeaderboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StreakLeaderboardView.swift; path = "The Trash/Views/Arena/StreakLeaderboardView.swift"; sourceTree = "<group>"; };
-		3FE6DDC0DF99BA4392D22C4C /* DailyLeaderboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DailyLeaderboardView.swift; path = "The Trash/Views/Arena/DailyLeaderboardView.swift"; sourceTree = "<group>"; };
-		43EF2C461A9FF1AD5451B5AF /* ChallengeInviteSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChallengeInviteSheet.swift; path = "The Trash/Views/Arena/ChallengeInviteSheet.swift"; sourceTree = "<group>"; };
-		46F6EA19EE19AB1A5686FC55 /* DuelView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DuelView.swift; path = "The Trash/Views/Arena/DuelView.swift"; sourceTree = "<group>"; };
-		781E17C4049E54D7123223BD /* ArenaRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ArenaRouter.swift; path = "The Trash/Services/ArenaRouter.swift"; sourceTree = "<group>"; };
-		7B0E484B7E6C6518D25FDAFE /* DailyChallengeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DailyChallengeView.swift; path = "The Trash/Views/Arena/DailyChallengeView.swift"; sourceTree = "<group>"; };
 		88258C6C2F20E40C0071F13F /* The Trash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The Trash.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		A59B0576B24BE7613C59CD64 /* ChallengeAcceptView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChallengeAcceptView.swift; path = "The Trash/Views/Arena/ChallengeAcceptView.swift"; sourceTree = "<group>"; };
-		ADCF40923142719A665ED581 /* DailyChallengeModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DailyChallengeModels.swift; path = "The Trash/Models/DailyChallengeModels.swift"; sourceTree = "<group>"; };
-		BA08C48993BCA836D4A2F3F9 /* ArenaModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ArenaModels.swift; path = "The Trash/Models/ArenaModels.swift"; sourceTree = "<group>"; };
-		BFD8D794F607C4FB38EB1767 /* SpeedSortViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SpeedSortViewModel.swift; path = "The Trash/Views/Arena/SpeedSortViewModel.swift"; sourceTree = "<group>"; };
-		CDE54C3D4FB0BEA0BFDE3FE0 /* DuelViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DuelViewModel.swift; path = "The Trash/Views/Arena/DuelViewModel.swift"; sourceTree = "<group>"; };
-		DA0015A7F883C22085BEB85F /* DailyChallengeViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DailyChallengeViewModel.swift; path = "The Trash/Views/Arena/DailyChallengeViewModel.swift"; sourceTree = "<group>"; };
-		E005CEB567D4607337626B54 /* SpeedSortView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SpeedSortView.swift; path = "The Trash/Views/Arena/SpeedSortView.swift"; sourceTree = "<group>"; };
-		E121219BEE70E4F21AADD00E /* DuelRealtimeManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DuelRealtimeManager.swift; path = "The Trash/Services/DuelRealtimeManager.swift"; sourceTree = "<group>"; };
-		E4E849B010B82CF5C685206E /* ChallengeListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChallengeListView.swift; path = "The Trash/Views/Arena/ChallengeListView.swift"; sourceTree = "<group>"; };
-		E7C53AAE91070AE82FAB3C5F /* ArenaSharedComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ArenaSharedComponents.swift; path = "The Trash/Views/Arena/ArenaSharedComponents.swift"; sourceTree = "<group>"; };
-		ED4C35C24315B5CC9FAD3A07 /* ArenaHubView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ArenaHubView.swift; path = "The Trash/Views/Arena/ArenaHubView.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -88,44 +46,11 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		22498A4721385E4DD2F5091A /* Arena */ = {
-			isa = PBXGroup;
-			children = (
-				ED4C35C24315B5CC9FAD3A07 /* ArenaHubView.swift */,
-				E7C53AAE91070AE82FAB3C5F /* ArenaSharedComponents.swift */,
-				E005CEB567D4607337626B54 /* SpeedSortView.swift */,
-				BFD8D794F607C4FB38EB1767 /* SpeedSortViewModel.swift */,
-				146C381ABD36F17E0E7C4D21 /* StreakModeView.swift */,
-				07596B8601B890F8BAC63F07 /* StreakModeViewModel.swift */,
-				3F6BD1E8FAECC551607A522D /* StreakLeaderboardView.swift */,
-				7B0E484B7E6C6518D25FDAFE /* DailyChallengeView.swift */,
-				DA0015A7F883C22085BEB85F /* DailyChallengeViewModel.swift */,
-				3FE6DDC0DF99BA4392D22C4C /* DailyLeaderboardView.swift */,
-				46F6EA19EE19AB1A5686FC55 /* DuelView.swift */,
-				CDE54C3D4FB0BEA0BFDE3FE0 /* DuelViewModel.swift */,
-				E4E849B010B82CF5C685206E /* ChallengeListView.swift */,
-				43EF2C461A9FF1AD5451B5AF /* ChallengeInviteSheet.swift */,
-				A59B0576B24BE7613C59CD64 /* ChallengeAcceptView.swift */,
-			);
-			name = Arena;
-			sourceTree = "<group>";
-		};
-		4D4335ADC27D6622BB91F8C3 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				2C363C5F8616CEEDD904840E /* ArenaService.swift */,
-				E121219BEE70E4F21AADD00E /* DuelRealtimeManager.swift */,
-				781E17C4049E54D7123223BD /* ArenaRouter.swift */,
-			);
-			name = Services;
-			sourceTree = "<group>";
-		};
 		88258C632F20E40C0071F13F = {
 			isa = PBXGroup;
 			children = (
 				88258C6E2F20E40C0071F13F /* The Trash */,
 				88258C6D2F20E40C0071F13F /* Products */,
-				A6BA83C28EE6F3E83AB9CBD6 /* The Trash */,
 			);
 			sourceTree = "<group>";
 		};
@@ -135,34 +60,6 @@
 				88258C6C2F20E40C0071F13F /* The Trash.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		9D519AB2F81104D13F438A2F /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				22498A4721385E4DD2F5091A /* Arena */,
-			);
-			name = Views;
-			sourceTree = "<group>";
-		};
-		A6BA83C28EE6F3E83AB9CBD6 /* The Trash */ = {
-			isa = PBXGroup;
-			children = (
-				AEDCE7A627C84DE9C7692375 /* Models */,
-				9D519AB2F81104D13F438A2F /* Views */,
-				4D4335ADC27D6622BB91F8C3 /* Services */,
-			);
-			name = "The Trash";
-			sourceTree = "<group>";
-		};
-		AEDCE7A627C84DE9C7692375 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				BA08C48993BCA836D4A2F3F9 /* ArenaModels.swift */,
-				ADCF40923142719A665ED581 /* DailyChallengeModels.swift */,
-				10A294BA9A7EB2AD78C76ACE /* DuelModels.swift */,
-			);
-			name = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -248,27 +145,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DFE86FC66465663D8FA41FB4 /* ArenaModels.swift in Sources */,
-				BAAA001664462C3AE76A1A6A /* ArenaHubView.swift in Sources */,
-				4AFC43D57F4DCD93C1DBA7F1 /* ArenaSharedComponents.swift in Sources */,
-				664ACDCF3CC2D4B2DDA2436F /* SpeedSortView.swift in Sources */,
-				D9A119DEB7DD9AD12B064112 /* SpeedSortViewModel.swift in Sources */,
-				3653A7995051A6F3DA7050C9 /* StreakModeView.swift in Sources */,
-				A9623EB8EB421F1900D28DEF /* StreakModeViewModel.swift in Sources */,
-				83E6F4F0EACB3B77F9FB54C5 /* StreakLeaderboardView.swift in Sources */,
-				0A43D101B27E1D2BE778C154 /* DailyChallengeModels.swift in Sources */,
-				9AF4DB3B788C4DA520C36F40 /* DailyChallengeView.swift in Sources */,
-				FB61D3B00F90CFB8B2F68C6A /* DailyChallengeViewModel.swift in Sources */,
-				92F99354928A3F7834E3FE8E /* DailyLeaderboardView.swift in Sources */,
-				D80DEEC7FB134FAED21E6F76 /* DuelModels.swift in Sources */,
-				F37668A7B04099EAB9576225 /* ArenaService.swift in Sources */,
-				A493EA6A6381D3DD1499660C /* DuelRealtimeManager.swift in Sources */,
-				35A2789556673D05FB5F3DD8 /* ArenaRouter.swift in Sources */,
-				02662CE5BB7D1F5966444144 /* DuelView.swift in Sources */,
-				321C0E5F76FBDB68D9B1B6DE /* DuelViewModel.swift in Sources */,
-				B2867FD134F0205455B203A6 /* ChallengeListView.swift in Sources */,
-				F5A458AF62E58D5B6E38D858 /* ChallengeInviteSheet.swift in Sources */,
-				720DBF16D2EBA3E3E29EA8CF /* ChallengeAcceptView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
