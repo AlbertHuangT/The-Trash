@@ -12,6 +12,7 @@ struct FloatingActionButton: View {
     let action: () -> Void
 
     @State private var isPressed = false
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         Button(action: {
@@ -19,15 +20,16 @@ struct FloatingActionButton: View {
             impact.impactOccurred()
             action()
         }) {
+            let buttonSize = theme.spacing.xxl
             ZStack {
                 Circle()
-                    .fill(Color.neuAccentBlue)
-                    .frame(width: 60, height: 60)
-                    .shadow(color: .neuAccentBlue.opacity(0.4), radius: 10, x: 5, y: 5)
-                    .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
+                    .fill(theme.gradients.accent)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .shadow(color: theme.accents.blue.opacity(0.35), radius: theme.spacing.md, x: theme.spacing.sm, y: theme.spacing.sm)
+                    .shadow(color: theme.shadows.light, radius: theme.spacing.md, x: -theme.spacing.sm * 0.5, y: -theme.spacing.sm * 0.5)
 
                 Image(systemName: icon)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(theme.typography.button)
                     .foregroundColor(.white)
             }
         }

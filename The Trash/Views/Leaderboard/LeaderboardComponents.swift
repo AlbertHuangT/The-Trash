@@ -14,40 +14,43 @@ struct LeaderboardRow: View {
     let username: String
     let credits: Int
     let isMe: Bool
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: theme.spacing.lg) {
             rankViewHelper(rank: rank)
                 .frame(width: 40) // Slightly wider for shadows
 
             VStack(alignment: .leading) {
                 Text(username)
+                    .font(theme.typography.subheadline)
                     .fontWeight(isMe ? .bold : .medium)
-                    .foregroundColor(isMe ? .neuAccentBlue : .neuText)
+                    .foregroundColor(isMe ? theme.accents.blue : theme.palette.textPrimary)
                 if isMe {
                     Text("You")
-                        .font(.caption2)
-                        .foregroundColor(.neuSecondaryText)
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
                 }
             }
 
             Spacer()
 
             Text("\(credits)")
-                .font(.system(.body, design: .monospaced))
+                .font(theme.typography.body)
+                .monospacedDigit()
                 .fontWeight(.bold)
-                .foregroundColor(.neuText)
+                .foregroundColor(theme.palette.textPrimary)
         }
-        .padding(16)
+        .padding(theme.spacing.lg)
         .background(Color.neuBackground)
-        .cornerRadius(20)
+        .cornerRadius(theme.corners.medium)
         .shadow(color: .neuDarkShadow, radius: 8, x: 5, y: 5)
         .shadow(color: .neuLightShadow, radius: 8, x: -5, y: -5)
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: theme.corners.medium)
                 .stroke(isMe ? Color.neuAccentBlue.opacity(0.3) : Color.clear, lineWidth: 2)
         )
-        .padding(.vertical, 8) // Spacing between rows
+        .padding(.vertical, theme.spacing.sm) // Spacing between rows
     }
 
     @ViewBuilder
@@ -83,20 +86,21 @@ struct MyRankBar: View {
     let rank: Int
     let username: String
     let credits: Int
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
                 Text("Your Rank")
-                    .font(.caption)
+                    .font(theme.typography.caption)
                     .foregroundColor(.white.opacity(0.8))
                 HStack {
                     Text("#\(rank)")
-                        .font(.title2)
+                        .font(theme.typography.headline)
                         .bold()
                         .foregroundColor(.white)
                     Text(username)
-                        .font(.caption)
+                        .font(theme.typography.caption)
                         .bold()
                         .foregroundColor(.white)
                 }
@@ -104,27 +108,25 @@ struct MyRankBar: View {
             Spacer()
             VStack(alignment: .trailing) {
                 Text("Credits")
-                    .font(.caption)
+                    .font(theme.typography.caption)
                     .foregroundColor(.white.opacity(0.8))
                 Text("\(credits)")
-                    .font(.title2)
+                    .font(theme.typography.headline)
                     .bold()
                     .foregroundColor(.white)
             }
         }
-        .padding()
+        .padding(theme.spacing.lg)
         .background(
             ZStack {
                 LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
                 // Inner glow
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: theme.corners.medium)
                     .stroke(Color.white.opacity(0.3), lineWidth: 1)
             }
         )
-        .cornerRadius(20, corners: [.topLeft, .topRight])
+        .cornerRadius(theme.corners.large, corners: [.topLeft, .topRight])
         .shadow(color: .neuAccentBlue.opacity(0.4), radius: 10, y: -5)
-        .padding(.horizontal)
+        .padding(.horizontal, theme.spacing.lg)
     }
 }
-
-

@@ -919,24 +919,27 @@ struct EnhancedStatRow: View {
     let title: String
     let value: String
     let color: Color
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: theme.spacing.md) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(theme.typography.subheadline)
                 .foregroundColor(.white)
-                .frame(width: 36, height: 36)
+                .frame(width: theme.spacing.xl, height: theme.spacing.xl)
                 .background(color)
-                .cornerRadius(10)
+                .cornerRadius(theme.corners.small)
 
             Text(title)
-                .foregroundColor(.neuSecondaryText)
+                .font(theme.typography.body)
+                .foregroundColor(theme.palette.textSecondary)
 
             Spacer()
 
             Text(value)
-                .font(.headline.bold())
-                .foregroundColor(.neuText)
+                .font(theme.typography.headline)
+                .fontWeight(.bold)
+                .foregroundColor(theme.palette.textPrimary)
         }
     }
 }

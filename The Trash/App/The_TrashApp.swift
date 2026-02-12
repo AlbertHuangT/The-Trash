@@ -14,9 +14,10 @@ struct The_TrashApp: App {
     
     // 🔥 新增：在这里初始化真实的 ViewModel，连接 RealClassifierService
     @StateObject private var trashVM = TrashViewModel(classifier: RealClassifierService.shared)
+    @StateObject private var themeManager: ThemeManager
 
     init() {
-        NeumorphicAppearance.configureGlobalAppearance()
+        _themeManager = StateObject(wrappedValue: ThemeManager.shared)
     }
     
     var body: some Scene {
@@ -43,6 +44,9 @@ struct The_TrashApp: App {
                 }
             }
             .environmentObject(authVM)
+            .environmentObject(themeManager)
+            .trashTheme(themeManager.currentTheme)
+            .id(themeManager.themeIdentity)
             // Observe URL
             .onOpenURL { url in
                 print("🔗 Received Deep Link: \(url)")

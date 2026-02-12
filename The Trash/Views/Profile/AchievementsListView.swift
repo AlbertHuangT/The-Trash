@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct AchievementsListView: View {
+    var showsNavigationTitle: Bool = true
     @StateObject private var service = AchievementService.shared
     @State private var selectedTab = 0 // 0: Official, 1: Community
     
@@ -51,7 +52,7 @@ struct AchievementsListView: View {
             }
         }
         .background(Color.neuBackground)
-        .navigationTitle("Achievements")
+        .optionalNavigationTitle(showsNavigationTitle ? "Achievements" : nil)
         .onAppear {
             Task {
                 await service.fetchMyAchievements()

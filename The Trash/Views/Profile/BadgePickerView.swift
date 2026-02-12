@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct BadgePickerView: View {
+    var showsNavigationTitle: Bool = true
     @StateObject private var service = AchievementService.shared
 
     private var equippedBadge: UserAchievement? {
@@ -66,7 +67,7 @@ struct BadgePickerView: View {
             }
         }
         .background(Color.neuBackground.ignoresSafeArea())
-        .navigationTitle("Badges")
+        .optionalNavigationTitle(showsNavigationTitle ? "Badges" : nil)
         .onAppear {
             Task {
                 await service.fetchMyAchievements()

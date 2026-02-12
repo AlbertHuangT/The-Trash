@@ -12,6 +12,7 @@ import Combine
 struct ArenaHubView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @ObservedObject var arenaRouter = ArenaRouter.shared
+    @Environment(\.trashTheme) private var theme
     // showAccountSheet managed by ContentView via environment
     @State private var navigationPath = NavigationPath()
     @State private var showChallengeList = false
@@ -35,8 +36,8 @@ struct ArenaHubView: View {
                     // Header with challenge inbox button
                     HStack(alignment: .center) {
                         Text("Arena")
-                            .font(.system(size: 34, weight: .bold, design: .default))
-                            .foregroundColor(.neuText)
+                            .font(theme.typography.title)
+                            .foregroundColor(theme.palette.textPrimary)
 
                         Spacer()
 
@@ -45,8 +46,8 @@ struct ArenaHubView: View {
                             Button(action: { showChallengeList = true }) {
                                 ZStack(alignment: .topTrailing) {
                                     Image(systemName: "tray.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.neuText)
+                                        .font(theme.typography.subheadline)
+                                        .foregroundColor(theme.palette.textPrimary)
 
                                     if pendingBadgeCount > 0 {
                                         Text("\(pendingBadgeCount)")
@@ -65,18 +66,17 @@ struct ArenaHubView: View {
                         AccountButton()
                             .environmentObject(authViewModel)
                     }
-                    .padding(.leading, 16)
-                    .padding(.trailing, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
+                    .padding(.leading, theme.spacing.lg)
+                    .padding(.trailing, theme.spacing.xl)
+                    .padding(.vertical, theme.spacing.sm)
 
                     if authViewModel.isAnonymous {
                         EnhancedAnonymousRestrictionView()
                     } else {
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack(spacing: 20) {
+                            VStack(spacing: theme.spacing.xl) {
                                 // Mode cards grid
-                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: theme.spacing.lg) {
                                     ForEach(ArenaGameMode.allCases) { mode in
                                         GameModeCard(mode: mode) {
                                             if mode == .duel {
@@ -87,11 +87,11 @@ struct ArenaHubView: View {
                                         }
                                     }
                                 }
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, theme.spacing.lg)
 
-                                Spacer(minLength: 40)
+                                Spacer(minLength: theme.spacing.xxl)
                             }
-                            .padding(.top, 8)
+                            .padding(.top, theme.spacing.sm)
                         }
                     }
                 }
@@ -196,6 +196,7 @@ struct GameModeCard: View {
     let onTap: () -> Void
 
     @State private var isPressed = false
+    @Environment(\.trashTheme) private var theme
 
     private var gradient: LinearGradient {
         let colors: [Color] = {
@@ -212,46 +213,48 @@ struct GameModeCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 12) {
+            VStack(spacing: theme.spacing.md) {
+                let circleSize = theme.spacing.xl * 1.5
                 ZStack {
                     Circle()
                         .fill(Color.neuBackground)
-                        .frame(width: 60, height: 60)
+                        .frame(width: circleSize, height: circleSize)
                         .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
                         .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
 
                     if mode.isAvailable {
                         Image(systemName: mode.icon)
-                            .font(.system(size: 26))
+                            .font(theme.typography.headline)
                             .foregroundStyle(gradient)
                     } else {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.neuSecondaryText)
+                            .font(theme.typography.subheadline)
+                            .foregroundColor(theme.palette.textSecondary)
                     }
                 }
 
                 Text(mode.title)
-                    .font(.subheadline.bold())
-                    .foregroundColor(.neuText)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.palette.textPrimary)
                     .multilineTextAlignment(.center)
 
                 Text(mode.isAvailable ? mode.subtitle : "Coming Soon")
-                    .font(.caption2)
-                    .foregroundColor(.neuSecondaryText)
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .frame(height: 30, alignment: .top)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .padding(.horizontal, 8)
+            .padding(.vertical, theme.spacing.xl)
+            .padding(.horizontal, theme.spacing.sm)
             .background(Color.neuBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .clipShape(RoundedRectangle(cornerRadius: theme.corners.medium))
             .shadow(color: isPressed ? .clear : .neuDarkShadow, radius: 7, x: 5, y: 5)
             .shadow(color: isPressed ? .clear : .neuLightShadow, radius: 7, x: -3, y: -3)
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: theme.corners.medium)
                     .stroke(
                         mode.isAvailable ? gradient : LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom),
                         lineWidth: mode.isAvailable ? 1.5 : 0

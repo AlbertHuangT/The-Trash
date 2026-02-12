@@ -11,9 +11,12 @@ import Supabase
 // MARK: - Main View
 struct AccountView: View {
     @EnvironmentObject var authVM: AuthViewModel
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var profileVM = ProfileViewModel()
     @ObservedObject private var userSettings = UserSettings.shared
     @ObservedObject private var achievementService = AchievementService.shared
+    @Environment(\.trashTheme) private var theme
+    @State private var showThemeSheet = false
 
     // Sheets & Alerts
     @State private var showBindPhoneSheet = false
@@ -111,7 +114,10 @@ struct AccountView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             }
-            .background(Color.neuBackground)
+            .background(
+                ThemeBackgroundView()
+                    .ignoresSafeArea()
+            )
             .navigationBarHidden(true)
             .overlay {
                 // 成就解锁 Toast 通知
@@ -144,6 +150,9 @@ struct AccountView: View {
                     confirmPassword: $upgradeConfirmPassword,
                     isPresented: $showUpgradeSheet
                 )
+            }
+            .sheet(isPresented: $showThemeSheet) {
+                ThemePickerSheet(isPresented: $showThemeSheet)
             }
             .alert("Change Username", isPresented: $showEditNameAlert) {
                 TextField("Enter new name", text: $newNameInput)
@@ -395,20 +404,11 @@ struct AccountView: View {
                     )
                 }
 
-                NavigationLink(destination: BadgePickerView()) {
-                    QuickActionTile(
-                        icon: "star.circle.fill",
-                        title: "Badges",
-                        subtitle: "Equip your favorite achievements",
-                        gradient: [.yellow, .orange]
-                    )
-                }
-
-                NavigationLink(destination: AchievementsListView()) {
+                NavigationLink(destination: BadgeAchievementsHubView()) {
                     QuickActionTile(
                         icon: "trophy.fill",
-                        title: "Achievements",
-                        subtitle: "Review everything you've unlocked",
+                        title: "Badges & Achievements",
+                        subtitle: "Equip badges and review unlocks",
                         gradient: [.purple, .indigo]
                     )
                 }
@@ -437,6 +437,15 @@ struct AccountView: View {
                         title: "Delete Account",
                         subtitle: "Request account removal",
                         gradient: [.red, .pink]
+                    )
+                }
+
+                Button(action: { showThemeSheet = true }) {
+                    QuickActionTile(
+                        icon: "paintbrush.pointed",
+                        title: "UI Style",
+                        subtitle: "Switch between app themes",
+                        gradient: [.neuAccentPurple, .pink]
                     )
                 }
             }
@@ -527,6 +536,107 @@ extension AccountView {
         didTriggerUCSDCheck = true
         Task {
             await achievementService.checkAndGrant(triggerKey: "ucsd_email")
+        }
+    }
+}
+
+// MARK: - Theme Picker Card
+
+struct ThemeChoiceCard: View {
+    let option: ThemeOption
+    let isSelected: Bool
+    let action: () -> Void
+    var fillWidth: Bool = false
+
+    @Environment(\.trashTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: theme.spacing.sm) {
+                HStack {
+                    Label(option.displayName, systemImage: option.icon)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.neuText)
+                    Spacer()
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.neuAccentGreen)
+                            .font(.title3)
+                    }
+                }
+
+                Text(option.description)
+                    .font(.caption)
+                    .foregroundColor(.neuSecondaryText)
+
+                RoundedRectangle(cornerRadius: theme.corners.small)
+                    .fill(
+                        LinearGradient(
+                            colors: option.previewGradient,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 70)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.small)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            }
+            .padding()
+            .frame(maxWidth: fillWidth ? .infinity : 220, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(Color.neuBackground)
+                    .shadow(color: .neuDarkShadow.opacity(isSelected ? 0.5 : 0.3), radius: 8, x: 5, y: 5)
+                    .shadow(color: .neuLightShadow.opacity(isSelected ? 0.4 : 0.2), radius: 8, x: -4, y: -4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.corners.medium)
+                    .stroke(isSelected ? Color.neuAccentBlue.opacity(0.5) : Color.clear, lineWidth: 2)
+            )
+            .accessibilityLabel("\(option.displayName) theme")
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct ThemePickerSheet: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    ForEach(ThemeOption.allCases) { option in
+                        ThemeChoiceCard(
+                            option: option,
+                            isSelected: themeManager.currentOption == option,
+                            action: {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    themeManager.apply(option)
+                                }
+                            },
+                            fillWidth: true
+                        )
+                    }
+                }
+                .padding(16)
+            }
+            .background(
+                ThemeBackgroundView()
+                    .ignoresSafeArea()
+            )
+            .navigationTitle("Choose UI Style")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+            }
         }
     }
 }

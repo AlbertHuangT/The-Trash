@@ -12,6 +12,7 @@ struct AchievementToastView: View {
     let onDismiss: () -> Void
 
     @State private var isVisible = false
+    @Environment(\.trashTheme) private var theme
 
     var rarity: AchievementRarity {
         result.rarity ?? .common
@@ -20,7 +21,7 @@ struct AchievementToastView: View {
     var body: some View {
         VStack {
             if isVisible {
-                HStack(spacing: 14) {
+                HStack(spacing: theme.spacing.md) {
                     // 成就图标
                     ZStack {
                         Circle()
@@ -31,24 +32,27 @@ struct AchievementToastView: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 44, height: 44)
+                            .frame(width: theme.spacing.xl * 1.1, height: theme.spacing.xl * 1.1)
 
                         Image(systemName: result.iconName ?? "trophy.fill")
-                            .font(.title3)
+                            .font(theme.typography.subheadline)
                             .foregroundColor(.white)
                     }
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: theme.spacing.xs) {
                         Text("🎉 Achievement Unlocked!")
-                            .font(.caption.bold())
-                            .foregroundColor(.neuSecondaryText)
+                            .font(theme.typography.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.palette.textSecondary)
 
                         Text(result.name ?? "Unknown")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.neuText)
+                            .font(theme.typography.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.palette.textPrimary)
 
                         Text(rarity.displayName)
-                            .font(.caption2.bold())
+                            .font(theme.typography.caption)
+                            .fontWeight(.bold)
                             .foregroundColor(rarity.color)
                     }
 
@@ -63,19 +67,19 @@ struct AchievementToastView: View {
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(.neuSecondaryText)
+                            .font(theme.typography.subheadline)
+                            .foregroundColor(theme.palette.textSecondary)
                     }
                 }
-                .padding(16)
+                .padding(theme.spacing.lg)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .fill(Color.neuBackground)
                         .shadow(color: .neuDarkShadow, radius: 8, x: 5, y: 5)
                         .shadow(color: .neuLightShadow, radius: 8, x: -4, y: -4)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: rarity.gradient,
@@ -85,7 +89,7 @@ struct AchievementToastView: View {
                             lineWidth: 1.5
                         )
                 )
-                .padding(.horizontal, 20)
+                .padding(.horizontal, theme.spacing.xl)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
 
