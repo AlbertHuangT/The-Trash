@@ -17,7 +17,7 @@ struct EnhancedStatCard: View {
     @State private var isAnimating = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             ZStack {
                 Circle()
                     .fill(
@@ -28,7 +28,7 @@ struct EnhancedStatCard: View {
                         )
                     )
                     .frame(width: 40, height: 40)
-                    .shadow(color: gradient[0].opacity(0.4), radius: 6, y: 2)
+                    .shadow(color: gradient.first?.opacity(0.4) ?? .black.opacity(0.4), radius: 6, y: 2)
 
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .semibold))
@@ -36,24 +36,19 @@ struct EnhancedStatCard: View {
                     .scaleEffect(isAnimating ? 1.1 : 1.0)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.title3.bold())
-                    .foregroundColor(.neuText)
-                    .frame(minWidth: 50, alignment: .leading)
-                    .animation(.none, value: value)
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.neuSecondaryText)
-            }
+            Text(value)
+                .font(.title.bold())
+                .foregroundColor(.neuText)
+                .animation(.none, value: value)
 
-            Spacer()
+            Text(title.uppercased())
+                .font(.caption2)
+                .foregroundColor(.neuSecondaryText)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity)
-        .frame(height: 72)
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.neuBackground)
                 .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
                 .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
@@ -165,5 +160,50 @@ struct EnhancedSettingsRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
+    }
+}
+
+struct QuickActionTile: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let gradient: [Color]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: gradient,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 36, height: 36)
+                    .shadow(color: gradient.first?.opacity(0.3) ?? .black.opacity(0.3), radius: 4, y: 2)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            Text(title)
+                .font(.subheadline.bold())
+                .foregroundColor(.neuText)
+
+            Text(subtitle)
+                .font(.caption)
+                .foregroundColor(.neuSecondaryText)
+                .lineLimit(2)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.neuBackground)
+                .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
+                .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
+        )
     }
 }

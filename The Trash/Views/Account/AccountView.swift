@@ -70,8 +70,8 @@ struct AccountView: View {
                     compactGuestTeaserView
                 }
 
-                // 3. Menu
-                compactMenuSection
+                // 3. Quick Actions
+                quickActionsSection
 
                 Spacer()
 
@@ -318,6 +318,7 @@ struct AccountView: View {
                     .padding(.horizontal, 16)
             }
         }
+        .padding(.horizontal, 16)
         .padding(.top, 16)
     }
 
@@ -371,149 +372,76 @@ struct AccountView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Menu Section
-    var compactMenuSection: some View {
-        VStack(spacing: 16) {
-            // Security Section
-            VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.neuAccentBlue, .cyan],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 28, height: 28)
+    // MARK: - Quick Actions
+    var quickActionsSection: some View {
+        let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
-                        Image(systemName: "lock.shield.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                    Text("Security")
-                        .font(.headline)
-                        .foregroundColor(.neuText)
-                    Spacer()
-                }
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Quick Actions")
+                .font(.headline)
+                .foregroundColor(.neuText)
                 .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 10)
 
-                VStack(spacing: 0) {
-                    EnhancedAccountRow(
-                        icon: "envelope.fill",
-                        gradient: [.blue, .indigo],
-                        title: "Email",
-                        status: authVM.session?.user.email ?? "Link Now",
-                        isLinked: hasLinkedEmail
-                    ) {
-                        verificationStatusMessage = nil
-                        inputEmail = authVM.session?.user.email ?? ""
-                        showBindEmailSheet = true
-                    }
+            LazyVGrid(columns: columns, spacing: 16) {
+                NavigationLink {
+                    AccountSettingsView()
+                        .environmentObject(authVM)
+                } label: {
+                    QuickActionTile(
+                        icon: "lock.shield.fill",
+                        title: "Account Settings",
+                        subtitle: "Manage email, phone, and password",
+                        gradient: [.neuAccentBlue, .cyan]
+                    )
+                }
 
-                    Color.neuDivider.frame(height: 1).padding(.leading, 52)
+                NavigationLink(destination: BadgePickerView()) {
+                    QuickActionTile(
+                        icon: "star.circle.fill",
+                        title: "Badges",
+                        subtitle: "Equip your favorite achievements",
+                        gradient: [.yellow, .orange]
+                    )
+                }
 
-                    EnhancedAccountRow(
-                        icon: "phone.fill",
-                        gradient: [.green, .mint],
-                        title: "Phone",
-                        status: authVM.session?.user.phone ?? "Link Now",
-                        isLinked: authVM.session?.user.phone != nil
-                    ) {
-                        inputPhone = authVM.session?.user.phone ?? "+1"
-                        showBindPhoneSheet = true
-                    }
+                NavigationLink(destination: AchievementsListView()) {
+                    QuickActionTile(
+                        icon: "trophy.fill",
+                        title: "Achievements",
+                        subtitle: "Review everything you've unlocked",
+                        gradient: [.purple, .indigo]
+                    )
+                }
 
-                    if !authVM.isAnonymous {
-                        Color.neuDivider.frame(height: 1).padding(.leading, 52)
+                NavigationLink(destination: RewardView()) {
+                    QuickActionTile(
+                        icon: "gift.fill",
+                        title: "Rewards",
+                        subtitle: "Redeem your credits",
+                        gradient: [.orange, .red]
+                    )
+                }
 
-                        EnhancedAccountRow(
-                            icon: "key.fill",
-                            gradient: [.orange, .red],
-                            title: "Password",
-                            status: "Change",
-                            isLinked: true
-                        ) {
-                            showChangePasswordSheet = true
-                        }
-                    }
+                NavigationLink(destination: TrashHistoryView()) {
+                    QuickActionTile(
+                        icon: "clock.arrow.circlepath",
+                        title: "Trash History",
+                        subtitle: "See previous identifications",
+                        gradient: [.mint, .teal]
+                    )
+                }
+
+                Button(action: { showDeleteAlert = true }) {
+                    QuickActionTile(
+                        icon: "xmark.bin.fill",
+                        title: "Delete Account",
+                        subtitle: "Request account removal",
+                        gradient: [.red, .pink]
+                    )
                 }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.neuBackground)
-                    .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                    .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
-            )
-
-            // General Section
-            VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.gray, .neuSecondaryText],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 28, height: 28)
-
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                    Text("General")
-                        .font(.headline)
-                        .foregroundColor(.neuText)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 10)
-
-                VStack(spacing: 0) {
-                    NavigationLink(destination: AchievementsListView()) {
-                        EnhancedSettingsRow(icon: "trophy.fill", gradient: [.purple, .indigo], title: "Achievements")
-                    }
-
-                    Color.neuDivider.frame(height: 1).padding(.leading, 52)
-
-                    NavigationLink(destination: BadgePickerView()) {
-                        EnhancedSettingsRow(icon: "star.circle.fill", gradient: [.yellow, .orange], title: "Badges")
-                    }
-
-                    Color.neuDivider.frame(height: 1).padding(.leading, 52)
-
-                    NavigationLink(destination: RewardView()) {
-                        EnhancedSettingsRow(icon: "gift.fill", gradient: [.orange, .yellow], title: "Rewards")
-                    }
-
-                    Color.neuDivider.frame(height: 1).padding(.leading, 52)
-
-                    NavigationLink(destination: TrashHistoryView()) {
-                        EnhancedSettingsRow(icon: "trash.fill", gradient: [.purple, .pink], title: "My Trash History")
-                    }
-
-                    Color.neuDivider.frame(height: 1).padding(.leading, 52)
-
-                    Button(action: { showDeleteAlert = true }) {
-                        EnhancedSettingsRow(icon: "xmark.bin.fill", gradient: [.red, .orange], title: "Delete Account")
-                    }
-                }
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.neuBackground)
-                    .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                    .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
-            )
+            .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 16)
         .padding(.top, 16)
     }
 }
