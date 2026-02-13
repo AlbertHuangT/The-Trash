@@ -1,6 +1,6 @@
-import SwiftUI
-import Supabase
 import Auth
+import Supabase
+import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 0
@@ -14,8 +14,12 @@ struct ContentView: View {
             ThemeBackgroundView()
                 .ignoresSafeArea()
 
-            tabContent
-                .environment(\.showAccountSheet, $showAccountSheet)
+            GeometryReader { proxy in
+                tabContent
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                    .clipped()
+                    .environment(\.showAccountSheet, $showAccountSheet)
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             TrashBottomTabBar(items: tabItems, selection: $selectedTab)
@@ -31,7 +35,7 @@ struct ContentView: View {
         }
         .onChange(of: arenaRouter.pendingChallengeId) { newValue in
             if newValue != nil {
-                selectedTab = 1 // Switch to Arena tab
+                selectedTab = 1  // Switch to Arena tab
             }
         }
     }
@@ -41,7 +45,7 @@ struct ContentView: View {
             TrashTabItem(value: 0, title: "Verify", icon: "camera.viewfinder"),
             TrashTabItem(value: 1, title: "Arena", icon: "flame.fill"),
             TrashTabItem(value: 2, title: "Leaderboard", icon: "chart.bar.fill"),
-            TrashTabItem(value: 3, title: "Community", icon: "person.3.fill")
+            TrashTabItem(value: 3, title: "Community", icon: "person.3.fill"),
         ]
     }
 
@@ -58,6 +62,5 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .clipped()
     }
 }

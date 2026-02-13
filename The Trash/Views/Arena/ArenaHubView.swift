@@ -5,9 +5,9 @@
 //  Arena game hub — mode selection screen.
 //
 
-import SwiftUI
-import Supabase
 import Combine
+import Supabase
+import SwiftUI
 
 struct ArenaHubView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -29,46 +29,30 @@ struct ArenaHubView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
-                Color.neuBackground
-                    .ignoresSafeArea()
+                ThemeBackground()
 
                 VStack(spacing: 0) {
-                    // Header with challenge inbox button
-                    HStack(alignment: .center) {
-                        Text("Arena")
-                            .font(theme.typography.title)
-                            .foregroundColor(theme.palette.textPrimary)
-
-                        Spacer()
-
-                        // Challenge inbox button
-                        if !authViewModel.isAnonymous {
-                            Button(action: { showChallengeList = true }) {
+                    TrashPageHeader(title: "Arena") {
+                        HStack(spacing: theme.spacing.sm) {
+                            if !authViewModel.isAnonymous {
                                 ZStack(alignment: .topTrailing) {
-                                    Image(systemName: "tray.fill")
-                                        .font(theme.typography.subheadline)
-                                        .foregroundColor(theme.palette.textPrimary)
+                                    TrashIconButton(
+                                        icon: "tray.fill", action: { showChallengeList = true })
 
                                     if pendingBadgeCount > 0 {
                                         Text("\(pendingBadgeCount)")
                                             .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.white)
+                                            .trashOnAccentForeground()
                                             .padding(4)
-                                            .background(Color.red)
+                                            .background(theme.semanticDanger)
                                             .clipShape(Circle())
                                             .offset(x: 6, y: -6)
                                     }
                                 }
                             }
-                            .padding(.trailing, 8)
+                            AccountButton()
                         }
-
-                        AccountButton()
-                            .environmentObject(authViewModel)
                     }
-                    .padding(.leading, theme.spacing.lg)
-                    .padding(.trailing, theme.spacing.xl)
-                    .padding(.vertical, theme.spacing.sm)
 
                     if authViewModel.isAnonymous {
                         EnhancedAnonymousRestrictionView()
@@ -76,7 +60,10 @@ struct ArenaHubView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(spacing: theme.spacing.xl) {
                                 // Mode cards grid
-                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: theme.spacing.lg) {
+                                LazyVGrid(
+                                    columns: [GridItem(.flexible()), GridItem(.flexible())],
+                                    spacing: theme.spacing.lg
+                                ) {
                                     ForEach(ArenaGameMode.allCases) { mode in
                                         GameModeCard(mode: mode) {
                                             if mode == .duel {
@@ -95,6 +82,8 @@ struct ArenaHubView: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .clipped()
             }
             .navigationDestination(for: ArenaGameMode.self) { mode in
                 switch mode {
@@ -115,7 +104,6 @@ struct ArenaHubView: View {
                 }
             }
         }
-        .background(Color.neuBackground.ignoresSafeArea())
         .sheet(isPresented: $showChallengeList) {
             ChallengeListView()
         }
@@ -201,10 +189,10 @@ struct GameModeCard: View {
     private var gradient: LinearGradient {
         let colors: [Color] = {
             switch mode {
-            case .classic: return [.neuAccentBlue, .cyan]
-            case .speedSort: return [.neuAccentOrange, .yellow]
-            case .streak: return [.neuAccentPurple, .pink]
-            case .dailyChallenge: return [.green, .mint]
+            case .classic: return [theme.accents.blue, theme.accents.purple]
+            case .speedSort: return [theme.accents.orange, theme.accents.green]
+            case .streak: return [theme.accents.purple, theme.accents.blue]
+            case .dailyChallenge: return [theme.accents.green, theme.accents.blue]
             case .duel: return [.red, .orange]
             }
         }()
@@ -212,24 +200,34 @@ struct GameModeCard: View {
     }
 
     var body: some View {
-        Button(action: onTap) {
+        TrashTapArea(action: onTap) {
             VStack(spacing: theme.spacing.md) {
                 let circleSize = theme.spacing.xl * 1.5
                 ZStack {
                     Circle()
-                        .fill(Color.neuBackground)
                         .frame(width: circleSize, height: circleSize)
-                        .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                        .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
+                        .trashCard(cornerRadius: circleSize)  // Use TrashCard for consistent shadow
 
                     if mode.isAvailable {
-                        Image(systemName: mode.icon)
-                            .font(theme.typography.headline)
-                            .foregroundStyle(gradient)
+                        if theme.visualStyle == .ecoPaper {
+                            StampedIcon(
+                                systemName: mode.icon, size: 32, weight: .semibold,
+                                color: iconAccentColor)
+                        } else {
+                            TrashIcon(systemName: mode.icon)
+                                .font(theme.typography.headline)
+                                .foregroundStyle(iconAccentColor)
+                        }
                     } else {
-                        Image(systemName: "lock.fill")
-                            .font(theme.typography.subheadline)
-                            .foregroundColor(theme.palette.textSecondary)
+                        if theme.visualStyle == .ecoPaper {
+                            StampedIcon(
+                                systemName: "lock.fill", size: 32, weight: .semibold,
+                                color: theme.palette.textSecondary)
+                        } else {
+                            TrashIcon(systemName: "lock.fill")
+                                .font(theme.typography.headline)
+                                .foregroundStyle(theme.palette.textSecondary)
+                        }
                     }
                 }
 
@@ -249,14 +247,13 @@ struct GameModeCard: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, theme.spacing.xl)
             .padding(.horizontal, theme.spacing.sm)
-            .background(Color.neuBackground)
-            .clipShape(RoundedRectangle(cornerRadius: theme.corners.medium))
-            .shadow(color: isPressed ? .clear : .neuDarkShadow, radius: 7, x: 5, y: 5)
-            .shadow(color: isPressed ? .clear : .neuLightShadow, radius: 7, x: -3, y: -3)
+            .trashCard(cornerRadius: theme.corners.medium)
             .overlay(
                 RoundedRectangle(cornerRadius: theme.corners.medium)
                     .stroke(
-                        mode.isAvailable ? gradient : LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom),
+                        mode.isAvailable
+                            ? gradient
+                            : LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom),
                         lineWidth: mode.isAvailable ? 1.5 : 0
                     )
                     .opacity(0.3)
@@ -266,10 +263,22 @@ struct GameModeCard: View {
         }
         .buttonStyle(.plain)
         .disabled(!mode.isAvailable)
-        .onLongPressGesture(minimumDuration: .infinity, pressing: { pressing in
-            withAnimation(.easeOut(duration: 0.15)) {
-                isPressed = pressing
-            }
-        }, perform: {})
+        .onLongPressGesture(
+            minimumDuration: .infinity,
+            pressing: { pressing in
+                withAnimation(.easeOut(duration: 0.15)) {
+                    isPressed = pressing
+                }
+            }, perform: {})
+    }
+
+    private var iconAccentColor: Color {
+        switch mode {
+        case .classic: return theme.accents.blue
+        case .speedSort: return theme.accents.orange
+        case .streak: return theme.accents.purple
+        case .dailyChallenge: return theme.accents.green
+        case .duel: return Color.red
+        }
     }
 }

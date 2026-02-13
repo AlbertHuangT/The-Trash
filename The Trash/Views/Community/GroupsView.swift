@@ -2,11 +2,9 @@
 //  GroupsView.swift
 //  The Trash
 //
-//  Created by Albert Huang on 2/6/26.
-//
 
-import SwiftUI
 import CoreLocation
+import SwiftUI
 
 // MARK: - Community Tab Sections
 
@@ -27,18 +25,17 @@ enum CommunityTabSection: String, CaseIterable {
 struct GroupsView: View {
     @ObservedObject private var userSettings = UserSettings.shared
     @EnvironmentObject var authVM: AuthViewModel
-    // showAccountSheet managed by ContentView via environment
     @State private var selectedSection: CommunityTabSection = .nearby
-    @State private var searchText = ""
     @State private var showLocationPicker = false
     @State private var showCreateEventSheet = false
     @State private var showCreateCommunitySheet = false
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                // Header handled by parent
+            ThemeBackground()
 
+            VStack(spacing: 0) {
                 if authVM.isAnonymous {
                     anonymousRestrictionView
                 } else {
@@ -52,7 +49,6 @@ struct GroupsView: View {
                     }
                 }
             }
-            .background(Color.neuBackground)
 
             if !authVM.isAnonymous {
                 VStack {
@@ -78,78 +74,66 @@ struct GroupsView: View {
             CreateCommunitySheet(isPresented: $showCreateCommunitySheet)
         }
         .task {
-            // Eagerly load joined communities to ensure Admin status is known for Nearby list
             if userSettings.joinedCommunities.isEmpty {
                 await userSettings.loadMyCommunities()
             }
         }
     }
 
-    // MARK: - Control Bar (Location + Toggle)
+    // MARK: - Control Bar
     private var controlBar: some View {
         HStack {
             // Location Button
-            if let location = userSettings.selectedLocation {
-                Button(action: { showLocationPicker = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "location.fill")
-                            .font(.caption)
-                        Text(location.city)
-                            .font(.subheadline.bold())
-                            .lineLimit(1)
-                    }
-                    .foregroundColor(.neuAccentBlue)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .neumorphicConcave(cornerRadius: 16)
+            TrashButton(
+                baseColor: theme.visualStyle == .ecoPaper ? theme.accents.blue.opacity(0.15) : nil,
+                cornerRadius: 16,
+                action: { showLocationPicker = true }
+            ) {
+                HStack(spacing: 6) {
+                    TrashIcon(
+                        systemName: userSettings.selectedLocation == nil
+                            ? "location.slash" : "location.fill"
+                    )
+                    .font(.caption)
+                    Text(userSettings.selectedLocation?.city ?? "Select Location")
+                        .font(theme.typography.subheadline)
+                        .fontWeight(.bold)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                        .truncationMode(.tail)
                 }
-            } else {
-                Button(action: { showLocationPicker = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "location.slash")
-                            .font(.caption)
-                        Text("Select Location")
-                            .font(.subheadline.bold())
-                            .lineLimit(1)
-                    }
-                    .foregroundColor(.neuSecondaryText)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .neumorphic(cornerRadius: 16)
-                    .cornerRadius(16)
-                }
+                .foregroundColor(theme.accents.blue)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer()
 
-            // Toggle Button (Nearby / Joined)
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    if selectedSection == .nearby {
-                        selectedSection = .joined
-                    } else {
-                        selectedSection = .nearby
+            // Toggle chip (Nearby / Joined)
+            TrashButton(
+                baseColor: selectedSection == .joined ? theme.accents.green : nil,
+                cornerRadius: 16,
+                action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedSection = (selectedSection == .nearby) ? .joined : .nearby
                     }
                 }
-            }) {
+            ) {
                 HStack(spacing: 4) {
-                    Image(systemName: selectedSection == .joined ? "person.3.fill" : "globe")
+                    TrashIcon(systemName: selectedSection == .joined ? "person.3.fill" : "globe")
                         .font(.caption)
-                        .frame(width: 14) // Fixed width for icon stability
                     Text(selectedSection == .joined ? "Joined" : "Nearby")
                         .font(.caption.bold())
-                        .frame(width: 50, alignment: .center) // Fixed width for text stability
                 }
-                .foregroundColor(selectedSection == .joined ? .white : .neuSecondaryText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(selectedSection == .joined ? Color.neuAccentBlue : Color.neuBackground)
-                        .shadow(color: .neuDarkShadow, radius: 3, x: 2, y: 2)
-                        .shadow(color: .neuLightShadow, radius: 3, x: -2, y: -2)
+                .foregroundColor(
+                    selectedSection == .joined
+                        ? theme.onAccentForeground : theme.palette.textSecondary
                 )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
             }
+            .fixedSize()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -170,7 +154,8 @@ struct GroupsView: View {
             }
         }
         .task {
-            if let location = userSettings.selectedLocation, userSettings.communitiesInCity.isEmpty {
+            if let location = userSettings.selectedLocation, userSettings.communitiesInCity.isEmpty
+            {
                 await userSettings.loadCommunitiesForCity(location.city)
             }
         }
@@ -179,36 +164,14 @@ struct GroupsView: View {
     private var noLocationView: some View {
         VStack(spacing: 20) {
             Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 120, height: 120)
-                    .shadow(color: .neuDarkShadow, radius: 8, x: 6, y: 6)
-                    .shadow(color: .neuLightShadow, radius: 8, x: -4, y: -4)
-                Image(systemName: "location.slash.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.neuAccentBlue)
-            }
-
+            paperBadge(icon: "location.slash.fill", size: 120, iconColor: theme.accents.blue)
             Text("No Location Set")
-                .font(.title2).bold()
-                .foregroundColor(.neuText)
-            Text("Select a location to discover\ncommunities near you")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.neuSecondaryText)
-
-            Button(action: { showLocationPicker = true }) {
+                .font(theme.typography.headline)
+                .foregroundColor(theme.palette.textPrimary)
+            TrashButton(baseColor: theme.accents.blue, action: { showLocationPicker = true }) {
                 Text("Select Location")
-                    .font(.subheadline.bold())
-                    .foregroundColor(.white)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .cornerRadius(20)
-                    .shadow(color: .neuAccentBlue.opacity(0.4), radius: 8, y: 4)
             }
             Spacer()
         }
@@ -217,11 +180,8 @@ struct GroupsView: View {
     private var loadingView: some View {
         VStack(spacing: 12) {
             Spacer()
-            ProgressView()
-                .tint(.neuAccentBlue)
-            Text("Loading communities...")
-                .font(.subheadline)
-                .foregroundColor(.neuSecondaryText)
+            ProgressView().tint(theme.accents.blue)
+            Text("Loading...").foregroundColor(theme.palette.textSecondary)
             Spacer()
         }
     }
@@ -229,24 +189,9 @@ struct GroupsView: View {
     private var emptyNearbyView: some View {
         VStack(spacing: 20) {
             Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 100, height: 100)
-                    .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                    .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
-                Image(systemName: "building.2.crop.circle")
-                    .font(.system(size: 40))
-                    .foregroundColor(.neuSecondaryText)
-            }
-
-            Text("No Communities Yet")
-                .font(.title2).bold()
-                .foregroundColor(.neuText)
-            Text("No communities in this area yet.\nBe the first to start one!")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.neuSecondaryText)
+            paperBadge(
+                icon: "building.2.crop.circle", size: 110, iconColor: theme.palette.textSecondary)
+            Text("No Communities Yet").font(theme.typography.headline)
             Spacer()
         }
     }
@@ -256,11 +201,7 @@ struct GroupsView: View {
             LazyVStack(spacing: 12) {
                 ForEach(userSettings.communitiesInCity) { community in
                     CommunityCardView(
-                        community: community,
-                        onCreateEvent: {
-                            showCreateEventSheet = true
-                        }
-                    )
+                        community: community, onCreateEvent: { showCreateEventSheet = true })
                 }
             }
             .padding(.horizontal, 16)
@@ -285,46 +226,15 @@ struct GroupsView: View {
                 joinedCommunitiesList
             }
         }
-        .task {
-            if userSettings.joinedCommunities.isEmpty {
-                await userSettings.loadMyCommunities()
-            }
-        }
     }
 
     private var emptyJoinedView: some View {
         VStack(spacing: 20) {
             Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 100, height: 100)
-                    .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                    .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.neuSecondaryText)
-            }
-
-            Text("No Communities Joined")
-                .font(.title2).bold()
-                .foregroundColor(.neuText)
-            Text("Join communities to connect with\npeople in your area")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.neuSecondaryText)
-
-            Button(action: { selectedSection = .nearby }) {
-                Text("Browse Nearby")
-                    .font(.subheadline.bold())
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .cornerRadius(20)
-                    .shadow(color: .neuAccentBlue.opacity(0.4), radius: 8, y: 4)
+            paperBadge(icon: "person.3.fill", size: 110, iconColor: theme.palette.textSecondary)
+            Text("No Communities Joined").font(theme.typography.headline)
+            TrashButton(baseColor: theme.accents.blue, action: { selectedSection = .nearby }) {
+                Text("Browse Nearby").padding(.horizontal, 24).padding(.vertical, 12)
             }
             Spacer()
         }
@@ -335,11 +245,7 @@ struct GroupsView: View {
             LazyVStack(spacing: 12) {
                 ForEach(userSettings.joinedCommunities) { community in
                     CommunityCardView(
-                        community: community,
-                        onCreateEvent: {
-                            showCreateEventSheet = true
-                        }
-                    )
+                        community: community, onCreateEvent: { showCreateEventSheet = true })
                 }
             }
             .padding(.horizontal, 16)
@@ -354,32 +260,28 @@ struct GroupsView: View {
     private var anonymousRestrictionView: some View {
         VStack(spacing: 24) {
             Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 120, height: 120)
-                    .shadow(color: .neuDarkShadow, radius: 10, x: 8, y: 8)
-                    .shadow(color: .neuLightShadow, radius: 10, x: -6, y: -6)
-
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-            }
-            .padding(.bottom, 10)
-
-            Text("Access Restricted")
-                .font(.title).bold()
-                .foregroundColor(.neuText)
-
-            Text("Communities are only available for registered users.\n\nPlease link your Email or Phone in your Account to access this feature.")
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-                .foregroundColor(.neuSecondaryText)
-
+            paperBadge(icon: "lock.shield.fill", size: 120, iconColor: theme.accents.blue)
+            Text("Access Restricted").font(theme.typography.headline)
+            Text("Please link your account to join communities.").multilineTextAlignment(.center)
+                .padding(.horizontal, 32).foregroundColor(theme.palette.textSecondary)
             Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func paperBadge(icon: String, size: CGFloat, iconColor: Color) -> some View {
+        ZStack {
+            Color.clear
+                .frame(width: size, height: size)
+                .trashCard(cornerRadius: size / 2)
+
+            if theme.visualStyle == .ecoPaper {
+                StampedIcon(systemName: icon, size: size * 0.45, weight: .bold, color: iconColor)
+            } else {
+                TrashIcon(systemName: icon)
+                    .font(.system(size: size * 0.4))
+                    .foregroundColor(iconColor)
+            }
         }
     }
 }

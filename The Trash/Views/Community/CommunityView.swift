@@ -57,6 +57,8 @@ struct CommunityView: View {
                         .animation(.easeInOut(duration: 0.2), value: selectedTab)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .clipped()
             }
         }
     }

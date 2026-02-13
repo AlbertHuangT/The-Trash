@@ -43,7 +43,8 @@ struct TrashButton<Content: View>: View {
         }) {
             content
         }
-        .buttonStyle(ThemeButtonStyle(baseColor: baseColor, cornerRadius: cornerRadius, theme: theme))
+        .buttonStyle(
+            ThemeButtonStyle(baseColor: baseColor, cornerRadius: cornerRadius, theme: theme))
     }
 }
 
@@ -135,7 +136,9 @@ struct TrashSegmentedControl<Value: Hashable>: View {
                     HStack(spacing: theme.spacing.xs) {
                         if let icon = option.icon {
                             if theme.visualStyle == .ecoPaper {
-                                StampedIcon(systemName: icon, size: 13, weight: .semibold, color: segmentTextColor(isSelected: isSelected))
+                                StampedIcon(
+                                    systemName: icon, size: 13, weight: .semibold,
+                                    color: segmentTextColor(isSelected: isSelected))
                             } else {
                                 TrashIcon(systemName: icon)
                                     .font(theme.typography.caption)
@@ -147,6 +150,8 @@ struct TrashSegmentedControl<Value: Hashable>: View {
                             .font(theme.typography.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(segmentTextColor(isSelected: isSelected))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, theme.spacing.sm)
@@ -183,11 +188,14 @@ struct TrashSegmentedControl<Value: Hashable>: View {
                 .fill(theme.palette.card.opacity(0.86))
                 .overlay(
                     LinearGradient(
-                        colors: [theme.accents.blue.opacity(0.14), theme.accents.purple.opacity(0.14)],
+                        colors: [
+                            theme.accents.blue.opacity(0.14), theme.accents.purple.opacity(0.14),
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: theme.corners.pill, style: .continuous))
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: theme.corners.pill, style: .continuous))
                 )
         case .ecoPaper:
             ZStack {
@@ -199,7 +207,10 @@ struct TrashSegmentedControl<Value: Hashable>: View {
                     .fill(theme.palette.card)
                     .overlay(
                         PaperTextureView(baseColor: theme.palette.card)
-                            .clipShape(RoundedRectangle(cornerRadius: theme.corners.pill, style: .continuous))
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: theme.corners.pill, style: .continuous)
+                            )
                             .opacity(0.34)
                     )
                     .shadow(color: theme.shadows.dark.opacity(0.55), radius: 2, x: 0, y: 1)
@@ -353,9 +364,13 @@ struct TrashBottomTabBar<Value: Hashable>: View {
                 }
 
                 Text(item.title)
-                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium, design: .rounded))
+                    .font(
+                        .system(
+                            size: 11, weight: isSelected ? .semibold : .medium, design: .rounded)
+                    )
                     .foregroundColor(tabForeground(isSelected: isSelected))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, theme.spacing.sm)
@@ -382,11 +397,14 @@ struct TrashBottomTabBar<Value: Hashable>: View {
                 .fill(theme.palette.card.opacity(0.84))
                 .overlay(
                     LinearGradient(
-                        colors: [theme.accents.purple.opacity(0.12), theme.accents.blue.opacity(0.12)],
+                        colors: [
+                            theme.accents.purple.opacity(0.12), theme.accents.blue.opacity(0.12),
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous))
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous))
                 )
         case .ecoPaper:
             ZStack {
@@ -398,7 +416,10 @@ struct TrashBottomTabBar<Value: Hashable>: View {
                     .fill(theme.palette.card)
                     .overlay(
                         PaperTextureView(baseColor: theme.palette.card)
-                            .clipShape(RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous))
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: theme.corners.large, style: .continuous)
+                            )
                             .opacity(0.28)
                     )
                     .shadow(color: theme.shadows.dark.opacity(0.5), radius: 3, x: 0, y: 2)
@@ -565,6 +586,8 @@ struct TrashPageHeader<Leading: View, Trailing: View>: View {
             Text(title)
                 .font(theme.typography.title)
                 .foregroundColor(theme.palette.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         case .vibrantGlass:
             Text(title)
                 .font(theme.typography.title)
@@ -575,10 +598,14 @@ struct TrashPageHeader<Leading: View, Trailing: View>: View {
                         endPoint: .bottomTrailing
                     )
                 )
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         case .ecoPaper:
             Text(title)
                 .font(theme.typography.title)
                 .foregroundColor(theme.palette.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
     }
 
@@ -592,7 +619,9 @@ struct TrashPageHeader<Leading: View, Trailing: View>: View {
                 .fill(theme.palette.card.opacity(0.72))
                 .overlay(
                     LinearGradient(
-                        colors: [theme.accents.blue.opacity(0.12), theme.accents.purple.opacity(0.12)],
+                        colors: [
+                            theme.accents.blue.opacity(0.12), theme.accents.purple.opacity(0.12),
+                        ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -870,7 +899,9 @@ struct TrashInputSurface: ViewModifier {
                 .fill(theme.palette.card.opacity(0.82))
                 .overlay(
                     LinearGradient(
-                        colors: [theme.accents.blue.opacity(0.1), theme.accents.purple.opacity(0.1)],
+                        colors: [
+                            theme.accents.blue.opacity(0.1), theme.accents.purple.opacity(0.1),
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -879,7 +910,9 @@ struct TrashInputSurface: ViewModifier {
         case .ecoPaper:
             shape
                 .fill(theme.palette.card)
-                .overlay(PaperTextureView(baseColor: theme.palette.card).clipShape(shape).opacity(0.2))
+                .overlay(
+                    PaperTextureView(baseColor: theme.palette.card).clipShape(shape).opacity(0.2)
+                )
                 .overlay(
                     shape
                         .stroke(Color.white.opacity(0.14), lineWidth: 1)
@@ -1118,7 +1151,7 @@ struct TrashFormPicker<Value: Hashable>: View {
     private var pickerOptions: some View {
         ForEach(options) { option in
             if let icon = option.icon {
-                Label(option.title, systemImage: icon).tag(option.value)
+                TrashLabel(option.title, icon: icon).tag(option.value)
             } else {
                 Text(option.title).tag(option.value)
             }
@@ -1191,13 +1224,16 @@ struct TrashNoticeSheet: View {
                     .foregroundColor(theme.palette.textSecondary)
                     .multilineTextAlignment(.center)
 
-                TrashButton(baseColor: buttonColor ?? theme.accents.blue, action: {
-                    if let onClose {
-                        onClose()
-                    } else {
-                        dismiss()
+                TrashButton(
+                    baseColor: buttonColor ?? theme.accents.blue,
+                    action: {
+                        if let onClose {
+                            onClose()
+                        } else {
+                            dismiss()
+                        }
                     }
-                }) {
+                ) {
                     Text(buttonTitle)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -1314,9 +1350,12 @@ struct TrashTextInputSheet: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    TrashButton(baseColor: theme.accents.blue, action: {
-                        onConfirm(text)
-                    }) {
+                    TrashButton(
+                        baseColor: theme.accents.blue,
+                        action: {
+                            onConfirm(text)
+                        }
+                    ) {
                         Text(confirmTitle)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
