@@ -5,12 +5,13 @@
 //  Select a friend or community member to challenge to a duel.
 //
 
-import SwiftUI
-import Supabase
 import Combine
+import Supabase
+import SwiftUI
 
 struct ChallengeInviteSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.trashTheme) private var theme
     @StateObject private var viewModel = ChallengeInviteViewModel()
     let onChallenge: (UUID) -> Void
 
@@ -21,7 +22,7 @@ struct ChallengeInviteSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.neuBackground
+                ThemeBackground()
                     .ignoresSafeArea()
 
                 if viewModel.isLoading {
@@ -47,8 +48,7 @@ struct ChallengeInviteSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundColor(.neuAccentBlue)
+                    TrashTextButton(title: "Cancel", variant: .accent) { dismiss() }
                 }
             }
             .task {
@@ -59,7 +59,7 @@ struct ChallengeInviteSheet: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
+            TrashIcon(systemName: "person.crop.circle.badge.questionmark")
                 .font(.system(size: 50))
                 .foregroundColor(.neuSecondaryText)
             Text("No members found")
@@ -77,6 +77,7 @@ struct ChallengeInviteSheet: View {
 struct InviteMemberRow: View {
     let member: InvitableMember
     let onChallenge: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack(spacing: 14) {
@@ -97,19 +98,15 @@ struct InviteMemberRow: View {
 
             Spacer()
 
-            Button(action: onChallenge) {
+            TrashButton(baseColor: theme.semanticDanger, cornerRadius: 999, action: onChallenge) {
                 HStack(spacing: 4) {
-                    Image(systemName: "bolt.fill")
+                    TrashIcon(systemName: "bolt.fill")
                     Text("Challenge")
                 }
                 .font(.caption.bold())
-                .foregroundColor(.white)
+                .trashOnAccentForeground()
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(
-                    LinearGradient(colors: [.red, .orange], startPoint: .leading, endPoint: .trailing)
-                )
-                .clipShape(Capsule())
             }
         }
         .padding(.horizontal, 16)
@@ -149,7 +146,8 @@ class ChallengeInviteViewModel: ObservableObject {
         do {
             // Fetch profiles (excluding self) — simple approach
             // username is nullable, so decode as optional first then filter
-            let raw: [RawProfile] = try await client
+            let raw: [RawProfile] =
+                try await client
                 .from("profiles")
                 .select("id, username")
                 .neq("id", value: myId)

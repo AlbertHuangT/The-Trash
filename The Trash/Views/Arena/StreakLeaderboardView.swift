@@ -39,8 +39,7 @@ struct StreakLeaderboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(.neuAccentBlue)
+                    TrashTextButton(title: "Done", variant: .accent) { dismiss() }
                 }
             }
             .task {
@@ -51,7 +50,7 @@ struct StreakLeaderboardView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "chart.bar.xaxis")
+            TrashIcon(systemName: "chart.bar.xaxis")
                 .font(.system(size: 50))
                 .foregroundColor(.neuSecondaryText)
             Text("No streak records yet")

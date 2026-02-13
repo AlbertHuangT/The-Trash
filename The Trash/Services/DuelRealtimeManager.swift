@@ -33,6 +33,9 @@ class DuelRealtimeManager: ObservableObject {
     // MARK: - Connect
 
     func connect(channelName: String, myId: UUID, opponentId: UUID) async {
+        // Ensure stale subscriptions/channels are removed before reconnecting.
+        await disconnect()
+
         myUserId = myId.uuidString
         opponentUserId = opponentId.uuidString
 

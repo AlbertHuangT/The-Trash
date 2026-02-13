@@ -16,7 +16,7 @@ struct TrashItem: Decodable {
     let label: String
     let category: String
     let embedding: [Float]
-    
+
     // Custom coding keys or init(from:) not strictly needed if JSON matches,
     // but made robust against missing keys via optional chaining in usage if needed.
     // Ideally, if essential fields are missing, we should just fail that item, not the whole batch.
@@ -34,79 +34,79 @@ class RealClassifierService: TrashClassifierService {
     static let shared = RealClassifierService()
     static let confidenceThreshold: Float = 0.10
 
-    
+
     // 视觉模型 (The Eye)
     private var model: VNCoreMLModel?
-    
+
     // 线程安全锁
     private let accessQueue = DispatchQueue(label: "com.trash.knowledgeBase", attributes: .concurrent)
-    
+
     // 🚀 优化：使用预归一化的向量缓存
     private var _normalizedKnowledgeBase: [NormalizedTrashItem] = []
-    
+
     // 线程安全的状态标志
     private var _isModelReady = false
     private var _isKnowledgeBaseReady = false
     private var _initializationError: String? = nil
 
-    
+
     // 🚀 优化：缓存向量维度，避免重复计算
     private var embeddingDimension: Int = 0
-    
+
     // 线程安全的访问入口
     private var normalizedKnowledgeBase: [NormalizedTrashItem] {
         get { accessQueue.sync { _normalizedKnowledgeBase } }
         set { accessQueue.async(flags: .barrier) { self._normalizedKnowledgeBase = newValue } }
     }
-    
+
     private var isModelReady: Bool {
         get { accessQueue.sync { _isModelReady } }
         set { accessQueue.async(flags: .barrier) { self._isModelReady = newValue } }
     }
-    
+
     private var isKnowledgeBaseReady: Bool {
         get { accessQueue.sync { _isKnowledgeBaseReady } }
         set { accessQueue.async(flags: .barrier) { self._isKnowledgeBaseReady = newValue } }
     }
-    
+
     // Exposed ready state
     var initializationError: String? {
         accessQueue.sync { _initializationError }
     }
 
-    
+
     var isReady: Bool {
         accessQueue.sync { _isModelReady && _isKnowledgeBaseReady }
     }
-    
+
     private init() {
         // 🚀 优化：并行加载模型和知识库
         let group = DispatchGroup()
-        
+
         group.enter()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.setupModel()
             self?.warmupModel() // 🚀 预热模型
             group.leave()
         }
-        
+
         group.enter()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.loadKnowledgeBase()
             group.leave()
         }
-        
+
         // 完成后打印状态
         group.notify(queue: .main) {
             print("🚀 [System] AI 系统完全就绪")
         }
     }
-    
+
     private func setupModel() {
         do {
             let config = MLModelConfiguration()
             config.computeUnits = .all // 使用 NPU 加速
-            
+
             let coreModel = try MobileCLIPImage(configuration: config)
             self.model = try VNCoreMLModel(for: coreModel.model)
             self.isModelReady = true
@@ -119,11 +119,11 @@ class RealClassifierService: TrashClassifierService {
             }
         }
     }
-    
+
     // 🚀 新增：模型预热 - 用一张小图运行一次，让 NPU 预加载
     private func warmupModel() {
         guard let model = self.model else { return }
-        
+
         // 创建一个 224x224 的空白图片进行预热
         let size = CGSize(width: 224, height: 224)
         UIGraphicsBeginImageContext(size)
@@ -131,32 +131,35 @@ class RealClassifierService: TrashClassifierService {
         UIRectFill(CGRect(origin: .zero, size: size))
         let warmupImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
-        
+
         guard let cgImage = warmupImage?.cgImage else { return }
         let ciImage = CIImage(cgImage: cgImage)
-        
+
         let request = VNCoreMLRequest(model: model) { _, _ in }
         request.imageCropAndScaleOption = .centerCrop
         let handler = VNImageRequestHandler(ciImage: ciImage, orientation: .up)
-        
+
         try? handler.perform([request])
         print("🔥 [System] 模型预热完成")
     }
-    
+
     private func loadKnowledgeBase() {
         guard let url = Bundle.main.url(forResource: "trash_knowledge", withExtension: "json") else {
             print("❌ [Error] 严重错误: 找不到 trash_knowledge.json 文件！")
+            accessQueue.async(flags: .barrier) {
+                self._initializationError = "Missing trash_knowledge.json in app bundle."
+            }
             return
         }
-        
+
         do {
             let data = try Data(contentsOf: url)
             let items = try JSONDecoder().decode([TrashItem].self, from: data)
-            
+
             // 🚀 优化：预计算归一化向量
             var normalized: [NormalizedTrashItem] = []
             normalized.reserveCapacity(items.count)
-            
+
             for item in items {
                 let norm = sqrt(item.embedding.reduce(0) { $0 + $1 * $1 })
                 if norm > 1e-6 {
@@ -168,7 +171,14 @@ class RealClassifierService: TrashClassifierService {
                     ))
                 }
             }
-            
+
+            guard !normalized.isEmpty else {
+                accessQueue.async(flags: .barrier) {
+                    self._initializationError = "Knowledge base is empty after normalization."
+                }
+                return
+            }
+
             self.embeddingDimension = items.first?.embedding.count ?? 0
             self.normalizedKnowledgeBase = normalized
             self.isKnowledgeBaseReady = true
@@ -181,9 +191,9 @@ class RealClassifierService: TrashClassifierService {
             }
         }
     }
-    
+
     // MARK: - Classification Logic
-    
+
     func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void) {
         // 🔥 Fix: Check for initialization error first
         if let initError = self.initializationError {
@@ -197,7 +207,7 @@ class RealClassifierService: TrashClassifierService {
             DispatchQueue.main.async { completion(errorResult) }
             return
         }
-    
+
         if !isReady {
             print("⚠️ 系统尚未准备就绪")
             let loadingResult = TrashAnalysisResult(
@@ -213,7 +223,7 @@ class RealClassifierService: TrashClassifierService {
             }
             return
         }
-        
+
         guard let model = self.model,
               let ciImage = image.ciImage ?? (image.cgImage.map { CIImage(cgImage: $0) }) else {
             let errorResult = TrashAnalysisResult(
@@ -229,10 +239,10 @@ class RealClassifierService: TrashClassifierService {
             }
             return
         }
-        
+
         let request = VNCoreMLRequest(model: model) { [weak self] request, error in
             guard let self = self else { return }
-            
+
             if let error = error {
                 print("❌ [Error] Vision request error: \(error)")
                 let errorResult = TrashAnalysisResult(
@@ -248,14 +258,14 @@ class RealClassifierService: TrashClassifierService {
                 }
                 return
             }
-            
+
             if let results = request.results as? [VNCoreMLFeatureValueObservation],
                let featureValue = results.first?.featureValue,
                let multiArray = featureValue.multiArrayValue {
-                
+
                 let imageEmbedding = self.convertMultiArray(multiArray)
                 let bestMatch = self.findBestMatchOptimized(imageVector: imageEmbedding)
-                
+
                 if let match = bestMatch {
                     let result = TrashAnalysisResult(
                         itemName: match.label.capitalized,
@@ -295,10 +305,10 @@ class RealClassifierService: TrashClassifierService {
                 }
             }
         }
-        
+
         request.imageCropAndScaleOption = .centerCrop
         let handler = VNImageRequestHandler(ciImage: ciImage, orientation: .up)
-        
+
         // 🚀 优化：使用更高优先级的 QoS
         DispatchQueue.global(qos: .userInteractive).async {
             autoreleasepool {
@@ -321,45 +331,45 @@ class RealClassifierService: TrashClassifierService {
             }
         }
     }
-    
+
     // MARK: - 🚀 优化后的向量匹配
-    
+
     private func findBestMatchOptimized(imageVector: [Float]) -> (label: String, category: String, score: Float)? {
         let currentKnowledge = self.normalizedKnowledgeBase
         guard !currentKnowledge.isEmpty else { return nil }
-        
+
         // 计算输入向量的模长
         var sumOfSquares: Float = 0
         vDSP_dotpr(imageVector, 1, imageVector, 1, &sumOfSquares, vDSP_Length(imageVector.count))
         let imageNorm = sqrt(sumOfSquares)
-        
+
         if imageNorm < 1e-6 {
             print("⚠️ [Warning] Detected zero vector input")
             return nil
         }
-        
+
         // 🚀 优化：使用 vDSP 批量归一化
         var normalizedImage = [Float](repeating: 0, count: imageVector.count)
         var normValue = imageNorm
         vDSP_vsdiv(imageVector, 1, &normValue, &normalizedImage, 1, vDSP_Length(imageVector.count))
-        
+
         // 🚀 优化：使用并行计算找最佳匹配
         var bestScore: Float = -1
         var bestIndex = -1
-        
+
         // 使用 vDSP 批量计算点积
         for (index, item) in currentKnowledge.enumerated() {
             guard item.normalizedEmbedding.count == normalizedImage.count else { continue }
-            
+
             var score: Float = 0
             vDSP_dotpr(normalizedImage, 1, item.normalizedEmbedding, 1, &score, vDSP_Length(normalizedImage.count))
-            
+
             if score > bestScore {
                 bestScore = score
                 bestIndex = index
             }
         }
-        
+
         #if DEBUG
         // 仅在 Debug 模式打印前5名
         var allScores: [(index: Int, score: Float)] = []
@@ -376,18 +386,18 @@ class RealClassifierService: TrashClassifierService {
         }
         print("---------------------------------------\n")
         #endif
-        
+
         if bestIndex >= 0 && bestScore >= RealClassifierService.confidenceThreshold {
             let best = currentKnowledge[bestIndex]
             return (best.label, best.category, bestScore)
         }
-        
+
         return nil
     }
-    
+
     private func convertMultiArray(_ multiArray: MLMultiArray) -> [Float] {
         let count = multiArray.count
-        
+
         // 🔥 Fix: Safe conversion handling different data types
         if multiArray.dataType == .float32 {
             let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: count)
@@ -406,9 +416,9 @@ class RealClassifierService: TrashClassifierService {
             return array
         }
     }
-    
+
     // MARK: - UI Logic
-    
+
     private func getColorForCategory(_ category: String) -> Color {
         switch category {
         case _ where category == "IGNORE": return .gray.opacity(0.5)
@@ -423,7 +433,7 @@ class RealClassifierService: TrashClassifierService {
         default: return .orange
         }
     }
-    
+
     private func getTipForCategory(_ category: String) -> String {
         switch category {
         case _ where category == "IGNORE": return "Please point at trash."

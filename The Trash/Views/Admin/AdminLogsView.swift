@@ -93,7 +93,7 @@ struct AdminLogRow: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: actionIcon)
+            TrashIcon(systemName: actionIcon)
                 .font(.title2)
                 .foregroundColor(actionColor)
                 .frame(width: 32)

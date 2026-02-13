@@ -16,8 +16,12 @@ struct BindEmailSheet: View {
         NavigationView {
             Form {
                 Section {
-                    TextField("Email", text: $inputEmail).keyboardType(.emailAddress).autocapitalization(.none)
-                    Button("Send Link") {
+                    TrashFormTextField(
+                        title: "Email",
+                        text: $inputEmail,
+                        keyboardType: .emailAddress
+                    )
+                    TrashTextButton(title: "Send Link", variant: .accent) {
                         Task {
                             await authVM.updateEmail(email: inputEmail)
                             if authVM.errorMessage == nil && authVM.showCheckEmailAlert {
@@ -38,7 +42,7 @@ struct BindEmailSheet: View {
             .navigationTitle("Bind Email")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    TrashTextButton(title: "Cancel") {
                         authVM.errorMessage = nil
                         isPresented = false
                     }

@@ -11,17 +11,20 @@ struct AchievementsListView: View {
     var showsNavigationTitle: Bool = true
     @StateObject private var service = AchievementService.shared
     @State private var selectedTab = 0 // 0: Official, 1: Community
-    
+    @Environment(\.trashTheme) private var theme
+
     var body: some View {
         VStack(spacing: 0) {
-            // 类型切换
-            HStack(spacing: 0) {
-                tabButton(title: "Official", tag: 0, icon: "shield.fill")
-                tabButton(title: "Community", tag: 1, icon: "person.3.fill")
-            }
+            TrashSegmentedControl(
+                options: [
+                    TrashSegmentOption(value: 0, title: "Official", icon: "shield.fill"),
+                    TrashSegmentOption(value: 1, title: "Community", icon: "person.3.fill")
+                ],
+                selection: $selectedTab
+            )
             .padding(.horizontal, 16)
             .padding(.top, 12)
-            
+
             if service.isLoading {
                 Spacer()
                 ProgressView()
@@ -51,7 +54,7 @@ struct AchievementsListView: View {
                 }
             }
         }
-        .background(Color.neuBackground)
+        .background(theme.palette.background)
         .optionalNavigationTitle(showsNavigationTitle ? "Achievements" : nil)
         .onAppear {
             Task {
@@ -59,49 +62,12 @@ struct AchievementsListView: View {
             }
         }
     }
-    
-    // MARK: - Tab Button
-    
-    private func tabButton(title: String, tag: Int, icon: String) -> some View {
-        Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selectedTab = tag
-            }
-        }) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.caption)
-                Text(title)
-                    .font(.subheadline.bold())
-            }
-            .foregroundColor(selectedTab == tag ? .white : .neuText)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(
-                Group {
-                    if selectedTab == tag {
-                        LinearGradient(
-                            colors: [.neuAccentBlue, .cyan],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    } else {
-                        Color.neuBackground
-                    }
-                }
-            )
-            .cornerRadius(12)
-            .shadow(color: selectedTab == tag ? .neuDarkShadow : .clear, radius: 4, x: 2, y: 2)
-            .shadow(color: selectedTab == tag ? .neuLightShadow : .clear, radius: 4, x: -2, y: -2)
-        }
-        .buttonStyle(.plain)
-    }
-    
+
     // MARK: - Empty State
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image(systemName: selectedTab == 0 ? "trophy" : "person.3")
+            TrashIcon(systemName: selectedTab == 0 ? "trophy" : "person.3")
                 .font(.system(size: 50))
                 .foregroundColor(.neuSecondaryText)
             Text("No Achievements Yet")
@@ -115,7 +81,7 @@ struct AchievementsListView: View {
                 .multilineTextAlignment(.center)
         }
     }
-    
+
     var filteredAchievements: [UserAchievement] {
         if selectedTab == 0 {
             return service.myAchievements.filter { $0.isOfficial }
@@ -130,7 +96,7 @@ struct AchievementsListView: View {
 struct AchievementCard: View {
     let achievement: UserAchievement
     let onToggleEquip: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 14) {
             // 成就图标
@@ -145,18 +111,18 @@ struct AchievementCard: View {
                     )
                     .frame(width: 52, height: 52)
                     .shadow(color: achievement.rarity.color.opacity(0.3), radius: 6, x: 0, y: 3)
-                
-                Image(systemName: achievement.iconName)
+
+                TrashIcon(systemName: achievement.iconName)
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(achievement.name)
                         .font(.headline)
                         .foregroundColor(.neuText)
-                    
+
                     // 稀有度标签
                     Text(achievement.rarity.displayName)
                         .font(.system(size: 9, weight: .bold))
@@ -166,27 +132,27 @@ struct AchievementCard: View {
                         .background(achievement.rarity.color.opacity(0.15))
                         .cornerRadius(4)
                 }
-                
+
                 if let desc = achievement.description {
                     Text(desc)
                         .font(.caption)
                         .foregroundColor(.neuSecondaryText)
                         .lineLimit(2)
                 }
-                
+
                 HStack(spacing: 8) {
                     if let communityName = achievement.communityName {
                         HStack(spacing: 3) {
-                            Image(systemName: "person.3.fill")
+                            TrashIcon(systemName: "person.3.fill")
                                 .font(.system(size: 8))
                             Text(communityName)
                                 .font(.caption2)
                         }
                         .foregroundColor(.neuAccentBlue)
                     }
-                    
+
                     HStack(spacing: 3) {
-                        Image(systemName: "calendar")
+                        TrashIcon(systemName: "calendar")
                             .font(.system(size: 8))
                         Text(achievement.grantedAt, style: .date)
                             .font(.caption2)
@@ -194,19 +160,19 @@ struct AchievementCard: View {
                     .foregroundColor(.neuSecondaryText)
                 }
             }
-            
+
             Spacer()
-            
+
             // 装备/取消装备按钮
-            Button(action: onToggleEquip) {
+            TrashTapArea(action: onToggleEquip) {
                 if achievement.isEquipped {
                     HStack(spacing: 3) {
-                        Image(systemName: "checkmark")
+                        TrashIcon(systemName: "checkmark")
                             .font(.system(size: 10, weight: .bold))
                         Text("Equipped")
                             .font(.caption2.bold())
                     }
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
@@ -231,7 +197,6 @@ struct AchievementCard: View {
                         )
                 }
             }
-            .buttonStyle(.plain)
         }
         .padding(14)
         .background(

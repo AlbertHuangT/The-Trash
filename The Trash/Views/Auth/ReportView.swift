@@ -11,11 +11,12 @@ struct ReportView: View {
     let predictedResult: TrashAnalysisResult
     let image: UIImage
     let userId: UUID?
-    
+
     @Environment(\.dismiss) var dismiss
-    
+    @Environment(\.trashTheme) private var theme
+
     let bins = ["Recycle (Blue Bin)", "Compost (Green Bin)", "Landfill (Black Bin)", "Hazardous"]
-    
+
     @State private var selectedBin = "Landfill (Black Bin)"
     @State private var itemName = ""
     @State private var isSubmitting = false
@@ -23,7 +24,7 @@ struct ReportView: View {
     // 🔥 FIX: 添加错误状态
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -46,20 +47,22 @@ struct ReportView: View {
                             .foregroundColor(predictedResult.color)
                     }
                 }
-                
+
                 // Human Feedback Section
                 Section(header: Text("Human Feedback")) {
-                    Picker("Actual Category", selection: $selectedBin) {
-                        ForEach(bins, id: \.self) { bin in
-                            Text(bin)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    
-                    TextField("Correct Item Name (optional)", text: $itemName)
-                        .autocapitalization(.none)
+                    TrashFormPicker(
+                        title: "Actual Category",
+                        selection: $selectedBin,
+                        options: bins.map { TrashPickerOption(value: $0, title: $0, icon: nil) }
+                    )
+
+                    TrashFormTextField(
+                        title: "Correct Item Name (optional)",
+                        text: $itemName,
+                        textInputAutocapitalization: .never
+                    )
                 }
-                
+
                 // Submit Button
                 Section {
                     if isSubmitting {
@@ -69,33 +72,45 @@ struct ReportView: View {
                             Spacer()
                         }
                     } else {
-                        Button(action: submit) {
+                        TrashButton(baseColor: theme.accents.blue, action: submit) {
                             Text("Submit Feedback")
                                 .fontWeight(.semibold)
-                                .foregroundColor(.white)
+                                .trashOnAccentForeground()
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 4)
                         }
-                        .listRowBackground(Color.blue) // Blue button background
                     }
                 }
             }
             .navigationTitle("Report Error")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    TrashTextButton(title: "Cancel", variant: .accent) { dismiss() }
                 }
             }
-            .alert("Submit Success", isPresented: $showSuccess) {
-                Button("OK") { dismiss() }
-            } message: {
-                Text("Thank you for your feedback. This will help make the AI smarter!")
+            .sheet(isPresented: $showSuccess) {
+                TrashNoticeSheet(
+                    title: "Submit Success",
+                    message: "Thank you for your feedback. This will help make the AI smarter!",
+                    onClose: {
+                        showSuccess = false
+                        dismiss()
+                    }
+                )
+                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
-            // 🔥 FIX: 添加错误提示
-            .alert("Submit Failed", isPresented: $showError) {
-                Button("OK") { }
-            } message: {
-                Text(errorMessage)
+            .sheet(isPresented: $showError) {
+                TrashNoticeSheet(
+                    title: "Submit Failed",
+                    message: errorMessage,
+                    buttonColor: .red,
+                    onClose: { showError = false }
+                )
+                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
             .onAppear {
                 if bins.contains(predictedResult.category) {
@@ -104,7 +119,7 @@ struct ReportView: View {
             }
         }
     }
-    
+
     func submit() {
         isSubmitting = true
         Task {

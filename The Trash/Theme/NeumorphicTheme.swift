@@ -3,6 +3,7 @@ import UIKit
 
 struct NeumorphicTheme: TrashTheme {
     let name: String = "Neumorphic"
+    let visualStyle: VisualStyle = .neumorphic
     let palette: ThemePalette
     let accents: ThemeAccents
     let shadows: ThemeShadowPalette
@@ -137,6 +138,16 @@ struct NeumorphicTheme: TrashTheme {
                     ? UIColor(red: 44/255, green: 48/255, blue: 62/255, alpha: 1)
                     : UIColor(red: 224/255, green: 229/255, blue: 236/255, alpha: 1)
             },
+            tabBarSelectedTint: UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 70/255, green: 130/255, blue: 255/255, alpha: 1)
+                    : UIColor(red: 50/255, green: 100/255, blue: 250/255, alpha: 1)
+            },
+            tabBarUnselectedTint: UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 150/255, green: 160/255, blue: 175/255, alpha: 1)
+                    : UIColor(red: 128/255, green: 140/255, blue: 153/255, alpha: 1)
+            },
             navigationBarBackground: UIColor { trait in
                 trait.userInterfaceStyle == .dark
                     ? UIColor(red: 44/255, green: 48/255, blue: 62/255, alpha: 1)
@@ -148,6 +159,45 @@ struct NeumorphicTheme: TrashTheme {
                     ? UIColor(red: 44/255, green: 48/255, blue: 62/255, alpha: 1)
                     : UIColor(red: 224/255, green: 229/255, blue: 236/255, alpha: 1)
             })
+        )
+    }
+
+    func cardSurface<Content: View>(cornerRadius: CGFloat, content: Content) -> AnyView {
+        AnyView(
+            content
+                .background(palette.card)
+                .cornerRadius(cornerRadius)
+                .shadow(color: shadows.dark, radius: 10, x: 10, y: 10)
+                .shadow(color: shadows.light, radius: 10, x: -6, y: -6)
+        )
+    }
+
+    func buttonSurface<Content: View>(isPressed: Bool, cornerRadius: CGFloat, baseColor: Color?, content: Content) -> AnyView {
+        let color = baseColor ?? palette.card
+        return AnyView(
+            content
+                .background(
+                    ZStack {
+                        if isPressed {
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .fill(color)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: cornerRadius)
+                                        .stroke(color, lineWidth: 4)
+                                        .shadow(color: shadows.dark, radius: 10, x: 5, y: 5)
+                                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                                        .shadow(color: shadows.light, radius: 10, x: -4, y: -4)
+                                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .fill(color)
+                                .shadow(color: shadows.dark, radius: 10, x: 10, y: 10)
+                                .shadow(color: shadows.light, radius: 10, x: -6, y: -6)
+                        }
+                    }
+                )
+                .scaleEffect(isPressed ? 0.97 : 1.0)
         )
     }
 }

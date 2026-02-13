@@ -5,8 +5,8 @@
 //  Deep link landing page for accepting/declining a challenge.
 //
 
-import SwiftUI
 import Supabase
+import SwiftUI
 
 struct ChallengeAcceptView: View {
     let challengeId: UUID
@@ -19,10 +19,11 @@ struct ChallengeAcceptView: View {
 
     private let client = SupabaseManager.shared.client
     private let arenaService = ArenaService.shared
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ZStack {
-            Color.neuBackground
+            ThemeBackground()
                 .ignoresSafeArea()
 
             if isLoading {
@@ -70,10 +71,12 @@ struct ChallengeAcceptView: View {
                     .shadow(color: .neuDarkShadow, radius: 10, x: 6, y: 6)
                     .shadow(color: .neuLightShadow, radius: 10, x: -4, y: -4)
 
-                Image(systemName: "bolt.circle.fill")
+                TrashIcon(systemName: "bolt.circle.fill")
                     .font(.system(size: 60))
                     .foregroundStyle(
-                        LinearGradient(colors: [.red, .orange], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(
+                            colors: [theme.semanticDanger, theme.semanticWarning], startPoint: .top,
+                            endPoint: .bottom)
                     )
             }
 
@@ -94,39 +97,37 @@ struct ChallengeAcceptView: View {
             }
 
             HStack(spacing: 16) {
-                Button(action: {
-                    showDuel = true
-                }) {
+                TrashButton(
+                    baseColor: theme.semanticSuccess, cornerRadius: 999,
+                    action: {
+                        showDuel = true
+                    }
+                ) {
                     HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
+                        TrashIcon(systemName: "checkmark")
                         Text("Accept")
                     }
                     .font(.headline.bold())
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 32)
                     .padding(.vertical, 16)
-                    .background(
-                        LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .clipShape(Capsule())
-                    .shadow(color: .green.opacity(0.4), radius: 12, y: 6)
                 }
 
-                Button(action: {
+                TrashTapArea(action: {
                     Task {
                         try? await arenaService.declineChallenge(challengeId: challengeId)
                         onDismiss()
                     }
                 }) {
                     HStack(spacing: 8) {
-                        Image(systemName: "xmark")
+                        TrashIcon(systemName: "xmark")
                         Text("Decline")
                     }
                     .font(.headline.bold())
-                    .foregroundColor(.red)
+                    .foregroundColor(theme.semanticDanger)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 16)
-                    .background(Color.neuBackground)
+                    .background(theme.palette.background)
                     .clipShape(Capsule())
                     .shadow(color: .neuDarkShadow, radius: 8, x: 4, y: 4)
                     .shadow(color: .neuLightShadow, radius: 8, x: -3, y: -3)
@@ -141,9 +142,9 @@ struct ChallengeAcceptView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "exclamationmark.triangle.fill")
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 50))
-                .foregroundColor(.orange)
+                .foregroundColor(theme.semanticWarning)
 
             Text(message)
                 .font(.subheadline)
@@ -151,16 +152,12 @@ struct ChallengeAcceptView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
-            Button(action: onDismiss) {
+            TrashButton(baseColor: theme.semanticInfo, cornerRadius: 999, action: onDismiss) {
                 Text("Go Back")
                     .font(.headline.bold())
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 32)
                     .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .clipShape(Capsule())
             }
 
             Spacer()

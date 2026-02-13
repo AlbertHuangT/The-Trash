@@ -5,9 +5,9 @@
 //  Leaderboard for Daily Challenge.
 //
 
-import SwiftUI
-import Supabase
 import Combine
+import Supabase
+import SwiftUI
 
 struct DailyLeaderboardView: View {
     @StateObject private var viewModel = DailyLeaderboardViewModel()
@@ -39,8 +39,7 @@ struct DailyLeaderboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(.neuAccentBlue)
+                    TrashTextButton(title: "Done", variant: .accent) { dismiss() }
                 }
             }
             .task {
@@ -51,7 +50,7 @@ struct DailyLeaderboardView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "calendar.badge.clock")
+            TrashIcon(systemName: "calendar.badge.clock")
                 .font(.system(size: 50))
                 .foregroundColor(.neuSecondaryText)
             Text("No results yet")
@@ -113,8 +112,8 @@ struct DailyLeaderboardRow: View {
                     .foregroundColor(.neuText)
 
                 HStack(spacing: 8) {
-                    Label("\(entry.correctCount)/10", systemImage: "checkmark.circle")
-                    Label(formattedTime, systemImage: "timer")
+                    TrashLabel("\(entry.correctCount)/10", icon: "checkmark.circle")
+                    TrashLabel(formattedTime, icon: "timer")
                 }
                 .font(.caption)
                 .foregroundColor(.neuSecondaryText)
@@ -154,7 +153,8 @@ class DailyLeaderboardViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let result: [DailyLeaderboardEntry] = try await client
+            let result: [DailyLeaderboardEntry] =
+                try await client
                 .rpc("get_daily_leaderboard", params: ["p_limit": 50])
                 .execute()
                 .value

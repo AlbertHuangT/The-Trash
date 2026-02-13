@@ -34,9 +34,9 @@ struct AchievementToastView: View {
                             )
                             .frame(width: theme.spacing.xl * 1.1, height: theme.spacing.xl * 1.1)
 
-                        Image(systemName: result.iconName ?? "trophy.fill")
+                        TrashIcon(systemName: result.iconName ?? "trophy.fill")
                             .font(theme.typography.subheadline)
-                            .foregroundColor(.white)
+                            .trashOnAccentForeground()
                     }
 
                     VStack(alignment: .leading, spacing: theme.spacing.xs) {
@@ -58,7 +58,7 @@ struct AchievementToastView: View {
 
                     Spacer()
 
-                    Button(action: {
+                    TrashTapArea(action: {
                         withAnimation(.spring(response: 0.3)) {
                             isVisible = false
                         }
@@ -66,7 +66,7 @@ struct AchievementToastView: View {
                             onDismiss()
                         }
                     }) {
-                        Image(systemName: "xmark.circle.fill")
+                        TrashIcon(systemName: "xmark.circle.fill")
                             .font(theme.typography.subheadline)
                             .foregroundColor(theme.palette.textSecondary)
                     }

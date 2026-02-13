@@ -5,18 +5,18 @@
 //  Created by Albert Huang on 2/6/26.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct CommunityMembersListView: View {
     let communityId: String
     @StateObject private var viewModel: MembersListViewModel
-    
+
     init(communityId: String) {
         self.communityId = communityId
         _viewModel = StateObject(wrappedValue: MembersListViewModel(communityId: communityId))
     }
-    
+
     var body: some View {
         List {
             ForEach(viewModel.members) { member in
@@ -59,14 +59,14 @@ class MembersListViewModel: ObservableObject {
     @Published var members: [CommunityMemberResponse] = []
     @Published var selectedMember: CommunityMemberResponse?
     @Published var isLoading = false
-    
+
     let communityId: String
     private let service = CommunityService.shared
-    
+
     init(communityId: String) {
         self.communityId = communityId
     }
-    
+
     func loadMembers() async {
         isLoading = true
         do {
@@ -79,7 +79,8 @@ class MembersListViewModel: ObservableObject {
 
     func removeMember(_ userId: UUID, reason: String?) async {
         do {
-            let result = try await service.removeMember(communityId: communityId, userId: userId, reason: reason)
+            let result = try await service.removeMember(
+                communityId: communityId, userId: userId, reason: reason)
             if result.success {
                 members.removeAll { $0.userId == userId }
             }
@@ -92,15 +93,15 @@ class MembersListViewModel: ObservableObject {
 struct MemberRow: View {
     let member: CommunityMemberResponse
     let onTap: () -> Void
-    
+
     var body: some View {
-        Button(action: onTap) {
+        TrashButton(baseColor: Color.clear, action: onTap) {
             HStack(spacing: 12) {
                 UserAvatarView(
                     name: member.username,
                     color: member.isAdmin ? .orange : .blue
                 )
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(member.username)
@@ -110,25 +111,26 @@ struct MemberRow: View {
                                 .badgeStyle(background: .orange)
                         }
                     }
-                    
+
                     HStack(spacing: 12) {
-                        Label("\(member.credits) Credits", systemImage: "star.fill")
+                        TrashLabel("\(member.credits) Credits", icon: "star.fill")
                             .font(.caption)
                             .foregroundColor(.orange)
-                        Text("Joined \(member.joinedAt.formatted(date: .abbreviated, time: .omitted))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Text(
+                            "Joined \(member.joinedAt.formatted(date: .abbreviated, time: .omitted))"
+                        )
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     }
                 }
-                
+
                 Spacer()
-                
-                Image(systemName: "chevron.right")
+
+                TrashIcon(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -136,11 +138,11 @@ struct MemberActionSheet: View {
     let member: CommunityMemberResponse
     let onRemove: (String?) async -> Void
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var showRemoveConfirmation = false
     @State private var removalReason = ""
     @State private var isProcessing = false
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -151,14 +153,14 @@ struct MemberActionSheet: View {
                         Text(member.username)
                             .foregroundColor(.secondary)
                     }
-                    
+
                     HStack {
                         Text("Credits")
                         Spacer()
                         Text("\(member.credits)")
                             .foregroundColor(.secondary)
                     }
-                    
+
                     HStack {
                         Text("Joined")
                         Spacer()
@@ -166,12 +168,13 @@ struct MemberActionSheet: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 if !member.isAdmin {
                     Section {
-                        Button(role: .destructive, action: { showRemoveConfirmation = true }) {
-                            Label("Remove Member", systemImage: "person.fill.xmark")
-                                .foregroundColor(.red)
+                        TrashTextButton(
+                            title: "Remove Member", role: .destructive, variant: .destructive
+                        ) {
+                            showRemoveConfirmation = true
                         }
                     }
                 }
@@ -180,7 +183,7 @@ struct MemberActionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    TrashTextButton(title: "Close") { dismiss() }
                 }
             }
             .sheet(isPresented: $showRemoveConfirmation) {
@@ -214,17 +217,20 @@ struct RemoveMemberSheet: View {
         NavigationView {
             Form {
                 Section {
-                    Text("Are you sure you want to remove \(username) from the community? This action cannot be undone.")
-                        .foregroundColor(.secondary)
+                    Text(
+                        "Are you sure you want to remove \(username) from the community? This action cannot be undone."
+                    )
+                    .foregroundColor(.secondary)
                 }
 
                 Section("Reason (Optional)") {
-                    TextEditor(text: $removalReason)
-                        .frame(height: 100)
+                    TrashFormTextEditor(text: $removalReason, minHeight: 100)
                 }
 
                 Section {
-                    Button("Remove Member", role: .destructive) {
+                    TrashTextButton(
+                        title: "Remove Member", role: .destructive, variant: .destructive
+                    ) {
                         onConfirm()
                     }
                 }
@@ -233,7 +239,7 @@ struct RemoveMemberSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    TrashTextButton(title: "Cancel") { dismiss() }
                 }
             }
         }

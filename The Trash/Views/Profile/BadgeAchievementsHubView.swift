@@ -22,21 +22,21 @@ struct BadgeAchievementsHubView: View {
     }
 
     @State private var selectedSegment: Segment = .badges
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: 16) {
-            Picker("Segment", selection: $selectedSegment) {
-                ForEach(Segment.allCases) { segment in
-                    Label(segment.title, systemImage: segment.icon)
-                        .tag(segment)
-                }
-            }
-            .pickerStyle(.segmented)
+            TrashSegmentedControl(
+                options: Segment.allCases.map {
+                    TrashSegmentOption(value: $0, title: $0.title, icon: $0.icon)
+                },
+                selection: $selectedSegment
+            )
             .padding(.horizontal, 16)
             .padding(.top, 12)
 
             Divider()
-                .background(Color.neuDivider)
+                .background(theme.palette.divider)
 
             Group {
                 switch selectedSegment {

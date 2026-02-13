@@ -2,8 +2,6 @@
 //  LeaderboardComponents.swift
 //  The Trash
 //
-//  Extracted from LeaderboardView.swift
-//
 
 import SwiftUI
 
@@ -17,9 +15,65 @@ struct LeaderboardRow: View {
     @Environment(\.trashTheme) private var theme
 
     var body: some View {
+        Group {
+            if theme.visualStyle == .ecoPaper {
+                ecoRow
+            } else {
+                standardRow
+            }
+        }
+        .padding(.vertical, theme.spacing.sm)
+    }
+
+    @ViewBuilder
+    func rankViewHelper(rank: Int) -> some View {
+        if theme.visualStyle == .ecoPaper {
+            switch rank {
+            case 1:
+                WaxSealBadge()
+            case 2:
+                StampedIcon(
+                    systemName: "rosette", size: 24, weight: .bold,
+                    color: theme.palette.textSecondary)
+            case 3:
+                StampedIcon(
+                    systemName: "seal", size: 24, weight: .bold, color: theme.palette.textSecondary)
+            default:
+                Text("#\(rank)")
+                    .font(theme.typography.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.palette.textSecondary)
+            }
+        } else {
+            switch rank {
+            case 1:
+                TrashIcon(systemName: "crown.fill")
+                    .foregroundColor(theme.semanticHighlight)
+                    .font(.title2)
+                    .shadow(color: theme.semanticWarning.opacity(0.5), radius: 2)
+            case 2:
+                TrashIcon(systemName: "medal.fill")
+                    .foregroundColor(theme.palette.textSecondary)
+                    .font(.title2)
+                    .shadow(color: .black.opacity(0.2), radius: 2)
+            case 3:
+                TrashIcon(systemName: "medal.fill")
+                    .foregroundColor(theme.semanticWarning.opacity(0.82))
+                    .font(.title2)
+                    .shadow(color: .black.opacity(0.2), radius: 2)
+            default:
+                Text("\(rank)")
+                    .font(.subheadline)
+                    .bold()
+                    .foregroundColor(theme.palette.textSecondary)
+            }
+        }
+    }
+
+    private var standardRow: some View {
         HStack(spacing: theme.spacing.lg) {
             rankViewHelper(rank: rank)
-                .frame(width: 40) // Slightly wider for shadows
+                .frame(width: 40)
 
             VStack(alignment: .leading) {
                 Text(username)
@@ -42,41 +96,69 @@ struct LeaderboardRow: View {
                 .foregroundColor(theme.palette.textPrimary)
         }
         .padding(theme.spacing.lg)
-        .background(Color.neuBackground)
-        .cornerRadius(theme.corners.medium)
-        .shadow(color: .neuDarkShadow, radius: 8, x: 5, y: 5)
-        .shadow(color: .neuLightShadow, radius: 8, x: -5, y: -5)
+        .trashCard(cornerRadius: theme.corners.medium)
         .overlay(
             RoundedRectangle(cornerRadius: theme.corners.medium)
-                .stroke(isMe ? Color.neuAccentBlue.opacity(0.3) : Color.clear, lineWidth: 2)
+                .stroke(isMe ? theme.accents.blue.opacity(0.3) : Color.clear, lineWidth: 2)
         )
-        .padding(.vertical, theme.spacing.sm) // Spacing between rows
     }
 
-    @ViewBuilder
-    func rankViewHelper(rank: Int) -> some View {
-        switch rank {
-        case 1: 
-            Image(systemName: "crown.fill")
-                .foregroundColor(.yellow)
-                .font(.title2)
-                .shadow(color: .orange.opacity(0.5), radius: 2)
-        case 2: 
-            Image(systemName: "medal.fill")
-                .foregroundColor(.gray)
-                .font(.title2)
-                .shadow(color: .black.opacity(0.2), radius: 2)
-        case 3: 
-            Image(systemName: "medal.fill")
-                .foregroundColor(.brown)
-                .font(.title2)
-                .shadow(color: .black.opacity(0.2), radius: 2)
-        default: 
-            Text("\(rank)")
-                .font(.subheadline)
-                .bold()
-                .foregroundColor(.neuSecondaryText)
+    private var ecoRow: some View {
+        HStack(spacing: theme.spacing.lg) {
+            rankViewHelper(rank: rank)
+                .frame(width: 40)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(username)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(isMe ? .bold : .semibold)
+                    .foregroundColor(theme.palette.textPrimary.opacity(0.95))
+                if isMe {
+                    Text("You")
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.accents.blue.opacity(0.85))
+                }
+            }
+
+            Spacer()
+
+            Text("\(credits)")
+                .font(theme.typography.body)
+                .monospacedDigit()
+                .fontWeight(.bold)
+                .foregroundColor(theme.palette.textPrimary.opacity(0.95))
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(theme.palette.divider.opacity(0.56))
+                    .offset(y: 2)
+
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(theme.palette.card)
+                    .overlay(
+                        PaperTextureView(baseColor: theme.palette.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .opacity(0.36)
+                    )
+                    .overlay(
+                        Rectangle()
+                            .stroke(style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                            .foregroundColor(theme.palette.divider.opacity(0.75))
+                            .padding(.vertical, 7)
+                    )
+            }
+        }
+        .clipShape(TornPaperStripShape(seed: Double(rank) * 1.37))
+        .overlay {
+            TornPaperStripShape(seed: Double(rank) * 1.37)
+                .stroke(
+                    isMe ? theme.accents.blue.opacity(0.45) : theme.palette.divider.opacity(0.85),
+                    lineWidth: isMe ? 1.8 : 1)
+        }
+        .shadow(color: theme.shadows.dark.opacity(0.45), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -89,44 +171,182 @@ struct MyRankBar: View {
     @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text("Your Rank")
-                    .font(theme.typography.caption)
-                    .foregroundColor(.white.opacity(0.8))
+        Group {
+            if theme.visualStyle == .ecoPaper {
                 HStack {
-                    Text("#\(rank)")
-                        .font(theme.typography.headline)
-                        .bold()
-                        .foregroundColor(.white)
-                    Text(username)
-                        .font(theme.typography.caption)
-                        .bold()
-                        .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your Rank")
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.palette.textSecondary)
+                        HStack(spacing: 6) {
+                            Text("#\(rank)")
+                                .font(theme.typography.headline)
+                                .fontWeight(.bold)
+                            Text(username)
+                                .font(theme.typography.caption)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(theme.palette.textPrimary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Credits")
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.palette.textSecondary)
+                        Text("\(credits)")
+                            .font(theme.typography.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.palette.textPrimary)
+                    }
                 }
-            }
-            Spacer()
-            VStack(alignment: .trailing) {
-                Text("Credits")
-                    .font(theme.typography.caption)
-                    .foregroundColor(.white.opacity(0.8))
-                Text("\(credits)")
-                    .font(theme.typography.headline)
-                    .bold()
-                    .foregroundColor(.white)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .background {
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(theme.palette.divider.opacity(0.56))
+                            .offset(y: 3)
+
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(theme.palette.card)
+                            .overlay(
+                                PaperTextureView(baseColor: theme.palette.card)
+                                    .clipShape(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    )
+                                    .opacity(0.4)
+                            )
+                            .overlay(
+                                TornPaperStripShape(seed: 88)
+                                    .stroke(theme.palette.divider.opacity(0.82), lineWidth: 1)
+                            )
+
+                        Circle()
+                            .fill(theme.palette.divider.opacity(0.8))
+                            .frame(width: 13, height: 13)
+                            .padding(.top, 8)
+                            .padding(.leading, 10)
+                    }
+                }
+                .clipShape(TornPaperStripShape(seed: 88))
+                .shadow(color: theme.shadows.dark.opacity(0.45), radius: 7, x: 0, y: 4)
+            } else {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Your Rank")
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.onAccentForeground.opacity(0.82))
+                        HStack {
+                            Text("#\(rank)")
+                                .font(theme.typography.headline)
+                                .bold()
+                                .trashOnAccentForeground()
+                            Text(username)
+                                .font(theme.typography.caption)
+                                .bold()
+                                .trashOnAccentForeground()
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing) {
+                        Text("Credits")
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.onAccentForeground.opacity(0.82))
+                        Text("\(credits)")
+                            .font(theme.typography.headline)
+                            .bold()
+                            .trashOnAccentForeground()
+                    }
+                }
+                .padding(theme.spacing.lg)
+                .background(
+                    ZStack {
+                        if theme.visualStyle == .ecoPaper {
+                            theme.cardSurface(
+                                cornerRadius: theme.corners.large, content: Color.clear
+                            )
+                            .brightness(-0.1)
+                        } else {
+                            LinearGradient(
+                                colors: [theme.accents.blue, .cyan], startPoint: .leading,
+                                endPoint: .trailing)
+                        }
+                    }
+                )
+                .cornerRadius(theme.corners.large, corners: [.topLeft, .topRight])
+                .shadow(color: Color.black.opacity(0.2), radius: 10, y: -5)
             }
         }
-        .padding(theme.spacing.lg)
-        .background(
-            ZStack {
-                LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                // Inner glow
-                RoundedRectangle(cornerRadius: theme.corners.medium)
-                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-            }
-        )
-        .cornerRadius(theme.corners.large, corners: [.topLeft, .topRight])
-        .shadow(color: .neuAccentBlue.opacity(0.4), radius: 10, y: -5)
         .padding(.horizontal, theme.spacing.lg)
+    }
+}
+
+private struct WaxSealBadge: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(red: 0.86, green: 0.23, blue: 0.20),
+                            Color(red: 0.60, green: 0.09, blue: 0.10),
+                        ],
+                        center: .topLeading,
+                        startRadius: 4,
+                        endRadius: 22
+                    )
+                )
+                .frame(width: 32, height: 32)
+                .shadow(color: Color.black.opacity(0.26), radius: 3, x: 0, y: 2)
+
+            Circle()
+                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                .frame(width: 26, height: 26)
+
+            Text("1st")
+                .font(.system(size: 10, weight: .bold, design: .serif))
+                .foregroundColor(Color(red: 0.98, green: 0.93, blue: 0.86))
+        }
+    }
+}
+
+private struct TornPaperStripShape: Shape {
+    let seed: Double
+
+    func path(in rect: CGRect) -> Path {
+        let topBase = rect.minY + 1.8
+        let bottomBase = rect.maxY - 1.8
+        let step: CGFloat = 11
+
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: topBase + edgeOffset(x: 0, phase: seed)))
+
+        var x: CGFloat = 0
+        while x <= rect.width {
+            let y = topBase + edgeOffset(x: x, phase: seed)
+            path.addLine(to: CGPoint(x: rect.minX + x, y: y))
+            x += step
+        }
+
+        path.addLine(
+            to: CGPoint(x: rect.maxX, y: bottomBase - edgeOffset(x: rect.width, phase: seed + 99)))
+
+        x = rect.width
+        while x >= 0 {
+            let y = bottomBase - edgeOffset(x: x, phase: seed + 99)
+            path.addLine(to: CGPoint(x: rect.minX + x, y: y))
+            x -= step
+        }
+
+        path.closeSubpath()
+        return path
+    }
+
+    private func edgeOffset(x: CGFloat, phase: Double) -> CGFloat {
+        let a = sin(Double(x) / 18.0 + phase) * 1.05
+        let b = cos(Double(x) / 10.0 + phase * 0.7) * 0.7
+        return CGFloat(abs(a + b))
     }
 }

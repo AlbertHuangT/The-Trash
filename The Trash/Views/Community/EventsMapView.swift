@@ -12,7 +12,8 @@ struct EventsMapView: View {
     let events: [CommunityEvent]
     @ObservedObject var userSettings: UserSettings
     let onEventSelected: (CommunityEvent) -> Void
-    
+    @Environment(\.trashTheme) private var theme
+
     @State private var region: MKCoordinateRegion
 
     @State private var dragOffset = CGSize.zero
@@ -35,7 +36,7 @@ struct EventsMapView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
         ))
     }
-    
+
     var body: some View {
         ZStack(alignment: .bottom) {
             // Map View
@@ -51,13 +52,13 @@ struct EventsMapView: View {
                 }
             }
             .ignoresSafeArea(edges: .bottom)
-            
+
             // Map Controls (Custom implementation for older iOS)
             VStack {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        Button(action: {
+                        TrashTapArea(action: {
                             if let location = userSettings.selectedLocation {
                                 withAnimation {
                                     region.center = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
@@ -65,7 +66,7 @@ struct EventsMapView: View {
                                 }
                             }
                         }) {
-                            Image(systemName: "location.fill")
+                            TrashIcon(systemName: "location.fill")
                                 .padding(10)
                                 .background(Color(.systemBackground))
                                 .clipShape(Circle())
@@ -76,7 +77,7 @@ struct EventsMapView: View {
                 }
                 Spacer()
             }
-            
+
             // Selected Event Card
             if let event = selectedEvent {
                 VStack(spacing: 8) {
@@ -110,7 +111,7 @@ struct EventsMapView: View {
                                 withAnimation(.easeOut(duration: 0.3)) {
                                     dragOffset = CGSize(width: 0, height: 1000)
                                 }
-                                
+
                                 // Reset state after animation
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     selectedEvent = nil
@@ -144,19 +145,18 @@ struct EventsMapView: View {
             }
         }
     }
-    
-    private func eventMarker(_ event: CommunityEvent) -> some View {
-        ZStack {
-            Circle()
-                .fill(Color.white)
-                .frame(width: 36, height: 36)
-                .shadow(radius: 2)
-            
-            Image(systemName: event.imageSystemName)
-                .foregroundColor(event.category.color)
-                .font(.system(size: 18))
-        }
-        .scaleEffect(selectedEvent?.id == event.id ? 1.2 : 1.0)
-        .animation(.spring(), value: selectedEvent == event)
-    }
-}
+
+        private func eventMarker(_ event: CommunityEvent) -> some View {
+            ZStack {
+                Circle()
+                    .fill(theme.palette.card)
+                    .frame(width: 36, height: 36)
+                    .shadow(color: theme.shadows.dark, radius: 2)
+
+                TrashIcon(systemName: event.imageSystemName)
+                    .foregroundColor(event.category.color)
+                    .font(.system(size: 18))
+            }
+            .scaleEffect(selectedEvent?.id == event.id ? 1.2 : 1.0)
+            .animation(.spring(), value: selectedEvent == event)
+        }}

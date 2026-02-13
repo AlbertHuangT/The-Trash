@@ -15,6 +15,7 @@ struct GrantAchievementToMemberView: View {
     @State private var grantingUserId: UUID?
     @State private var showSuccessAlert = false
     @State private var grantedUsername = ""
+    @Environment(\.trashTheme) private var theme
 
     var filteredMembers: [CommunityMemberForGrant] {
         if searchText.isEmpty {
@@ -31,22 +32,9 @@ struct GrantAchievementToMemberView: View {
             achievementHeader
 
             // 搜索栏
-            HStack(spacing: 12) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.neuSecondaryText)
-                TextField("Search members...", text: $searchText)
-                    .foregroundColor(.neuText)
-                    .autocapitalization(.none)
-
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.neuSecondaryText)
-                    }
-                }
-            }
-            .padding(12)
-            .neumorphicConcave(cornerRadius: 12)
+            TrashSearchField(placeholder: "Search members...", text: $searchText)
+                .padding(.horizontal, 12)
+                .trashCard(cornerRadius: 12)
             .padding(.horizontal, 16)
             .padding(.top, 12)
 
@@ -59,7 +47,7 @@ struct GrantAchievementToMemberView: View {
             } else if filteredMembers.isEmpty {
                 Spacer()
                 VStack(spacing: 12) {
-                    Image(systemName: "person.slash")
+                    TrashIcon(systemName: "person.slash")
                         .font(.system(size: 40))
                         .foregroundColor(.neuSecondaryText)
                     Text("No members found")
@@ -89,10 +77,15 @@ struct GrantAchievementToMemberView: View {
                 achievementId: achievement.id
             )
         }
-        .alert("Achievement Granted!", isPresented: $showSuccessAlert) {
-            Button("OK") {}
-        } message: {
-            Text("\(achievement.name) has been granted to \(grantedUsername).")
+        .sheet(isPresented: $showSuccessAlert) {
+            TrashNoticeSheet(
+                title: "Achievement Granted!",
+                message: "\(achievement.name) has been granted to \(grantedUsername).",
+                onClose: { showSuccessAlert = false }
+            )
+            .presentationDetents([.fraction(0.3), .medium])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(theme.appearance.sheetBackground)
         }
     }
 
@@ -111,9 +104,9 @@ struct GrantAchievementToMemberView: View {
                     )
                     .frame(width: 56, height: 56)
 
-                Image(systemName: achievement.iconName)
+                TrashIcon(systemName: achievement.iconName)
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -172,7 +165,7 @@ struct GrantAchievementToMemberView: View {
 
             if member.alreadyHas {
                 HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
+                    TrashIcon(systemName: "checkmark.circle.fill")
                         .font(.caption)
                     Text("Granted")
                         .font(.caption.bold())
@@ -182,7 +175,7 @@ struct GrantAchievementToMemberView: View {
                 .padding(.vertical, 6)
                 .neumorphicConcave(cornerRadius: 8)
             } else {
-                Button(action: {
+                TrashButton(baseColor: theme.accents.blue, cornerRadius: 8, action: {
                     grantingUserId = member.userId
                     Task {
                         let success = await service.grantAchievement(
@@ -207,25 +200,16 @@ struct GrantAchievementToMemberView: View {
                             ProgressView()
                                 .scaleEffect(0.7)
                         } else {
-                            Image(systemName: "plus.circle.fill")
+                            TrashIcon(systemName: "plus.circle.fill")
                                 .font(.caption)
                         }
                         Text("Grant")
                             .font(.caption.bold())
                     }
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(
-                        LinearGradient(
-                            colors: [.neuAccentBlue, .cyan],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(8)
                 }
-                .buttonStyle(.plain)
                 .disabled(grantingUserId != nil)
             }
         }

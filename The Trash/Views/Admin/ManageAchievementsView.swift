@@ -12,7 +12,8 @@ struct ManageAchievementsView: View {
     let communityId: String
     @StateObject private var service = AchievementService.shared
     @State private var showingCreateSheet = false
-    
+    @Environment(\.trashTheme) private var theme
+
     var body: some View {
         VStack(spacing: 0) {
             if service.isLoading && service.communityAchievements.isEmpty {
@@ -22,7 +23,7 @@ struct ManageAchievementsView: View {
             } else if service.communityAchievements.isEmpty {
                 Spacer()
                 VStack(spacing: 16) {
-                    Image(systemName: "trophy")
+                    TrashIcon(systemName: "trophy")
                         .font(.system(size: 50))
                         .foregroundColor(.neuSecondaryText)
                     Text("No achievements created yet")
@@ -52,13 +53,11 @@ struct ManageAchievementsView: View {
                 }
             }
         }
-        .background(Color.neuBackground)
+        .background(theme.palette.background)
         .navigationTitle("Manage Achievements")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingCreateSheet = true }) {
-                    Image(systemName: "plus")
-                }
+                TrashIconButton(icon: "plus", action: { showingCreateSheet = true })
             }
         }
         .sheet(isPresented: $showingCreateSheet) {
@@ -86,9 +85,9 @@ struct ManageAchievementsView: View {
                     )
                     .frame(width: 48, height: 48)
 
-                Image(systemName: achievement.iconName)
+                TrashIcon(systemName: achievement.iconName)
                     .font(.title3)
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -111,7 +110,7 @@ struct ManageAchievementsView: View {
 
             Spacer()
 
-            Image(systemName: "chevron.right")
+            TrashIcon(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(.neuSecondaryText)
         }
@@ -129,41 +128,36 @@ private struct CreateAchievementView: View {
     let communityId: String
     @Binding var isPresented: Bool
     @StateObject private var service = AchievementService.shared
-    
+
     @State private var name = ""
     @State private var description = ""
     @State private var selectedIcon = "star.fill"
     @State private var selectedRarity: AchievementRarity = .common
-    
+
     let icons = ["star.fill", "trophy.fill", "medal.fill", "rosette", "flame.fill", "bolt.fill", "leaf.fill", "drop.fill", "globe", "heart.fill", "sparkles", "crown.fill", "flag.fill", "hand.thumbsup.fill"]
-    
+
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Details")) {
-                    TextField("Achievement Name", text: $name)
-                    TextField("Description", text: $description)
+                    TrashFormTextField(title: "Achievement Name", text: $name, textInputAutocapitalization: .words)
+                    TrashFormTextField(title: "Description", text: $description, textInputAutocapitalization: .sentences)
                 }
-                
+
                 Section(header: Text("Rarity")) {
-                    Picker("Rarity", selection: $selectedRarity) {
-                        ForEach(AchievementRarity.allCases, id: \.self) { rarity in
-                            HStack {
-                                Circle()
-                                    .fill(rarity.color)
-                                    .frame(width: 10, height: 10)
-                                Text(rarity.displayName)
-                            }
-                            .tag(rarity)
+                    TrashFormPicker(
+                        title: "Rarity",
+                        selection: $selectedRarity,
+                        options: AchievementRarity.allCases.map {
+                            TrashPickerOption(value: $0, title: $0.displayName, icon: nil)
                         }
-                    }
-                    .pickerStyle(.menu)
+                    )
                 }
-                
+
                 Section(header: Text("Icon")) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 40))], spacing: 10) {
                         ForEach(icons, id: \.self) { icon in
-                            Image(systemName: icon)
+                            TrashIcon(systemName: icon)
                                 .font(.title2)
                                 .padding(8)
                                 .background(selectedIcon == icon ? selectedRarity.color.opacity(0.2) : Color.clear)
@@ -180,10 +174,10 @@ private struct CreateAchievementView: View {
             .navigationTitle("New Achievement")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { isPresented = false }
+                    TrashTextButton(title: "Cancel") { isPresented = false }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
+                    TrashTextButton(title: "Create", variant: .accent) {
                         Task {
                             let success = await service.createAchievement(
                                 communityId: communityId,

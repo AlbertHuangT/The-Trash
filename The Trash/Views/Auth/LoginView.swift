@@ -65,7 +65,7 @@ struct LoginView: View {
                     .shadow(color: .neuDarkShadow, radius: 10, x: 8, y: 8)
                     .shadow(color: .neuLightShadow, radius: 10, x: -6, y: -6)
 
-                Image(systemName: "leaf.arrow.triangle.circlepath")
+                TrashIcon(systemName: "leaf.arrow.triangle.circlepath")
                     .font(.system(size: 50, weight: .light))
                     .foregroundStyle(
                         LinearGradient(
@@ -99,17 +99,18 @@ struct LoginView: View {
     // MARK: - Main Card
     private var mainCard: some View {
         VStack(spacing: 24) {
-            // Segmented picker
-            Picker("Method", selection: $loginMethod) {
-                Label("Email", systemImage: "envelope.fill").tag(0)
-                Label("Phone", systemImage: "phone.fill").tag(1)
-            }
-            .pickerStyle(.segmented)
+            TrashSegmentedControl(
+                options: [
+                    TrashSegmentOption(value: 0, title: "Email", icon: "envelope.fill"),
+                    TrashSegmentOption(value: 1, title: "Phone", icon: "phone.fill")
+                ],
+                selection: $loginMethod
+            )
 
             // Error message
             if let error = authVM.errorMessage {
                 HStack(spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    TrashIcon(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
                     Text(error)
                         .font(.caption)
@@ -143,11 +144,11 @@ struct LoginView: View {
 
     // MARK: - Guest Button
     private var guestButton: some View {
-        Button(action: {
+        TrashTapArea(action: {
             Task { await authVM.signInAnonymously() }
         }) {
             HStack(spacing: 12) {
-                Image(systemName: "person.crop.circle.badge.questionmark")
+                TrashIcon(systemName: "person.crop.circle.badge.questionmark")
                     .font(.title3)
                 Text("Continue as Guest")
                     .fontWeight(.medium)
@@ -204,7 +205,7 @@ struct LoginView: View {
             }
 
             // Toggle login/signup
-            Button(action: { withAnimation { isSignUp.toggle() } }) {
+            TrashTapArea(action: { withAnimation { isSignUp.toggle() } }) {
                 HStack(spacing: 4) {
                     Text(isSignUp ? "Already have an account?" : "Don't have an account?")
                         .foregroundColor(.neuSecondaryText)
@@ -213,9 +214,9 @@ struct LoginView: View {
                         .foregroundColor(.neuAccentBlue)
                 }
                 .font(.subheadline)
+                    }
+                }
             }
-        }
-    }
 
     // MARK: - Phone Form
     private var phoneFormContent: some View {
@@ -250,7 +251,7 @@ struct LoginView: View {
                 // OTP input
                 VStack(spacing: 20) {
                     VStack(spacing: 8) {
-                        Image(systemName: "ellipsis.message.fill")
+                        TrashIcon(systemName: "ellipsis.message.fill")
                             .font(.system(size: 40))
                             .foregroundStyle(
                                 LinearGradient(colors: [.neuAccentGreen, .mint], startPoint: .top, endPoint: .bottom)
@@ -289,22 +290,20 @@ struct LoginView: View {
                         }
                     }
 
-                    Button("Use a different number") {
+                    TrashTextButton(title: "Use a different number", variant: .destructive) {
                         withAnimation(.spring()) {
                             authVM.showOTPInput = false
                             authVM.errorMessage = nil
                             otpCode = ""
                         }
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.red)
                 }
             }
         }
     }
 }
 
-// MARK: - Enhanced TextField (Neumorphic Concave)
+// MARK: - Enhanced Input Field (Neumorphic Concave)
 struct EnhancedTextField: View {
     let icon: String
     let placeholder: String
@@ -312,59 +311,42 @@ struct EnhancedTextField: View {
     var isSecure: Bool = false
     var keyboardType: UIKeyboardType = .default
 
-    @FocusState private var isFocused: Bool
-
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(isFocused ? .neuAccentBlue : .neuSecondaryText)
-                .frame(width: 24)
-
-            if isSecure {
-                SecureField(placeholder, text: $text)
-                    .foregroundColor(.neuText)
-            } else {
-                TextField(placeholder, text: $text)
-                    .keyboardType(keyboardType)
-                    .autocapitalization(.none)
-                    .foregroundColor(.neuText)
-            }
-        }
-        .padding(16)
-        .neumorphicConcave(cornerRadius: 14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(isFocused ? Color.neuAccentBlue.opacity(0.5) : Color.clear, lineWidth: 2)
+        TrashIconInputField(
+            icon: icon,
+            placeholder: placeholder,
+            text: $text,
+            isSecure: isSecure,
+            keyboardType: keyboardType,
+            textInputAutocapitalization: .never
         )
-        .focused($isFocused)
-        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 
-// MARK: - Gradient Button (Accent LED)
+// MARK: - Gradient Action (Accent LED)
 struct GradientButton: View {
     let title: String
     let colors: [Color]
     let icon: String
     let action: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        Button(action: action) {
+        TrashTapArea(action: action) {
             HStack(spacing: 10) {
                 Text(title)
                     .fontWeight(.bold)
-                Image(systemName: icon)
+                TrashIcon(systemName: icon)
                     .font(.system(size: 16, weight: .semibold))
             }
-            .foregroundColor(.white)
+            .trashOnAccentForeground()
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
                 ZStack {
                     LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        .stroke(theme.interactiveStroke, lineWidth: 1)
                         .padding(1)
                 }
             )
@@ -375,7 +357,7 @@ struct GradientButton: View {
     }
 }
 
-// MARK: - Loading Button (Neumorphic Pressed)
+// MARK: - Loading Action (Neumorphic Pressed)
 struct LoadingButton: View {
     var body: some View {
         HStack(spacing: 12) {

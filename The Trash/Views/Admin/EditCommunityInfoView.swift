@@ -10,7 +10,8 @@ import SwiftUI
 struct EditCommunityInfoView: View {
     let community: Community
     @Environment(\.dismiss) var dismiss
-    
+    @Environment(\.trashTheme) private var theme
+
     @State private var description: String
     @State private var welcomeMessage: String
     @State private var rules: String
@@ -26,47 +27,44 @@ struct EditCommunityInfoView: View {
         _rules = State(initialValue: "")
         _requiresApproval = State(initialValue: false)
     }
-    
+
     var body: some View {
         Form {
             Section("Community Description") {
-                TextEditor(text: $description)
-                    .frame(height: 100)
+                TrashFormTextEditor(text: $description, minHeight: 100)
             }
-            
+
             Section("Welcome Message") {
-                TextEditor(text: $welcomeMessage)
-                    .frame(height: 80)
+                TrashFormTextEditor(text: $welcomeMessage, minHeight: 80)
                 Text("This message will be shown to new members when they join.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Section("Community Rules") {
-                TextEditor(text: $rules)
-                    .frame(height: 120)
+                TrashFormTextEditor(text: $rules, minHeight: 120)
             }
-            
+
             Section {
-                Toggle("Require Approval to Join", isOn: $requiresApproval)
+                TrashFormToggle(title: "Require Approval to Join", isOn: $requiresApproval)
             } footer: {
                 Text("If enabled, new members must be approved by an admin before joining.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Section {
-                Button(action: saveChanges) {
+                TrashButton(baseColor: .blue, action: saveChanges) {
                     if isSaving {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
-                        }
+                        ProgressView()
+                            .tint(theme.onAccentForeground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
                     } else {
                         Text("Save Changes")
                             .frame(maxWidth: .infinity)
-                            .foregroundColor(.blue)
+                            .trashOnAccentForeground()
+                            .padding(.vertical, 6)
                     }
                 }
                 .disabled(isSaving)
@@ -88,11 +86,21 @@ struct EditCommunityInfoView: View {
             }
             isLoadingSettings = false
         }
-        .alert("Saved Successfully", isPresented: $showSuccessAlert) {
-            Button("OK") { dismiss() }
+        .sheet(isPresented: $showSuccessAlert) {
+            TrashNoticeSheet(
+                title: "Saved Successfully",
+                message: "Community information has been updated.",
+                onClose: {
+                    showSuccessAlert = false
+                    dismiss()
+                }
+            )
+            .presentationDetents([.fraction(0.3), .medium])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(theme.appearance.sheetBackground)
         }
     }
-    
+
     private func saveChanges() {
         isSaving = true
         Task {

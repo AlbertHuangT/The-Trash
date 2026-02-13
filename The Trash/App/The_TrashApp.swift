@@ -5,8 +5,8 @@
 //  Created by Albert Huang on 1/21/26.
 //
 
-import SwiftUI
 import Supabase
+import SwiftUI
 
 @main
 struct The_TrashApp: App {
@@ -40,7 +40,7 @@ struct The_TrashApp: App {
                 if authVM.deepLinkStatus != .idle {
                     DeepLinkOverlay(status: authVM.deepLinkStatus)
                         .transition(.move(edge: .top).combined(with: .opacity))
-                        .zIndex(100) // Always on top
+                        .zIndex(100)  // Always on top
                 }
             }
             .environmentObject(authVM)
@@ -64,7 +64,7 @@ struct The_TrashApp: App {
             .animation(.easeInOut, value: authVM.session)
             .animation(.spring(), value: authVM.deepLinkStatus)
             .onChange(of: authVM.session?.user.id) { _ in
-                trashVM.reset() // Clear Verify state when session changes (logout/login)
+                trashVM.reset()  // Clear Verify state when session changes (logout/login)
             }
         }
     }
@@ -73,6 +73,7 @@ struct The_TrashApp: App {
 // --- 3. Extracted Stylish Overlay Component ---
 struct DeepLinkOverlay: View {
     let status: AuthDeepLinkStatus
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack {
@@ -82,19 +83,19 @@ struct DeepLinkOverlay: View {
                     ProgressView()
                     Text("Verifying email...")
                         .fontWeight(.medium)
-                        .foregroundColor(.primary)
+                        .foregroundColor(theme.palette.textPrimary)
 
                 case .success:
                     TrashIcon(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(theme.semanticSuccess)
                         .font(.title2)
                     Text("Verified! Logging you in...")
                         .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(theme.palette.textPrimary)
 
                 case .failure(let msg):
                     TrashIcon(systemName: "xmark.circle.fill")
-                        .foregroundColor(.red)
+                        .foregroundColor(theme.semanticDanger)
                         .font(.title2)
                     VStack(alignment: .leading) {
                         Text("Verification Failed")
@@ -103,7 +104,7 @@ struct DeepLinkOverlay: View {
                             .font(.caption)
                             .lineLimit(2)
                     }
-                    .foregroundColor(.primary)
+                    .foregroundColor(theme.palette.textPrimary)
 
                 case .idle:
                     EmptyView()
@@ -111,11 +112,11 @@ struct DeepLinkOverlay: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 20)
-            .background(.ultraThinMaterial) // Frosted glass background
+            .background(.ultraThinMaterial)  // Frosted glass background
             .cornerRadius(30)
             .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
         }
-        .frame(maxHeight: .infinity, alignment: .top) // Fixed at the top of the screen
-        .padding(.top, 60) // Avoid notch area
+        .frame(maxHeight: .infinity, alignment: .top)  // Fixed at the top of the screen
+        .padding(.top, 60)  // Avoid notch area
     }
 }

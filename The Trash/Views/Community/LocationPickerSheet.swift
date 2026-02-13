@@ -12,6 +12,7 @@ import CoreLocation
 struct LocationPickerSheet: View {
     @Binding var isPresented: Bool
     @ObservedObject private var userSettings = UserSettings.shared
+    @Environment(\.trashTheme) private var theme
     @State private var searchText = ""
     @State private var isSelecting = false
     @State private var showLocationPermissionAlert = false
@@ -23,23 +24,14 @@ struct LocationPickerSheet: View {
                     useCurrentLocationSection
                 }
 
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField("Search cities...", text: $searchText)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-                .padding(12)
-                .background(Color(.tertiarySystemGroupedBackground))
-                .cornerRadius(12)
+                TrashSearchField(placeholder: "Search cities...", text: $searchText)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
 
                 HStack {
                     Text("Or select a city")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(theme.palette.textSecondary)
                     Spacer()
                 }
                 .padding(.horizontal, 20)
@@ -67,18 +59,27 @@ struct LocationPickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    TrashTextButton(title: "Cancel") {
                         isPresented = false
                     }
                 }
             }
-            .alert("Enable Location Services", isPresented: $showLocationPermissionAlert) {
-                Button("Not Now", role: .cancel) { }
-                Button("Enable") {
-                    userSettings.requestLocationPermission()
-                }
-            } message: {
-                Text("Allow location access to enable distance-based sorting for nearby events. This helps you find events closest to you.")
+            .sheet(isPresented: $showLocationPermissionAlert) {
+                TrashConfirmSheet(
+                    title: "Enable Location Services",
+                    message: "Allow location access to enable distance-based sorting for nearby events. This helps you find events closest to you.",
+                    confirmTitle: "Enable",
+                    confirmColor: theme.accents.blue,
+                    onConfirm: {
+                        userSettings.requestLocationPermission()
+                        showLocationPermissionAlert = false
+                    },
+                    cancelTitle: "Not Now",
+                    onCancel: { showLocationPermissionAlert = false }
+                )
+                .presentationDetents([.fraction(0.36), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
             .onChange(of: userSettings.locationPermissionStatus) { newStatus in
                 if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
@@ -100,13 +101,13 @@ struct LocationPickerSheet: View {
 
     private var useCurrentLocationSection: some View {
         VStack(spacing: 0) {
-            Button(action: handleUseCurrentLocation) {
+            TrashTapArea(action: handleUseCurrentLocation) {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [.blue, .cyan],
+                                    colors: [theme.accents.blue, theme.accents.green],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -115,45 +116,43 @@ struct LocationPickerSheet: View {
 
                         if userSettings.isRequestingLocation {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .progressViewStyle(CircularProgressViewStyle(tint: theme.onAccentForeground))
                         } else {
-                            Image(systemName: "location.fill")
+                            TrashIcon(systemName: "location.fill")
                                 .font(.system(size: 20))
-                                .foregroundColor(.white)
+                                .trashOnAccentForeground()
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Use Current Location")
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(theme.palette.textPrimary)
 
                         Text(locationSubtitle)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(theme.palette.textSecondary)
                     }
 
                     Spacer()
 
                     if userSettings.hasLocationPermission {
-                        Image(systemName: "chevron.right")
+                        TrashIcon(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(theme.palette.textSecondary)
                     } else {
                         Text("Enable")
                             .font(.caption.bold())
-                            .foregroundColor(.white)
+                            .trashOnAccentForeground()
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.blue)
+                            .background(theme.accents.blue)
                             .cornerRadius(12)
                     }
                 }
                 .padding(16)
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(16)
+                .trashCard(cornerRadius: 16)
             }
-            .buttonStyle(.plain)
             .disabled(userSettings.isRequestingLocation)
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -209,39 +208,41 @@ private struct LocationRow: View {
     let isSelected: Bool
     let isDisabled: Bool
     let onTap: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.blue)
-            }
+        TrashTapArea(action: onTap) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(theme.accents.blue.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    TrashIcon(systemName: "mappin.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(theme.accents.blue)
+                }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(location.city)
-                    .font(.subheadline.bold())
-                    .foregroundColor(.primary)
-                Text(location.state)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(location.city)
+                        .font(theme.typography.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.palette.textPrimary)
+                    Text(location.state)
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
+                }
 
-            Spacer()
+                Spacer()
 
-            if isSelected {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
+                if isSelected {
+                    TrashIcon(systemName: "checkmark.circle.fill")
+                        .foregroundColor(theme.accents.green)
+                }
             }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
-        }
+        .disabled(isDisabled)
         .opacity(isDisabled ? 0.6 : 1.0)
     }
 }

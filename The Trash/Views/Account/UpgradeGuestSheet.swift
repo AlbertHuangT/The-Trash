@@ -12,34 +12,41 @@ struct UpgradeGuestSheet: View {
     @Binding var confirmPassword: String
     @Binding var isPresented: Bool
     @State private var localError: String?
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Email")) {
-                    TextField("you@example.com", text: $email)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
+                    TrashFormTextField(
+                        title: "you@example.com",
+                        text: $email,
+                        keyboardType: .emailAddress
+                    )
                 }
 
                 Section(header: Text("Password")) {
-                    SecureField("Password (min 6 characters)", text: $password)
-                    SecureField("Confirm Password", text: $confirmPassword)
+                    TrashFormSecureField(title: "Password (min 6 characters)", text: $password)
+                    TrashFormSecureField(title: "Confirm Password", text: $confirmPassword)
                 }
 
                 Section {
-                    Button {
+                    TrashButton(baseColor: theme.accents.blue, action: {
                         Task { await upgradeGuest() }
-                    } label: {
-                        if authVM.isLoading {
-                            HStack {
+                    }) {
+                        HStack {
+                            if authVM.isLoading {
                                 ProgressView()
-                                Text("Upgrading…")
+                                    .tint(theme.onAccentForeground)
+                                Text("Upgrading...")
+                            } else {
+                                Text("Create Account")
+                                    .fontWeight(.semibold)
                             }
-                        } else {
-                            Text("Create Account")
-                                .fontWeight(.semibold)
                         }
+                        .trashOnAccentForeground()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
                     }
                     .disabled(authVM.isLoading)
                 }
@@ -55,7 +62,7 @@ struct UpgradeGuestSheet: View {
             .navigationTitle("Link Your Account")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    TrashTextButton(title: "Cancel") {
                         resetState()
                         isPresented = false
                     }

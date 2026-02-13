@@ -11,7 +11,7 @@ enum ThemeOption: String, CaseIterable, Identifiable {
         switch self {
         case .neumorphic: return "Neumorphic"
         case .vibrant: return "Vibrant Night"
-        case .ecoSkeuomorphic: return "Eco Skeuomorphism"
+        case .ecoSkeuomorphic: return "Eco-Skeuomorphism"
         }
     }
 
@@ -22,7 +22,7 @@ enum ThemeOption: String, CaseIterable, Identifiable {
         case .vibrant:
             return "High-contrast neon energy."
         case .ecoSkeuomorphic:
-            return "Paper grain, letterpress depth, earth tones."
+            return "Kraft paper depth with die-cut cardboard layers."
         }
     }
 
@@ -41,7 +41,7 @@ enum ThemeOption: String, CaseIterable, Identifiable {
         case .vibrant:
             return [Color(red: 0.96, green: 0.36, blue: 0.67), Color(red: 0.31, green: 0.87, blue: 0.99)]
         case .ecoSkeuomorphic:
-            return [Color(red: 0.83, green: 0.72, blue: 0.55), Color(red: 0.55, green: 0.66, blue: 0.38)]
+            return [Color(red: 0.82, green: 0.73, blue: 0.55), Color(red: 0.31, green: 0.46, blue: 0.27)]
         }
     }
 

@@ -5,13 +5,13 @@
 //  Created by Albert Huang on 2/6/26.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct GrantCreditsView: View {
     let event: CommunityEvent
     @Environment(\.dismiss) var dismiss
-    
+
     @StateObject private var viewModel: GrantCreditsViewModel
     @State private var creditsAmount: Int = 20
     @State private var reason: String = ""
@@ -20,13 +20,14 @@ struct GrantCreditsView: View {
     @State private var isProcessing = false
     @State private var showSuccessAlert = false
     @State private var grantedCount = 0
-    
+    @Environment(\.trashTheme) private var theme
+
     init(event: CommunityEvent) {
         self.event = event
         _viewModel = StateObject(wrappedValue: GrantCreditsViewModel(eventId: event.id))
         _reason = State(initialValue: "Participated in \(event.title)")
     }
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -34,93 +35,113 @@ struct GrantCreditsView: View {
                     Text(event.title)
                         .font(.headline)
                     HStack {
-                        Label("\(viewModel.participants.count) Participants", systemImage: "person.2.fill")
+                        TrashLabel(
+                            "\(viewModel.participants.count) Participants", icon: "person.2.fill")
                         Spacer()
                         if viewModel.isLoading {
                             ProgressView()
                         }
                     }
                 }
-                
+
                 Section("Credits Settings") {
-                    Stepper("Amount per user: \(creditsAmount)", value: $creditsAmount, in: 1...100)
-                    TextField("Reason", text: $reason)
+                    TrashFormStepper(
+                        title: "Amount per user", value: $creditsAmount, range: 1...100)
+                    TrashFormTextField(
+                        title: "Reason", text: $reason, textInputAutocapitalization: .sentences)
                 }
-                
+
                 Section("Recipients") {
-                    Toggle("Select All", isOn: Binding(
-                        get: { selectAll },
-                        set: { newValue in
-                            selectAll = newValue
-                            if newValue {
-                                selectedUserIds = Set(viewModel.participants.map { $0.userId })
-                            } else {
-                                selectedUserIds.removeAll()
+                    TrashFormToggle(
+                        title: "Select All",
+                        isOn: Binding(
+                            get: { selectAll },
+                            set: { newValue in
+                                selectAll = newValue
+                                if newValue {
+                                    selectedUserIds = Set(viewModel.participants.map { $0.userId })
+                                } else {
+                                    selectedUserIds.removeAll()
+                                }
                             }
-                        }
-                    ))
-                    
+                        ))
+
                     if !viewModel.participants.isEmpty {
                         ForEach(viewModel.participants) { participant in
-                            Button(action: { toggleSelection(for: participant.userId) }) {
+                            TrashTapArea(action: { toggleSelection(for: participant.userId) }) {
                                 HStack {
-                                    Image(systemName: selectedUserIds.contains(participant.userId) ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(selectedUserIds.contains(participant.userId) ? .blue : .secondary)
+                                    TrashIcon(
+                                        systemName: selectedUserIds.contains(participant.userId)
+                                            ? "checkmark.circle.fill" : "circle"
+                                    )
+                                    .foregroundColor(
+                                        selectedUserIds.contains(participant.userId)
+                                            ? .blue : .secondary)
 
                                     VStack(alignment: .leading) {
                                         Text(participant.username)
                                             .foregroundColor(.primary)
-                                        Text("Registered: \(participant.registeredAt.formatted(date: .abbreviated, time: .shortened))")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                        Text(
+                                            "Registered: \(participant.registeredAt.formatted(date: .abbreviated, time: .shortened))"
+                                        )
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                     }
                                 }
                             }
-                            .buttonStyle(.plain)
                         }
                     } else {
                         Text("No registered participants yet.")
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 Section {
-                    Button(action: grantCredits) {
+                    TrashButton(baseColor: theme.accents.blue, action: grantCredits) {
                         HStack {
                             if isProcessing {
-                                Spacer()
                                 ProgressView()
-                                Spacer()
+                                    .tint(theme.onAccentForeground)
                             } else {
                                 Text("Grant \(creditsAmount * selectedUserIds.count) Credits Total")
                                     .bold()
-                                    .frame(maxWidth: .infinity)
                             }
                         }
+                        .frame(maxWidth: .infinity)
+                        .trashOnAccentForeground()
+                        .padding(.vertical, 8)
                     }
                     .disabled(selectedUserIds.isEmpty || reason.isEmpty || isProcessing)
-                    .listRowBackground(Color.blue)
-                    .foregroundColor(.white)
                 }
             }
             .navigationTitle("Grant Credits")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    TrashTextButton(title: "Cancel") { dismiss() }
                 }
             }
             .task {
                 await viewModel.loadParticipants()
             }
-            .alert("Success", isPresented: $showSuccessAlert) {
-                Button("Done") { dismiss() }
-            } message: {
-                Text("Successfully granted \(creditsAmount) credits to \(grantedCount) users.")
+            .sheet(isPresented: $showSuccessAlert) {
+                TrashNoticeSheet(
+                    title: "Success",
+                    message:
+                        "Successfully granted \(creditsAmount) credits to \(grantedCount) users.",
+                    buttonTitle: "Done",
+                    onClose: {
+                        showSuccessAlert = false
+                        dismiss()
+                    }
+                )
+                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
         }
     }
-    
+
     private func toggleSelection(for userId: UUID) {
         if selectedUserIds.contains(userId) {
             selectedUserIds.remove(userId)
@@ -132,7 +153,7 @@ struct GrantCreditsView: View {
             }
         }
     }
-    
+
     private func grantCredits() {
         isProcessing = true
         Task {
@@ -141,7 +162,7 @@ struct GrantCreditsView: View {
                 amount: creditsAmount,
                 reason: reason
             )
-            
+
             isProcessing = false
             if result.success {
                 grantedCount = result.grantedCount
@@ -155,14 +176,14 @@ struct GrantCreditsView: View {
 class GrantCreditsViewModel: ObservableObject {
     @Published var participants: [EventParticipantResponse] = []
     @Published var isLoading = false
-    
+
     let eventId: UUID
     private let service = CommunityService.shared
-    
+
     init(eventId: UUID) {
         self.eventId = eventId
     }
-    
+
     func loadParticipants() async {
         isLoading = true
         do {

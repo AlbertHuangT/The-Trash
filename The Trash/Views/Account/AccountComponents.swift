@@ -2,208 +2,121 @@
 //  AccountComponents.swift
 //  The Trash
 //
-//  Extracted from AccountView.swift
-//
 
 import SwiftUI
 
-// MARK: - Enhanced Stat Card (Neumorphic)
-struct EnhancedStatCard: View {
+// MARK: - Stat Card
+struct StatCard: View {
     let title: String
     let value: String
     let icon: String
-    let gradient: [Color]
-
-    @State private var isAnimating = false
+    let color: Color
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 12) {
             ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: gradient,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 40, height: 40)
-                    .shadow(color: gradient.first?.opacity(0.4) ?? .black.opacity(0.4), radius: 6, y: 2)
+                Color.clear
+                    .frame(width: 44, height: 44)
+                    .trashCard(cornerRadius: 12)
 
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .scaleEffect(isAnimating ? 1.1 : 1.0)
+                TrashIcon(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(color)
             }
 
-            Text(value)
-                .font(.title.bold())
-                .foregroundColor(.neuText)
-                .animation(.none, value: value)
-
-            Text(title.uppercased())
-                .font(.caption2)
-                .foregroundColor(.neuSecondaryText)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.neuBackground)
-                .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
-        )
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.6)) {
-                isAnimating = true
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.palette.textPrimary)
+                Text(title)
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textSecondary)
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .trashCard(cornerRadius: 18)
     }
 }
 
-// MARK: - Enhanced Account Row (Neumorphic)
-struct EnhancedAccountRow: View {
+// MARK: - Settings Row
+struct SettingsRow: View {
     let icon: String
-    let gradient: [Color]
     let title: String
-    let status: String
-    let isLinked: Bool
+    var subtitle: String? = nil
+    var showChevron: Bool = true
     let action: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
+        TrashTapArea(action: action) {
+            HStack(spacing: 16) {
                 ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: gradient,
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 32, height: 32)
-                        .shadow(color: gradient[0].opacity(0.3), radius: 4, y: 2)
+                    Color.clear
+                        .frame(width: 36, height: 36)
+                        .trashCard(cornerRadius: 10)
 
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
+                    TrashIcon(systemName: icon)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(theme.accents.blue)
                 }
 
-                Text(title)
-                    .font(.body)
-                    .foregroundColor(.neuText)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(theme.typography.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(theme.palette.textPrimary)
+                    if let subtitle = subtitle {
+                        Text(subtitle)
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.palette.textSecondary)
+                    }
+                }
 
                 Spacer()
 
-                HStack(spacing: 6) {
-                    if isLinked {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(.neuAccentGreen)
-                    }
-
-                    Text(status)
-                        .font(.caption.bold())
-                        .foregroundColor(isLinked ? .neuAccentGreen : .neuAccentBlue)
+                if showChevron {
+                    TrashIcon(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(theme.palette.textSecondary.opacity(0.5))
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .neumorphicConcave(cornerRadius: 10)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.bold())
-                    .foregroundColor(.neuSecondaryText)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+            .trashCard(cornerRadius: 14)
         }
-        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Enhanced Settings Row (Neumorphic)
-struct EnhancedSettingsRow: View {
-    let icon: String
-    let gradient: [Color]
+// MARK: - Section Header
+struct SectionHeader: View {
     let title: String
+
+    var body: some View {
+        TrashSectionTitle(title: title)
+            .padding(.leading, 8)
+            .padding(.top, 4)
+    }
+}
+
+// MARK: - Info Card
+struct InfoCard: View {
+    let content: String
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: gradient,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-                    .shadow(color: gradient[0].opacity(0.3), radius: 4, y: 2)
-
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-
-            Text(title)
-                .font(.body)
-                .foregroundColor(.neuText)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption.bold())
-                .foregroundColor(.neuSecondaryText)
+            TrashIcon(systemName: "info.circle.fill")
+                .foregroundColor(theme.accents.blue)
+            Text(content)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
-    }
-}
-
-struct QuickActionTile: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let gradient: [Color]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: gradient,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 36, height: 36)
-                    .shadow(color: gradient.first?.opacity(0.3) ?? .black.opacity(0.3), radius: 4, y: 2)
-
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-
-            Text(title)
-                .font(.subheadline.bold())
-                .foregroundColor(.neuText)
-
-            Text(subtitle)
-                .font(.caption)
-                .foregroundColor(.neuSecondaryText)
-                .lineLimit(2)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.neuBackground)
-                .shadow(color: .neuDarkShadow, radius: 6, x: 4, y: 4)
-                .shadow(color: .neuLightShadow, radius: 6, x: -3, y: -3)
-        )
+        .padding(16)
+        .trashCard(cornerRadius: 18)
     }
 }

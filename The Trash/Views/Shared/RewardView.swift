@@ -12,7 +12,7 @@ struct RewardView: View {
     var body: some View {
         NavigationView {
             VStack {
-                Image(systemName: "gift.fill")
+                TrashIcon(systemName: "gift.fill")
                     .font(.system(size: 60))
                     .foregroundColor(.orange)
                 Text("Rewards Coming Soon").font(.headline)

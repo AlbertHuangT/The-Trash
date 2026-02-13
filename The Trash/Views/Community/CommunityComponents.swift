@@ -2,8 +2,6 @@
 //  CommunityComponents.swift
 //  The Trash
 //
-//  Extracted from AccountView.swift and CommunityTabView.swift
-//
 
 import SwiftUI
 
@@ -13,15 +11,19 @@ struct CommunitySelectionSheet: View {
     @ObservedObject private var userSettings = UserSettings.shared
     @State private var searchText = ""
     @State private var selectedTab = 0
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                Picker("", selection: $selectedTab) {
-                    Text("Location").tag(0)
-                    Text("My Communities").tag(1)
-                }
-                .pickerStyle(.segmented)
+                TrashSegmentedControl(
+                    options: [
+                        TrashSegmentOption(value: 0, title: "Location", icon: "location.fill"),
+                        TrashSegmentOption(
+                            value: 1, title: "My Communities", icon: "person.3.fill"),
+                    ],
+                    selection: $selectedTab
+                )
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
@@ -31,12 +33,12 @@ struct CommunitySelectionSheet: View {
                     communitiesView
                 }
             }
-            .background(Color.neuBackground)
+            .background(ThemeBackground())
             .navigationTitle("Location & Communities")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    TrashTextButton(title: "Done", variant: .accent) {
                         isPresented = false
                     }
                 }
@@ -46,44 +48,28 @@ struct CommunitySelectionSheet: View {
 
     private var locationSelectionView: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.neuSecondaryText)
-                TextField("Search cities...", text: $searchText)
-                    .foregroundColor(.neuText)
-                    .autocapitalization(.none)
-
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.neuSecondaryText)
-                    }
-                }
-            }
-            .padding(12)
-            .neumorphicConcave(cornerRadius: 12)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
+            TrashSearchField(placeholder: "Search cities...", text: $searchText)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
 
             if let location = userSettings.selectedLocation {
                 HStack {
-                    Image(systemName: "location.fill")
-                        .foregroundColor(.neuAccentBlue)
+                    TrashIcon(systemName: "location.fill")
+                        .foregroundColor(theme.accents.blue)
                     Text("Current: \(location.displayName)")
                         .font(.subheadline)
-                        .foregroundColor(.neuText)
+                        .foregroundColor(theme.palette.textPrimary)
                     Spacer()
-                    Button("Change") {
-                        Task {
-                            await userSettings.selectLocation(nil)
-                        }
+                    TrashPill(
+                        title: "Change", icon: "arrow.triangle.2.circlepath",
+                        color: theme.accents.blue
+                    ) {
+                        Task { await userSettings.selectLocation(nil) }
                     }
-                    .font(.caption)
-                    .foregroundColor(.neuAccentBlue)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Color.neuAccentBlue.opacity(0.1))
+                .trashCard(cornerRadius: 12)
 
                 localCommunitiesSection
             } else {
@@ -99,11 +85,12 @@ struct CommunitySelectionSheet: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(Color.neuBackground)
+                .background(Color.clear)
             }
         }
         .onAppear {
-            if let location = userSettings.selectedLocation, userSettings.communitiesInCity.isEmpty {
+            if let location = userSettings.selectedLocation, userSettings.communitiesInCity.isEmpty
+            {
                 Task {
                     await userSettings.loadCommunitiesForCity(location.city)
                 }
@@ -113,9 +100,7 @@ struct CommunitySelectionSheet: View {
 
     private var localCommunitiesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Communities in \(userSettings.selectedLocation?.city ?? "")")
-                .font(.subheadline.bold())
-                .foregroundColor(.neuText)
+            TrashSectionTitle(title: "Communities in \(userSettings.selectedLocation?.city ?? "")")
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
 
@@ -124,7 +109,7 @@ struct CommunitySelectionSheet: View {
                     ProgressView()
                     Text("Loading communities...")
                         .font(.caption)
-                        .foregroundColor(.neuSecondaryText)
+                        .foregroundColor(theme.palette.textSecondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
@@ -133,12 +118,12 @@ struct CommunitySelectionSheet: View {
 
                 if localCommunities.isEmpty {
                     VStack(spacing: 12) {
-                        Image(systemName: "building.2.crop.circle")
+                        TrashIcon(systemName: "building.2.crop.circle")
                             .font(.system(size: 40))
-                            .foregroundColor(.neuSecondaryText)
+                            .foregroundColor(theme.palette.textSecondary)
                         Text("No communities in this area yet")
                             .font(.subheadline)
-                            .foregroundColor(.neuSecondaryText)
+                            .foregroundColor(theme.palette.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -165,7 +150,7 @@ struct CommunitySelectionSheet: View {
                     ProgressView()
                     Text("Loading your communities...")
                         .font(.caption)
-                        .foregroundColor(.neuSecondaryText)
+                        .foregroundColor(theme.palette.textSecondary)
                     Spacer()
                 }
             } else {
@@ -174,25 +159,22 @@ struct CommunitySelectionSheet: View {
                 if joinedCommunities.isEmpty {
                     VStack(spacing: 16) {
                         Spacer()
-                        Image(systemName: "person.3.fill")
+                        TrashIcon(systemName: "person.3.fill")
                             .font(.system(size: 50))
-                            .foregroundColor(.neuSecondaryText)
+                            .foregroundColor(theme.palette.textSecondary)
                         Text("No Communities Joined")
                             .font(.headline)
-                            .foregroundColor(.neuText)
+                            .foregroundColor(theme.palette.textPrimary)
                         Text("Select a location first, then join\ncommunities in your area")
                             .font(.subheadline)
-                            .foregroundColor(.neuSecondaryText)
+                            .foregroundColor(theme.palette.textSecondary)
                             .multilineTextAlignment(.center)
 
-                        Button(action: { selectedTab = 0 }) {
+                        TrashButton(baseColor: theme.accents.blue, action: { selectedTab = 0 }) {
                             Text("Select Location")
                                 .font(.subheadline.bold())
-                                .foregroundColor(.white)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
-                                .background(Color.neuAccentBlue)
-                                .cornerRadius(20)
                         }
                         Spacer()
                     }
@@ -204,7 +186,7 @@ struct CommunitySelectionSheet: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color.neuBackground)
+                    .background(Color.clear)
                 }
             }
         }
@@ -220,41 +202,39 @@ struct CommunitySelectionSheet: View {
 struct LocationRowView: View {
     let location: UserLocation
     let onSelect: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
-        Button(action: onSelect) {
+        TrashTapArea(action: onSelect) {
             HStack(spacing: 14) {
                 ZStack {
-                    Circle()
-                        .fill(Color.neuBackground)
+                    Color.clear
                         .frame(width: 40, height: 40)
-                        .shadow(color: .neuDarkShadow, radius: 3, x: 2, y: 2)
-                        .shadow(color: .neuLightShadow, radius: 3, x: -2, y: -2)
+                        .trashCard(cornerRadius: 20)
 
-                    Image(systemName: "mappin.circle.fill")
+                    TrashIcon(systemName: "mappin.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.neuAccentBlue)
+                        .foregroundColor(theme.accents.blue)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(location.city)
                         .font(.subheadline.bold())
-                        .foregroundColor(.neuText)
+                        .foregroundColor(theme.palette.textPrimary)
                     Text(location.state)
                         .font(.caption)
-                        .foregroundColor(.neuSecondaryText)
+                        .foregroundColor(theme.palette.textSecondary)
                 }
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
+                TrashIcon(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(.neuSecondaryText)
+                    .foregroundColor(theme.palette.textSecondary)
             }
             .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -267,6 +247,7 @@ struct CommunityCardView: View {
     @State private var showDetail = false
     @State private var showApprovalAlert = false
     @State private var showAdminDashboard = false
+    @Environment(\.trashTheme) private var theme
 
     var isMember: Bool {
         userSettings.isMember(of: community)
@@ -277,45 +258,26 @@ struct CommunityCardView: View {
     }
 
     var body: some View {
-        Button(action: { showDetail = true }) {
+        TrashTapArea(action: { showDetail = true }) {
             VStack(alignment: .leading, spacing: 0) {
-                // 1. Header — neumorphic concave instead of gradient
                 ZStack(alignment: .topLeading) {
-                    Color.neuBackground
+                    // Header Background
+                    Color.clear
                         .frame(height: 120)
+                        .trashCard(cornerRadius: 16)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.neuBackground, lineWidth: 3)
-                                .shadow(color: .neuDarkShadow, radius: 4, x: 3, y: 3)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                .shadow(color: .neuLightShadow, radius: 4, x: -3, y: -3)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                        )
-                        .overlay(
-                            Image(systemName: "person.3.fill")
+                            TrashIcon(systemName: "person.3.fill")
                                 .font(.system(size: 50))
-                                .foregroundColor(.neuSecondaryText.opacity(0.3))
+                                .foregroundColor(theme.palette.textSecondary.opacity(0.25))
                         )
 
-                    // Badges
                     HStack {
                         Spacer()
-
                         if isMember {
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.circle.fill")
-                                Text("Joined")
-                            }
-                            .font(.caption.bold())
-                            .foregroundColor(.neuAccentGreen)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.neuBackground)
-                            .cornerRadius(8)
-                            .shadow(color: .neuDarkShadow, radius: 2, x: 1, y: 1)
-                            .shadow(color: .neuLightShadow, radius: 2, x: -1, y: -1)
+                            pillBadge(
+                                icon: "checkmark.circle.fill", text: "Joined",
+                                foreground: theme.accents.green)
                         }
-
                         if isAdmin {
                             Text("Admin")
                                 .font(.caption.bold())
@@ -325,92 +287,79 @@ struct CommunityCardView: View {
                     .padding(12)
                 }
 
-                // 2. Content
                 VStack(alignment: .leading, spacing: 10) {
-                    // Title & Member Count
                     HStack(alignment: .top) {
                         Text(community.name)
-                            .font(.title3.bold())
+                            .font(theme.typography.headline)
                             .lineLimit(2)
-                            .foregroundColor(.neuText)
+                            .foregroundColor(theme.palette.textPrimary)
 
                         Spacer()
 
                         HStack(spacing: 4) {
-                            Image(systemName: "person.2.fill")
+                            TrashIcon(systemName: "person.2.fill")
                                 .font(.caption)
                             Text("\(community.memberCount)")
-                                .font(.caption.bold())
+                                .font(theme.typography.caption)
+                                .fontWeight(.bold)
                         }
-                        .foregroundColor(.neuSecondaryText)
+                        .foregroundColor(theme.palette.textSecondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .neumorphicConcave(cornerRadius: 6)
+                        .trashCard(cornerRadius: 6)
                     }
 
-                    // Location
                     HStack(spacing: 6) {
-                        Image(systemName: "mappin.and.ellipse")
-                            .foregroundColor(.neuSecondaryText)
+                        TrashIcon(systemName: "mappin.and.ellipse")
+                            .foregroundColor(theme.palette.textSecondary)
                         Text(community.fullLocation)
-                            .font(.subheadline)
-                            .foregroundColor(.neuSecondaryText)
+                            .font(theme.typography.subheadline)
+                            .foregroundColor(theme.palette.textSecondary)
                     }
 
                     if !community.description.isEmpty {
                         Text(community.description)
-                            .font(.subheadline)
-                            .foregroundColor(.neuSecondaryText)
+                            .font(theme.typography.subheadline)
+                            .foregroundColor(theme.palette.textSecondary)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    // Admin Controls
                     if isAdmin {
-                        Color.neuDivider.frame(height: 1)
+                        theme.palette.divider.frame(height: 1)
                             .padding(.vertical, 4)
 
                         HStack(spacing: 12) {
                             if let onCreateEvent = onCreateEvent {
-                                Button(action: onCreateEvent) {
+                                TrashButton(baseColor: theme.accents.green, action: onCreateEvent) {
                                     HStack {
-                                        Image(systemName: "plus.circle.fill")
+                                        TrashIcon(systemName: "plus.circle.fill")
                                         Text("Event")
                                     }
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
                                     .padding(.vertical, 8)
-                                    .background(Color.neuAccentGreen)
-                                    .cornerRadius(8)
+                                    .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.plain)
                             }
 
-                            Button(action: { showAdminDashboard = true }) {
+                            TrashButton(
+                                baseColor: theme.semanticWarning.opacity(0.18),
+                                action: { showAdminDashboard = true }
+                            ) {
                                 HStack {
-                                    Image(systemName: "gearshape.fill")
+                                    TrashIcon(systemName: "gearshape.fill")
                                     Text("Manage")
                                 }
-                                .font(.subheadline.bold())
-                                .foregroundColor(.orange)
-                                .frame(maxWidth: .infinity)
+                                .foregroundColor(theme.semanticWarning)
                                 .padding(.vertical, 8)
-                                .background(Color.orange.opacity(0.1))
-                                .cornerRadius(8)
+                                .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
                 .padding(16)
-                .background(Color.neuBackground)
             }
-            .cornerRadius(16)
-            .shadow(color: .neuDarkShadow, radius: 8, x: 5, y: 5)
-            .shadow(color: .neuLightShadow, radius: 8, x: -4, y: -4)
+            .trashCard(cornerRadius: 16)
         }
-        .buttonStyle(.plain)
         .sheet(isPresented: $showDetail) {
             CommunityDetailView(community: community)
         }
@@ -418,7 +367,18 @@ struct CommunityCardView: View {
             CommunityAdminDashboard(community: community)
         }
     }
+
+    @ViewBuilder
+    private func pillBadge(icon: String, text: String, foreground: Color) -> some View {
+        HStack(spacing: 4) {
+            TrashIcon(systemName: icon)
+            Text(text)
+        }
+        .font(theme.typography.caption)
+        .fontWeight(.bold)
+        .foregroundColor(foreground)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .trashCard(cornerRadius: 8)
+    }
 }
-
-// MARK: - Joined Community Row
-

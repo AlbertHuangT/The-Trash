@@ -13,9 +13,15 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: theme.spacing.lg) {
-            Image(systemName: icon)
-                .font(theme.typography.heroIcon)
-                .foregroundColor(theme.palette.textSecondary)
+            ZStack {
+                Color.clear
+                    .trashCard(cornerRadius: theme.spacing.xl)
+                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
+                
+                TrashIcon(systemName: icon)
+                    .font(theme.typography.heroIcon)
+                    .foregroundColor(theme.palette.textSecondary)
+            }
             Text(title)
                 .font(theme.typography.headline)
                 .foregroundColor(theme.palette.textPrimary)

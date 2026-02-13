@@ -11,6 +11,7 @@ struct SpeedSortView: View {
     @StateObject private var viewModel = SpeedSortViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.trashTheme) private var theme
     @State private var pulseAnimation = false
     // showAccountSheet managed by ContentView via environment
 
@@ -18,7 +19,7 @@ struct SpeedSortView: View {
 
     var body: some View {
         ZStack {
-            Color.neuBackground
+            ThemeBackground()
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -76,7 +77,7 @@ struct SpeedSortView: View {
                 extraContent: AnyView(
                     // Score pill
                     HStack(spacing: 4) {
-                        Image(systemName: "bolt.fill")
+                        TrashIcon(systemName: "bolt.fill")
                         Text("\(viewModel.sessionScore)")
                             .fontWeight(.black)
                     }
@@ -138,16 +139,13 @@ struct SpeedSortView: View {
 
     private var errorBanner: some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(theme.semanticWarning)
             Text(viewModel.errorMessage)
                 .font(.subheadline)
                 .foregroundColor(.neuText)
             Spacer()
-            Button(action: { viewModel.showError = false }) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.neuSecondaryText)
-            }
+            TrashIconButton(icon: "xmark", action: { viewModel.showError = false })
         }
         .padding(16)
         .background(
@@ -178,18 +176,29 @@ struct SpeedSortView: View {
     // MARK: - Summary
 
     private var speedSortSummary: some View {
-        let accuracy = viewModel.questions.count > 0 ?
-            Int(Double(viewModel.correctCount) / Double(viewModel.questions.count) * 100) : 0
+        let accuracy =
+            viewModel.questions.count > 0
+            ? Int(Double(viewModel.correctCount) / Double(viewModel.questions.count) * 100) : 0
 
         return GenericSessionSummaryView(
             title: "Speed Sort Complete!",
             icon: "bolt.fill",
             isGoodResult: accuracy >= 70,
             stats: [
-                (icon: "flame.fill", title: "Total Score", value: "+\(viewModel.sessionScore)", color: .neuAccentOrange),
-                (icon: "checkmark.circle.fill", title: "Correct", value: "\(viewModel.correctCount)/\(viewModel.questions.count)", color: .neuAccentGreen),
+                (
+                    icon: "flame.fill", title: "Total Score", value: "+\(viewModel.sessionScore)",
+                    color: .neuAccentOrange
+                ),
+                (
+                    icon: "checkmark.circle.fill", title: "Correct",
+                    value: "\(viewModel.correctCount)/\(viewModel.questions.count)",
+                    color: .neuAccentGreen
+                ),
                 (icon: "percent", title: "Accuracy", value: "\(accuracy)%", color: .neuAccentBlue),
-                (icon: "bolt.fill", title: "Best Combo", value: "\(viewModel.maxCombo)x", color: .neuAccentPurple)
+                (
+                    icon: "bolt.fill", title: "Best Combo", value: "\(viewModel.maxCombo)x",
+                    color: .neuAccentPurple
+                ),
             ],
             onPlayAgain: {
                 Task { await viewModel.startNewSession() }

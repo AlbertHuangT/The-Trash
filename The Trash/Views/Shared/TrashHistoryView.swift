@@ -124,7 +124,7 @@ struct TrashHistoryView: View {
                     .shadow(color: .neuDarkShadow, radius: 10, x: 5, y: 5)
                     .shadow(color: .neuLightShadow, radius: 10, x: -5, y: -5)
                 
-                Image(systemName: "clock.arrow.circlepath")
+                TrashIcon(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 50))
                     .foregroundColor(.neuSecondaryText)
             }
@@ -156,7 +156,7 @@ struct HistoryRow: View {
                     image.resizable().scaledToFill()
                 case .failure:
                     Rectangle().fill(Color.red.opacity(0.1))
-                        .overlay(Image(systemName: "photo.badge.exclamationmark").foregroundColor(.red))
+                        .overlay(TrashIcon(systemName: "photo.badge.exclamationmark").foregroundColor(.red))
                 @unknown default:
                     EmptyView()
                 }
@@ -191,7 +191,7 @@ struct HistoryRow: View {
                         Text(item.predictedCategory)
                             .strikethrough()
                             .foregroundColor(.red.opacity(0.7))
-                        Image(systemName: "arrow.right")
+                        TrashIcon(systemName: "arrow.right")
                             .font(.caption2)
                             .foregroundColor(.neuSecondaryText)
                         Text(item.userCorrection)

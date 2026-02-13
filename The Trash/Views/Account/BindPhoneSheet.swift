@@ -18,13 +18,23 @@ struct BindPhoneSheet: View {
             Form {
                 if !authVM.showOTPInput {
                     Section {
-                        TextField("Phone (+1...)", text: $inputPhone).keyboardType(.phonePad)
-                        Button("Send Code") { Task { await authVM.bindPhone(phone: inputPhone) } }
+                        TrashFormTextField(
+                            title: "Phone (+1...)",
+                            text: $inputPhone,
+                            keyboardType: .phonePad
+                        )
+                        TrashTextButton(title: "Send Code", variant: .accent) {
+                            Task { await authVM.bindPhone(phone: inputPhone) }
+                        }
                     }
                 } else {
                     Section {
-                        TextField("Code", text: $inputOTP).keyboardType(.numberPad)
-                        Button("Verify & Link") {
+                        TrashFormTextField(
+                            title: "Code",
+                            text: $inputOTP,
+                            keyboardType: .numberPad
+                        )
+                        TrashTextButton(title: "Verify & Link", variant: .accent) {
                             Task {
                                 await authVM.confirmBindPhone(phone: inputPhone, token: inputOTP)
                                 if authVM.errorMessage == nil {
@@ -46,7 +56,7 @@ struct BindPhoneSheet: View {
             .navigationTitle("Bind Phone")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    TrashTextButton(title: "Cancel") {
                         authVM.showOTPInput = false
                         authVM.errorMessage = nil
                         inputOTP = ""

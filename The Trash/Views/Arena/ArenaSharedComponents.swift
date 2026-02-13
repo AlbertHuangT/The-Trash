@@ -18,6 +18,7 @@ struct SharedQuizCard: View {
     let isSubmitting: Bool
     let onAnswer: (String) -> Void
     var timerView: AnyView? = nil
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         GeometryReader { geo in
@@ -30,16 +31,21 @@ struct SharedQuizCard: View {
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
                 } else {
-                    Rectangle()
-                        .fill(Color.neuBackground)
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(theme.palette.card)
+                        .overlay(
+                            PaperTextureView(baseColor: theme.palette.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 28))
+                                .opacity(theme.visualStyle == .ecoPaper ? 0.4 : 0)
+                        )
                         .overlay(
                             VStack(spacing: 16) {
                                 ProgressView()
                                     .scaleEffect(1.5)
-                                    .tint(.neuAccentBlue)
+                                    .tint(theme.accents.blue)
                                 Text("Loading image...")
                                     .font(.subheadline)
-                                    .foregroundColor(.neuSecondaryText)
+                                    .foregroundColor(theme.palette.textSecondary)
                             }
                         )
                 }
@@ -52,13 +58,13 @@ struct SharedQuizCard: View {
                     }
 
                     HStack {
-                        Image(systemName: "questionmark.circle.fill")
+                        TrashIcon(systemName: "questionmark.circle.fill")
                             .font(.title3)
                         Text("What type of trash is this?")
                             .font(.headline)
                         Spacer()
                     }
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 20)
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -92,13 +98,21 @@ struct SharedQuizCard: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 28))
-            .shadow(color: .neuDarkShadow, radius: 15, x: 8, y: 8)
-            .shadow(color: .neuLightShadow, radius: 10, x: -5, y: -5)
+            .shadow(color: cardShadowDark, radius: 15, x: 8, y: 8)
+            .shadow(color: cardShadowLight, radius: 10, x: -5, y: -5)
         }
     }
 
     private var isButtonDisabled: Bool {
         showCorrect || showWrong || isSubmitting || image == nil
+    }
+
+    private var cardShadowDark: Color {
+        theme.visualStyle == .ecoPaper ? Color.black.opacity(0.2) : theme.shadows.dark
+    }
+
+    private var cardShadowLight: Color {
+        theme.visualStyle == .ecoPaper ? Color.white.opacity(0.45) : theme.shadows.light
     }
 }
 
@@ -110,18 +124,19 @@ struct ArenaStatusBar: View {
     let showProgress: Bool
     @Binding var pulseAnimation: Bool
     var extraContent: AnyView? = nil
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
             // Progress pill
             if showProgress, let progressText = progressText {
                 HStack(spacing: 6) {
-                    Image(systemName: "number.circle.fill")
+                    TrashIcon(systemName: "number.circle.fill")
                         .font(.caption)
                     Text(progressText)
                         .font(.subheadline.bold())
                 }
-                .foregroundColor(.neuAccentBlue)
+                .foregroundColor(theme.accents.blue)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .neumorphicConcave(cornerRadius: 20)
@@ -130,12 +145,12 @@ struct ArenaStatusBar: View {
             // Combo pill
             if comboCount >= 2 {
                 HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
+                    TrashIcon(systemName: "flame.fill")
                     Text("\(comboCount)x")
                         .fontWeight(.black)
                 }
                 .font(.subheadline)
-                .foregroundColor(.neuAccentOrange)
+                .foregroundColor(theme.accents.orange)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .neumorphicConcave(cornerRadius: 20)
@@ -165,28 +180,14 @@ struct ArenaHeader: View {
     @EnvironmentObject var authViewModel: AuthViewModel
 
     var body: some View {
-        HStack(alignment: .center) {
+        TrashPageHeader(title: title, leading: {
             if showBackButton {
-                Button(action: { onBack?() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.title2.bold())
-                        .foregroundColor(.neuText)
-                }
+                TrashIconButton(icon: "chevron.left", action: { onBack?() })
             }
-
-            Text(title)
-                .font(.system(size: 34, weight: .bold, design: .default))
-                .foregroundColor(.neuText)
-
-            Spacer()
-
+        }) {
             AccountButton()
                 .environmentObject(authViewModel)
         }
-        .padding(.leading, 16)
-        .padding(.trailing, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
     }
 }
 
@@ -201,29 +202,30 @@ struct GenericSessionSummaryView: View {
     var onViewLeaderboard: (() -> Void)? = nil
 
     @State private var showStats = false
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: 28) {
             // Trophy/result icon
             ZStack {
                 Circle()
-                    .fill(Color.neuBackground)
+                    .fill(theme.palette.background)
                     .frame(width: 140, height: 140)
-                    .shadow(color: .neuDarkShadow, radius: 12, x: 8, y: 8)
-                    .shadow(color: .neuLightShadow, radius: 12, x: -6, y: -6)
+                    .shadow(color: theme.shadows.dark, radius: 12, x: 8, y: 8)
+                    .shadow(color: theme.shadows.light, radius: 12, x: -6, y: -6)
 
-                Image(systemName: isGoodResult ? "trophy.fill" : "flag.checkered")
+                TrashIcon(systemName: isGoodResult ? "trophy.fill" : "flag.checkered")
                     .font(.system(size: 70))
                     .foregroundStyle(
                         isGoodResult ?
-                        LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom) :
-                        LinearGradient(colors: [.gray, .neuSecondaryText], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(colors: [theme.accents.green, theme.accents.orange], startPoint: .top, endPoint: .bottom) :
+                        LinearGradient(colors: [.gray, theme.palette.textSecondary], startPoint: .top, endPoint: .bottom)
                     )
             }
 
             Text(title)
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .foregroundColor(.neuText)
+                .foregroundColor(theme.palette.textPrimary)
 
             // Stats Cards
             VStack(spacing: 14) {
@@ -234,9 +236,9 @@ struct GenericSessionSummaryView: View {
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.neuBackground)
-                    .shadow(color: .neuDarkShadow, radius: 10, x: 6, y: 6)
-                    .shadow(color: .neuLightShadow, radius: 10, x: -5, y: -5)
+                    .fill(theme.palette.background)
+                    .shadow(color: theme.shadows.dark, radius: 10, x: 6, y: 6)
+                    .shadow(color: theme.shadows.light, radius: 10, x: -5, y: -5)
             )
             .padding(.horizontal)
             .opacity(showStats ? 1 : 0)
@@ -244,36 +246,31 @@ struct GenericSessionSummaryView: View {
 
             HStack(spacing: 16) {
                 // Play Again Button
-                Button(action: onPlayAgain) {
+                TrashButton(baseColor: theme.accents.blue, cornerRadius: 999, action: onPlayAgain) {
                     HStack(spacing: 10) {
-                        Image(systemName: "arrow.clockwise")
+                        TrashIcon(systemName: "arrow.clockwise")
                         Text("Play Again")
                     }
                     .font(.headline.bold())
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 32)
                     .padding(.vertical, 16)
-                    .background(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .clipShape(Capsule())
-                    .shadow(color: .neuAccentBlue.opacity(0.4), radius: 12, y: 6)
                 }
 
                 if let onLeaderboard = onViewLeaderboard {
-                    Button(action: onLeaderboard) {
+                    TrashTapArea(action: onLeaderboard) {
                         HStack(spacing: 10) {
-                            Image(systemName: "chart.bar.fill")
+                            TrashIcon(systemName: "chart.bar.fill")
                             Text("Ranks")
                         }
                         .font(.headline.bold())
-                        .foregroundColor(.neuAccentBlue)
+                        .foregroundColor(theme.accents.blue)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 16)
-                        .background(Color.neuBackground)
+                        .background(theme.palette.background)
                         .clipShape(Capsule())
-                        .shadow(color: .neuDarkShadow, radius: 8, x: 4, y: 4)
-                        .shadow(color: .neuLightShadow, radius: 8, x: -3, y: -3)
+                        .shadow(color: theme.shadows.dark, radius: 8, x: 4, y: 4)
+                        .shadow(color: theme.shadows.light, radius: 8, x: -3, y: -3)
                     }
                 }
             }
@@ -292,6 +289,7 @@ struct GenericSessionSummaryView: View {
 struct TimerBarView: View {
     let timeRemaining: Double
     let totalTime: Double
+    @Environment(\.trashTheme) private var theme
 
     var progress: Double {
         guard totalTime > 0 else { return 0 }
@@ -307,19 +305,19 @@ struct TimerBarView: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack {
-                Image(systemName: "timer")
+                TrashIcon(systemName: "timer")
                     .font(.caption.bold())
                 Text(String(format: "%.1fs", timeRemaining))
                     .font(.subheadline.bold().monospacedDigit())
                 Spacer()
             }
-            .foregroundColor(.white)
+            .foregroundColor(timerTextColor)
             .padding(.horizontal, 20)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.3))
+                        .fill(timerTrackColor)
                         .frame(height: 6)
 
                     Capsule()
@@ -330,6 +328,26 @@ struct TimerBarView: View {
             }
             .frame(height: 6)
             .padding(.horizontal, 20)
+        }
+    }
+
+    private var timerTextColor: Color {
+        switch theme.visualStyle {
+        case .vibrantGlass:
+            return .white
+        case .neumorphic, .ecoPaper:
+            return theme.palette.textPrimary
+        }
+    }
+
+    private var timerTrackColor: Color {
+        switch theme.visualStyle {
+        case .vibrantGlass:
+            return theme.palette.textSecondary.opacity(0.32)
+        case .neumorphic:
+            return theme.palette.divider.opacity(0.75)
+        case .ecoPaper:
+            return theme.palette.divider.opacity(0.9)
         }
     }
 }

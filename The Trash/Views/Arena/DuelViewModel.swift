@@ -5,17 +5,17 @@
 //  Orchestrates the 1v1 duel flow: lobby → countdown → quiz → results.
 //
 
-import SwiftUI
 import Combine
 import Supabase
+import SwiftUI
 
 enum DuelPhase {
     case loading
-    case lobby          // Waiting for opponent
-    case countdown      // 3-2-1 countdown
-    case playing        // Answering questions
+    case lobby  // Waiting for opponent
+    case countdown  // 3-2-1 countdown
+    case playing  // Answering questions
     case waitingResult  // Done answering, waiting for opponent
-    case results        // Final results
+    case results  // Final results
     case error(String)
 }
 
@@ -224,7 +224,9 @@ class DuelViewModel: ObservableObject {
 
     private var _bothReadyCancellable: AnyCancellable?
     private var _opponentReadyCancellable: AnyCancellable?
+    private var _opponentFinishedCancellable: AnyCancellable?
     private var countdownTask: Task<Void, Never>?
+    private var finalizeRetryTask: Task<Void, Never>?
 
     // MARK: - Countdown
 
@@ -294,7 +296,7 @@ class DuelViewModel: ObservableObject {
             if currentQuestionIndex + 1 >= questions.count {
                 // Done answering
                 await realtimeManager.sendFinished(totalCorrect: correctCount, totalScore: myScore)
-                await completeAndShowResults()
+                await beginResultFinalization()
             } else {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     currentQuestionIndex += 1
@@ -307,26 +309,75 @@ class DuelViewModel: ObservableObject {
 
     // MARK: - Complete
 
-    private func completeAndShowResults() async {
+    private func beginResultFinalization() async {
         phase = .waitingResult
 
+        if realtimeManager.opponentFinished {
+            await completeChallengeWithRetry()
+            return
+        }
+
+        _opponentFinishedCancellable?.cancel()
+        _opponentFinishedCancellable = realtimeManager.$opponentFinished
+            .removeDuplicates()
+            .filter { $0 }
+            .first()
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.completeChallengeWithRetry()
+                }
+            }
+
+        finalizeRetryTask?.cancel()
+        finalizeRetryTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard let self else { return }
+            guard case .waitingResult = self.phase else { return }
+            await self.completeChallengeWithRetry(
+                maxAttempts: 45, retryDelayNanoseconds: 1_000_000_000)
+        }
+    }
+
+    private func completeChallengeWithRetry(
+        maxAttempts: Int = 30, retryDelayNanoseconds: UInt64 = 1_200_000_000
+    ) async {
         guard let cid = challengeId else { return }
 
-        do {
-            let response = try await arenaService.completeChallenge(challengeId: cid)
-            self.result = response
-            phase = .results
-        } catch {
-            phase = .error("Failed to complete challenge: \(error.localizedDescription)")
+        for attempt in 0..<maxAttempts {
+            do {
+                let response = try await arenaService.completeChallenge(challengeId: cid)
+                self.result = response
+                phase = .results
+                return
+            } catch {
+                let isRetryable = isCompletionPendingError(error)
+                let hasMoreAttempts = attempt < (maxAttempts - 1)
+
+                if isRetryable && hasMoreAttempts {
+                    try? await Task.sleep(nanoseconds: retryDelayNanoseconds)
+                    continue
+                }
+
+                phase = .error("Failed to complete challenge: \(error.localizedDescription)")
+                return
+            }
         }
+    }
+
+    private func isCompletionPendingError(_ error: Error) -> Bool {
+        let message = error.localizedDescription.lowercased()
+        return message.contains("not complete yet") || message.contains("not ready for completion")
+            || message.contains("challenge is not active")
     }
 
     // MARK: - Cleanup
 
     func cleanup() async {
         countdownTask?.cancel()
+        finalizeRetryTask?.cancel()
         _bothReadyCancellable?.cancel()
         _opponentReadyCancellable?.cancel()
+        _opponentFinishedCancellable?.cancel()
         await realtimeManager.disconnect()
     }
 

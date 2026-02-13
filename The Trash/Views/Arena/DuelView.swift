@@ -11,7 +11,7 @@ struct DuelView: View {
     @StateObject private var viewModel = DuelViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
-    // showAccountSheet managed by ContentView via environment
+    @Environment(\.trashTheme) private var theme
 
     let challengeId: UUID?
     let opponentId: UUID?
@@ -21,8 +21,7 @@ struct DuelView: View {
 
     var body: some View {
         ZStack {
-            Color.neuBackground
-                .ignoresSafeArea()
+            ThemeBackground()
 
             VStack(spacing: 0) {
                 ArenaHeader(
@@ -82,13 +81,15 @@ struct DuelView: View {
             Text("\(viewModel.countdownValue)")
                 .font(.system(size: 120, weight: .black, design: .rounded))
                 .foregroundStyle(
-                    LinearGradient(colors: [.red, .orange], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(
+                        colors: [theme.semanticDanger, theme.semanticWarning], startPoint: .top,
+                        endPoint: .bottom)
                 )
                 .scaleEffect(1.2)
                 .animation(.spring(response: 0.3), value: viewModel.countdownValue)
             Text("Get Ready!")
                 .font(.title2.bold())
-                .foregroundColor(.neuSecondaryText)
+                .foregroundColor(theme.palette.textSecondary)
             Spacer()
         }
     }
@@ -130,24 +131,30 @@ struct DuelView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("You")
                     .font(.caption.bold())
-                    .foregroundColor(.neuAccentBlue)
-                ProgressView(value: Double(viewModel.currentQuestionIndex), total: Double(max(1, viewModel.questions.count)))
-                    .tint(.neuAccentBlue)
+                    .foregroundColor(theme.accents.blue)
+                ProgressView(
+                    value: Double(viewModel.currentQuestionIndex),
+                    total: Double(max(1, viewModel.questions.count))
+                )
+                .tint(theme.accents.blue)
                 Text("\(viewModel.correctCount) correct")
                     .font(.caption2)
-                    .foregroundColor(.neuSecondaryText)
+                    .foregroundColor(theme.palette.textSecondary)
             }
 
             // Opponent
             VStack(alignment: .trailing, spacing: 4) {
                 Text(viewModel.opponentDisplayName)
                     .font(.caption.bold())
-                    .foregroundColor(.red)
-                ProgressView(value: Double(viewModel.realtimeManager.opponentProgress), total: Double(max(1, viewModel.questions.count)))
-                    .tint(.red)
+                    .foregroundColor(theme.semanticDanger)
+                ProgressView(
+                    value: Double(viewModel.realtimeManager.opponentProgress),
+                    total: Double(max(1, viewModel.questions.count))
+                )
+                .tint(theme.semanticDanger)
                 Text("\(viewModel.realtimeManager.opponentCorrect) correct")
                     .font(.caption2)
-                    .foregroundColor(.neuSecondaryText)
+                    .foregroundColor(theme.palette.textSecondary)
             }
         }
         .padding(.horizontal, 16)
@@ -162,7 +169,7 @@ struct DuelView: View {
             EnhancedLoadingView()
             Text("Waiting for opponent to finish...")
                 .font(.headline)
-                .foregroundColor(.neuSecondaryText)
+                .foregroundColor(theme.palette.textSecondary)
             Spacer()
         }
     }
@@ -179,26 +186,21 @@ struct DuelView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "exclamationmark.triangle.fill")
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 50))
-                .foregroundColor(.orange)
+                .foregroundColor(theme.semanticWarning)
 
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.neuSecondaryText)
+                .foregroundColor(theme.palette.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
-            Button(action: { dismiss() }) {
+            TrashButton(baseColor: theme.accents.blue, action: { dismiss() }) {
                 Text("Go Back")
                     .font(.headline.bold())
-                    .foregroundColor(.white)
                     .padding(.horizontal, 32)
                     .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .clipShape(Capsule())
             }
 
             Spacer()
@@ -211,64 +213,71 @@ struct DuelView: View {
 struct DuelLobbyContent: View {
     @ObservedObject var viewModel: DuelViewModel
     let challengeId: UUID?
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
 
-            ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 120, height: 120)
-                    .shadow(color: .neuDarkShadow, radius: 10, x: 6, y: 6)
-                    .shadow(color: .neuLightShadow, radius: 10, x: -4, y: -4)
-
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.red, .orange], startPoint: .top, endPoint: .bottom)
-                    )
-            }
+            badgeCircle(icon: "person.2.fill", iconColor: theme.semanticWarning)
 
             VStack(spacing: 8) {
                 Text("Waiting for opponent...")
-                    .font(.title2.bold())
-                    .foregroundColor(.neuText)
+                    .font(theme.typography.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.palette.textPrimary)
 
                 if viewModel.realtimeManager.opponentReady {
                     Text("Opponent is ready!")
-                        .font(.subheadline)
-                        .foregroundColor(.neuAccentGreen)
+                        .font(theme.typography.subheadline)
+                        .foregroundColor(theme.accents.green)
                 }
 
                 if !viewModel.realtimeManager.myReady {
                     Text("Loading questions...")
-                        .font(.caption)
-                        .foregroundColor(.neuSecondaryText)
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
                 }
             }
 
             // Share link
             if let cid = challengeId ?? viewModel.challengeId {
                 let shareURL = URL(string: "thetrash://challenge/\(cid.uuidString)")!
-                ShareLink(item: shareURL, subject: Text("Trash Arena Challenge"), message: Text("I challenge you to a 1v1 Trash Arena duel! Tap to accept:")) {
+                ShareLink(
+                    item: shareURL, subject: Text("Trash Arena Challenge"),
+                    message: Text("I challenge you to a 1v1 Trash Arena duel! Tap to accept:")
+                ) {
                     HStack(spacing: 10) {
-                        Image(systemName: "square.and.arrow.up")
+                        TrashIcon(systemName: "square.and.arrow.up")
                         Text("Share Challenge Link")
                     }
-                    .font(.headline.bold())
-                    .foregroundColor(.white)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 32)
                     .padding(.vertical, 16)
-                    .background(
-                        LinearGradient(colors: [.red, .orange], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .clipShape(Capsule())
-                    .shadow(color: .red.opacity(0.4), radius: 12, y: 6)
+                    .trashCard(cornerRadius: 28)  // Using card as background for better texture
                 }
             }
 
             Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func badgeCircle(icon: String, iconColor: Color) -> some View {
+        ZStack {
+            Color.clear
+                .frame(width: 120, height: 120)
+                .trashCard(cornerRadius: 60)
+
+            if theme.visualStyle == .ecoPaper {
+                StampedIcon(systemName: icon, size: 50, weight: .semibold, color: iconColor)
+            } else {
+                TrashIcon(systemName: icon)
+                    .font(.system(size: 50))
+                    .foregroundColor(iconColor)
+            }
         }
     }
 }
@@ -280,6 +289,7 @@ struct DuelResultsContent: View {
     let onDismiss: () -> Void
 
     @State private var showStats = false
+    @Environment(\.trashTheme) private var theme
 
     var iWon: Bool {
         viewModel.result?.winnerId == viewModel.myUserId
@@ -301,7 +311,8 @@ struct DuelResultsContent: View {
 
     var myPoints: Int {
         guard let result = viewModel.result else { return 0 }
-        return viewModel.isChallenger ? (result.challengerPoints ?? 0) : (result.opponentPoints ?? 0)
+        return viewModel.isChallenger
+            ? (result.challengerPoints ?? 0) : (result.opponentPoints ?? 0)
     }
 
     var body: some View {
@@ -309,87 +320,58 @@ struct DuelResultsContent: View {
             Spacer()
 
             // Crown or tie icon
-            ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 120, height: 120)
-                    .shadow(color: .neuDarkShadow, radius: 10, x: 6, y: 6)
-                    .shadow(color: .neuLightShadow, radius: 10, x: -4, y: -4)
-
-                if isTie {
-                    Image(systemName: "equal.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.orange)
-                } else if iWon {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(
-                            LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
-                        )
-                } else {
-                    Image(systemName: "flag.checkered")
-                        .font(.system(size: 60))
-                        .foregroundColor(.neuSecondaryText)
-                }
-            }
+            resultBadge
 
             Text(isTie ? "It's a Tie!" : (iWon ? "You Win!" : "You Lose"))
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .foregroundColor(.neuText)
+                .font(theme.typography.title)
+                .fontWeight(.heavy)
+                .foregroundColor(theme.palette.textPrimary)
 
             // Score comparison
             HStack(spacing: 32) {
                 VStack(spacing: 4) {
                     Text("You")
-                        .font(.caption.bold())
-                        .foregroundColor(.neuSecondaryText)
+                        .font(theme.typography.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.palette.textSecondary)
                     Text("\(myFinalScore)")
                         .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundColor(.neuAccentBlue)
+                        .foregroundColor(theme.accents.blue)
                 }
 
                 Text("vs")
-                    .font(.title3.bold())
-                    .foregroundColor(.neuSecondaryText)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.palette.textSecondary)
 
                 VStack(spacing: 4) {
                     Text(viewModel.opponentDisplayName)
-                        .font(.caption.bold())
-                        .foregroundColor(.neuSecondaryText)
+                        .font(theme.typography.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.palette.textSecondary)
                     Text("\(opponentFinalScore)")
                         .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundColor(.red)
+                        .foregroundColor(theme.semanticDanger)
                 }
             }
             .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.neuBackground)
-                    .shadow(color: .neuDarkShadow, radius: 8, x: 5, y: 5)
-                    .shadow(color: .neuLightShadow, radius: 8, x: -4, y: -4)
-            )
+            .trashCard(cornerRadius: 20)
             .opacity(showStats ? 1 : 0)
             .offset(y: showStats ? 0 : 20)
 
             Text("+\(myPoints) points earned")
-                .font(.headline)
-                .foregroundColor(.neuAccentGreen)
+                .font(theme.typography.headline)
+                .foregroundColor(theme.accents.green)
                 .opacity(showStats ? 1 : 0)
 
-            Button(action: onDismiss) {
+            TrashButton(baseColor: theme.accents.blue, action: onDismiss) {
                 HStack(spacing: 10) {
-                    Image(systemName: "arrow.left")
+                    TrashIcon(systemName: "arrow.left")
                     Text("Back to Arena")
                 }
-                .font(.headline.bold())
-                .foregroundColor(.white)
+                .font(theme.typography.button)
                 .padding(.horizontal, 32)
                 .padding(.vertical, 16)
-                .background(
-                    LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                )
-                .clipShape(Capsule())
-                .shadow(color: .neuAccentBlue.opacity(0.4), radius: 12, y: 6)
             }
 
             Spacer()
@@ -398,6 +380,42 @@ struct DuelResultsContent: View {
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.3)) {
                 showStats = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var resultBadge: some View {
+        ZStack {
+            Color.clear
+                .frame(width: 120, height: 120)
+                .trashCard(cornerRadius: 60)
+
+            if theme.visualStyle == .ecoPaper {
+                if isTie {
+                    StampedIcon(
+                        systemName: "equal.circle.fill", size: 60, weight: .semibold,
+                        color: theme.semanticWarning)
+                } else if iWon {
+                    StampedIcon(
+                        systemName: "crown.fill", size: 60, weight: .semibold,
+                        color: theme.semanticHighlight)
+                } else {
+                    StampedIcon(
+                        systemName: "flag.checkered", size: 60, weight: .semibold,
+                        color: theme.palette.textSecondary)
+                }
+            } else {
+                if isTie {
+                    TrashIcon(systemName: "equal.circle.fill").font(.system(size: 60))
+                        .foregroundColor(theme.semanticWarning)
+                } else if iWon {
+                    TrashIcon(systemName: "crown.fill").font(.system(size: 60)).foregroundColor(
+                        theme.semanticHighlight)
+                } else {
+                    TrashIcon(systemName: "flag.checkered").font(.system(size: 60)).foregroundColor(
+                        theme.palette.textSecondary)
+                }
             }
         }
     }

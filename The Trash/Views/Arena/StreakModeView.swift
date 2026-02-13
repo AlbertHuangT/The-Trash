@@ -11,6 +11,7 @@ struct StreakModeView: View {
     @StateObject private var viewModel = StreakModeViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.trashTheme) private var theme
     @State private var pulseAnimation = false
     // showAccountSheet managed by ContentView via environment
     @State private var showLeaderboard = false
@@ -19,7 +20,7 @@ struct StreakModeView: View {
 
     var body: some View {
         ZStack {
-            Color.neuBackground
+            ThemeBackground()
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -53,7 +54,7 @@ struct StreakModeView: View {
             HStack(spacing: 12) {
                 // Streak count pill
                 HStack(spacing: 6) {
-                    Image(systemName: "arrow.up.right")
+                    TrashIcon(systemName: "arrow.up.right")
                         .font(.caption.bold())
                     Text("Streak: \(viewModel.streakCount)")
                         .font(.subheadline.bold())
@@ -65,7 +66,7 @@ struct StreakModeView: View {
 
                 // Points pill
                 HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
+                    TrashIcon(systemName: "flame.fill")
                     Text("+\(viewModel.sessionScore)")
                         .fontWeight(.black)
                 }
@@ -119,10 +120,11 @@ struct StreakModeView: View {
             } else {
                 // Ran out of questions (unlikely but handle)
                 VStack(spacing: 16) {
-                    Image(systemName: "trophy.circle.fill")
+                    TrashIcon(systemName: "trophy.circle.fill")
                         .font(.system(size: 60))
                         .foregroundStyle(
-                            LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
+                            LinearGradient(
+                                colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
                         )
                     Text("No more questions!")
                         .font(.title2.bold())
@@ -138,16 +140,13 @@ struct StreakModeView: View {
 
     private var errorBanner: some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(theme.semanticWarning)
             Text(viewModel.errorMessage)
                 .font(.subheadline)
                 .foregroundColor(.neuText)
             Spacer()
-            Button(action: { viewModel.showError = false }) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.neuSecondaryText)
-            }
+            TrashIconButton(icon: "xmark", action: { viewModel.showError = false })
         }
         .padding(16)
         .background(
@@ -168,8 +167,14 @@ struct StreakModeView: View {
             icon: "arrow.up.right",
             isGoodResult: viewModel.streakCount >= 5,
             stats: [
-                (icon: "arrow.up.right", title: "Streak", value: "\(viewModel.streakCount)", color: .neuAccentPurple),
-                (icon: "flame.fill", title: "Points Earned", value: "+\(viewModel.sessionScore)", color: .neuAccentOrange)
+                (
+                    icon: "arrow.up.right", title: "Streak", value: "\(viewModel.streakCount)",
+                    color: .neuAccentPurple
+                ),
+                (
+                    icon: "flame.fill", title: "Points Earned", value: "+\(viewModel.sessionScore)",
+                    color: .neuAccentOrange
+                ),
             ],
             onPlayAgain: {
                 Task { await viewModel.startNewSession() }

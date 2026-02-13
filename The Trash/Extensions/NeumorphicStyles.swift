@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 // MARK: - Neumorphic Colors (Theme Driven)
@@ -52,7 +51,9 @@ extension Color {
     }
 }
 
-// MARK: - Neumorphic Shadow Modifier
+// MARK: - Smart Theme Modifiers
+// These modifiers now delegate to the theme's rendering engine
+
 struct NeumorphicShadow: ViewModifier {
     var isPressed: Bool = false
     var cornerRadius: CGFloat?
@@ -60,28 +61,35 @@ struct NeumorphicShadow: ViewModifier {
 
     func body(content: Content) -> some View {
         let radius = cornerRadius ?? theme.corners.large
-        content
-            .background(
-                Group {
-                    if isPressed {
-                        RoundedRectangle(cornerRadius: radius)
-                            .fill(Color.neuBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: radius)
-                                    .stroke(Color.neuBackground, lineWidth: 4)
-                                    .shadow(color: .neuDarkShadow, radius: 10, x: 5, y: 5)
-                                    .clipShape(RoundedRectangle(cornerRadius: radius))
-                                    .shadow(color: .neuLightShadow, radius: 10, x: -5, y: -5)
-                                    .clipShape(RoundedRectangle(cornerRadius: radius))
-                            )
-                    } else {
-                        RoundedRectangle(cornerRadius: radius)
-                            .fill(Color.neuBackground)
-                            .shadow(color: .neuDarkShadow, radius: 10, x: 10, y: 10)
-                            .shadow(color: .neuLightShadow, radius: 10, x: -5, y: -5)
+        
+        if theme.visualStyle == .neumorphic {
+            // Original Neumorphic Logic
+            content
+                .background(
+                    Group {
+                        if isPressed {
+                            RoundedRectangle(cornerRadius: radius)
+                                .fill(theme.palette.background)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: radius)
+                                        .stroke(theme.palette.background, lineWidth: 4)
+                                        .shadow(color: theme.shadows.dark, radius: 10, x: 5, y: 5)
+                                        .clipShape(RoundedRectangle(cornerRadius: radius))
+                                        .shadow(color: theme.shadows.light, radius: 10, x: -4, y: -4)
+                                        .clipShape(RoundedRectangle(cornerRadius: radius))
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: radius)
+                                .fill(theme.palette.background)
+                                .shadow(color: theme.shadows.dark, radius: 10, x: 10, y: 10)
+                                .shadow(color: theme.shadows.light, radius: 10, x: -6, y: -6)
+                        }
                     }
-                }
-            )
+                )
+        } else {
+            // Delegate to Theme for other styles
+            theme.cardSurface(cornerRadius: radius, content: content)
+        }
     }
 }
 
@@ -92,54 +100,47 @@ struct NeumorphicConcave: ViewModifier {
 
     func body(content: Content) -> some View {
         let radius = cornerRadius ?? theme.corners.medium
-        content
-            .background(
-                RoundedRectangle(cornerRadius: radius)
-                    .fill(Color.neuBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: radius)
-                            .stroke(Color.neuBackground, lineWidth: 2)
-                            .shadow(color: .neuDarkShadow, radius: 3, x: 3, y: 3)
-                            .clipShape(RoundedRectangle(cornerRadius: radius))
-                            .shadow(color: .neuLightShadow, radius: 3, x: -3, y: -3)
-                            .clipShape(RoundedRectangle(cornerRadius: radius))
-                    )
-            )
+        
+        if theme.visualStyle == .neumorphic {
+            content
+                .background(
+                    RoundedRectangle(cornerRadius: radius)
+                        .fill(theme.palette.background)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: radius)
+                                .stroke(theme.palette.background, lineWidth: 2)
+                                .shadow(color: theme.shadows.dark, radius: 3, x: 3, y: 3)
+                                .clipShape(RoundedRectangle(cornerRadius: radius))
+                                .shadow(color: theme.shadows.light, radius: 3, x: -3, y: -3)
+                                .clipShape(RoundedRectangle(cornerRadius: radius))
+                        )
+                )
+        } else {
+            // For non-neumorphic themes, concave often means a subtle dark overlay or just the card surface
+            theme.cardSurface(cornerRadius: radius, content: content)
+                .brightness(-0.05)
+        }
     }
 }
 
 // MARK: - Neumorphic Button Style
 struct NeumorphicButtonStyle: ButtonStyle {
     var cornerRadius: CGFloat?
-    var color: Color = .neuBackground
+    var color: Color?
 
     func makeBody(configuration: Configuration) -> some View {
-        let radius = cornerRadius ?? ThemeManager.shared.currentTheme.corners.large
-        configuration.label
-            .padding()
-            .background(
-                Group {
-                    if configuration.isPressed {
-                        RoundedRectangle(cornerRadius: radius)
-                            .fill(color)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: radius)
-                                    .stroke(color, lineWidth: 4)
-                                    .shadow(color: Color.neuDarkShadow, radius: 4, x: 5, y: 5)
-                                    .clipShape(RoundedRectangle(cornerRadius: radius))
-                                    .shadow(color: Color.neuLightShadow, radius: 4, x: -2, y: -2)
-                                    .clipShape(RoundedRectangle(cornerRadius: radius))
-                            )
-                    } else {
-                        RoundedRectangle(cornerRadius: radius)
-                            .fill(color)
-                            .shadow(color: Color.neuDarkShadow, radius: 10, x: 10, y: 10)
-                            .shadow(color: Color.neuLightShadow, radius: 10, x: -5, y: -5)
-                    }
-                }
-            )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
+        // We can't use @Environment in ButtonStyle easily without some tricks, 
+        // so we use the singleton as a fallback or pass it in.
+        // For simplicity here, we use the singleton for global styles.
+        let theme = ThemeManager.shared.currentTheme
+        let radius = cornerRadius ?? theme.corners.large
+        
+        theme.buttonSurface(
+            isPressed: configuration.isPressed,
+            cornerRadius: radius,
+            baseColor: color,
+            content: configuration.label
+        )
     }
 }
 
@@ -157,7 +158,6 @@ extension View {
         let paddingValue = padding ?? ThemeManager.shared.currentTheme.spacing.lg
         return self
             .padding(paddingValue)
-            .background(Color.neuBackground)
             .neumorphic()
     }
 }

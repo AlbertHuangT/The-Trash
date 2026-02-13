@@ -40,8 +40,12 @@ class CommunityService {
 
     /// 加入社区（支持审批流程）
     func joinCommunity(_ communityId: String, message: String? = nil) async throws -> JoinCommunityResult {
+        let params = JoinCommunityParams(
+            p_community_id: communityId,
+            p_message: message
+        )
         return try await client
-            .rpc("apply_to_join_community", params: ["p_community_id": communityId])
+            .rpc("apply_to_join_community", params: params)
             .execute()
             .value
     }
@@ -233,7 +237,7 @@ class CommunityService {
             .rpc("create_event", params: params)
             .execute()
             .value
-        return (result.success, result.message, nil)
+        return (result.success, result.message, result.eventId)
     }
 
     // MARK: - Admin Methods

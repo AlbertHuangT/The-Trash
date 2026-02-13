@@ -10,6 +10,7 @@ import SwiftUI
 struct CreateCommunitySheet: View {
     @Binding var isPresented: Bool
     @ObservedObject private var userSettings = UserSettings.shared
+    @Environment(\.trashTheme) private var theme
 
     @State private var name = ""
     @State private var description = ""
@@ -32,7 +33,10 @@ struct CreateCommunitySheet: View {
     private var communityId: String {
         let slug = name.lowercased()
             .replacingOccurrences(of: " ", with: "-")
-            .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-")).inverted)
+            .components(
+                separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+                    .inverted
+            )
             .joined()
         return "\(slug)-\(selectedCity.lowercased())"
     }
@@ -43,26 +47,26 @@ struct CreateCommunitySheet: View {
                 Section {
                     if userSettings.selectedLocation != nil {
                         HStack(spacing: 12) {
-                            Image(systemName: "mappin.circle.fill")
+                            TrashIcon(systemName: "mappin.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .foregroundColor(theme.semanticInfo)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(selectedCity)
                                     .font(.headline)
                                 Text(selectedState)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(theme.palette.textSecondary)
                             }
                             Spacer()
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
+                            TrashIcon(systemName: "checkmark.circle.fill")
+                                .foregroundColor(theme.semanticSuccess)
                         }
                     } else {
                         HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
+                            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(theme.semanticWarning)
                             Text("Please select a location first")
-                                .foregroundColor(.secondary)
+                                .foregroundColor(theme.palette.textSecondary)
                         }
                     }
                 } header: {
@@ -72,30 +76,33 @@ struct CreateCommunitySheet: View {
                 }
 
                 Section("Community Details") {
-                    TextField("Community Name", text: $name)
-                        .textInputAutocapitalization(.words)
-
-                    TextField("Description (optional)", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
+                    TrashFormTextField(
+                        title: "Community Name",
+                        text: $name,
+                        textInputAutocapitalization: .words
+                    )
+                    TrashFormTextEditor(text: $description, minHeight: 80)
                 }
 
                 Section {
                     HStack(spacing: 12) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.blue)
-                        Text("You can create up to 3 communities. You will automatically become the admin of this community.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        TrashIcon(systemName: "info.circle.fill")
+                            .foregroundColor(theme.accents.blue)
+                        Text(
+                            "You can create up to 3 communities. You will automatically become the admin of this community."
+                        )
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
                     }
                 }
 
                 if let error = errorMessage {
                     Section {
                         HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.red)
+                            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(theme.semanticDanger)
                             Text(error)
-                                .foregroundColor(.red)
+                                .foregroundColor(theme.semanticDanger)
                         }
                     }
                 }
@@ -104,28 +111,29 @@ struct CreateCommunitySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    TrashTextButton(title: "Cancel") {
                         isPresented = false
                     }
                     .disabled(isLoading)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: createCommunity) {
-                        if isLoading {
-                            ProgressView()
-                        } else {
-                            Text("Create")
-                        }
-                    }
-                    .disabled(!canCreate || isLoading)
+                    TrashTextButton(title: "Create", variant: .accent, action: createCommunity)
+                        .overlay { if isLoading { ProgressView() } }
+                        .disabled(!canCreate || isLoading)
                 }
             }
-            .alert("Community Created!", isPresented: $showSuccessAlert) {
-                Button("OK") {
-                    isPresented = false
-                }
-            } message: {
-                Text("Your community \"\(name)\" has been created. You are now the admin!")
+            .sheet(isPresented: $showSuccessAlert) {
+                TrashNoticeSheet(
+                    title: "Community Created!",
+                    message: "Your community \"\(name)\" has been created. You are now the admin!",
+                    onClose: {
+                        showSuccessAlert = false
+                        isPresented = false
+                    }
+                )
+                .presentationDetents([.fraction(0.32), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
         }
     }

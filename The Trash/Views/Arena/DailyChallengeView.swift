@@ -14,12 +14,13 @@ struct DailyChallengeView: View {
     @State private var pulseAnimation = false
     // showAccountSheet managed by ContentView via environment
     @State private var showLeaderboard = false
+    @Environment(\.trashTheme) private var theme
 
     let categories = ["Recyclable", "Compostable", "Landfill", "Hazardous"]
 
     var body: some View {
         ZStack {
-            Color.neuBackground
+            ThemeBackground()
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -74,10 +75,14 @@ struct DailyChallengeView: View {
                     .shadow(color: .neuDarkShadow, radius: 12, x: 8, y: 8)
                     .shadow(color: .neuLightShadow, radius: 12, x: -6, y: -6)
 
-                Image(systemName: "checkmark.seal.fill")
+                TrashIcon(systemName: "checkmark.seal.fill")
                     .font(.system(size: 70))
                     .foregroundStyle(
-                        LinearGradient(colors: [.green, .mint], startPoint: .top, endPoint: .bottom)
+                        LinearGradient(
+                            colors: [theme.semanticSuccess, theme.accents.blue],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
             }
 
@@ -86,30 +91,37 @@ struct DailyChallengeView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.neuText)
 
-                Text("You've already completed today's challenge.\nCome back tomorrow for a new one!")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.neuSecondaryText)
-                    .padding(.horizontal, 40)
+                Text(
+                    "You've already completed today's challenge.\nCome back tomorrow for a new one!"
+                )
+                .multilineTextAlignment(.center)
+                .foregroundColor(.neuSecondaryText)
+                .padding(.horizontal, 40)
 
                 Text("Resets at midnight UTC")
                     .font(.caption)
                     .foregroundColor(.neuSecondaryText.opacity(0.7))
             }
 
-            Button(action: { showLeaderboard = true }) {
+            TrashButton(
+                baseColor: theme.semanticSuccess, cornerRadius: 999,
+                action: { showLeaderboard = true }
+            ) {
                 HStack(spacing: 10) {
-                    Image(systemName: "chart.bar.fill")
+                    TrashIcon(systemName: "chart.bar.fill")
                     Text("View Leaderboard")
                 }
                 .font(.headline.bold())
-                .foregroundColor(.white)
+                .trashOnAccentForeground()
                 .padding(.horizontal, 32)
                 .padding(.vertical, 16)
                 .background(
-                    LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(
+                        colors: [theme.semanticSuccess, theme.accents.blue], startPoint: .leading,
+                        endPoint: .trailing)
                 )
                 .clipShape(Capsule())
-                .shadow(color: .green.opacity(0.4), radius: 12, y: 6)
+                .shadow(color: theme.semanticSuccess.opacity(0.4), radius: 12, y: 6)
             }
 
             Spacer()
@@ -129,13 +141,13 @@ struct DailyChallengeView: View {
                 extraContent: AnyView(
                     // Timer pill
                     HStack(spacing: 4) {
-                        Image(systemName: "timer")
+                        TrashIcon(systemName: "timer")
                         Text(viewModel.formattedTime)
                             .fontWeight(.bold)
                             .monospacedDigit()
                     }
                     .font(.subheadline)
-                    .foregroundColor(.neuAccentGreen)
+                    .foregroundColor(theme.semanticSuccess)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .neumorphicConcave(cornerRadius: 20)
@@ -185,16 +197,13 @@ struct DailyChallengeView: View {
 
     private var errorBanner: some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(theme.semanticWarning)
             Text(viewModel.errorMessage)
                 .font(.subheadline)
                 .foregroundColor(.neuText)
             Spacer()
-            Button(action: { viewModel.showError = false }) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.neuSecondaryText)
-            }
+            TrashIconButton(icon: "xmark", action: { viewModel.showError = false })
         }
         .padding(16)
         .background(
@@ -210,18 +219,32 @@ struct DailyChallengeView: View {
     // MARK: - Summary
 
     private var dailySummary: some View {
-        let accuracy = viewModel.questions.count > 0 ?
-            Int(Double(viewModel.correctCount) / Double(viewModel.questions.count) * 100) : 0
+        let accuracy =
+            viewModel.questions.count > 0
+            ? Int(Double(viewModel.correctCount) / Double(viewModel.questions.count) * 100) : 0
 
         return GenericSessionSummaryView(
             title: "Daily Complete!",
             icon: "calendar.circle.fill",
             isGoodResult: accuracy >= 70,
             stats: [
-                (icon: "flame.fill", title: "Score", value: "+\(viewModel.sessionScore)", color: .neuAccentOrange),
-                (icon: "checkmark.circle.fill", title: "Correct", value: "\(viewModel.correctCount)/\(viewModel.questions.count)", color: .neuAccentGreen),
-                (icon: "timer", title: "Time", value: viewModel.formattedTime, color: .neuAccentBlue),
-                (icon: "bolt.fill", title: "Best Combo", value: "\(viewModel.maxCombo)x", color: .neuAccentPurple)
+                (
+                    icon: "flame.fill", title: "Score", value: "+\(viewModel.sessionScore)",
+                    color: .neuAccentOrange
+                ),
+                (
+                    icon: "checkmark.circle.fill", title: "Correct",
+                    value: "\(viewModel.correctCount)/\(viewModel.questions.count)",
+                    color: .neuAccentGreen
+                ),
+                (
+                    icon: "timer", title: "Time", value: viewModel.formattedTime,
+                    color: .neuAccentBlue
+                ),
+                (
+                    icon: "bolt.fill", title: "Best Combo", value: "\(viewModel.maxCombo)x",
+                    color: .neuAccentPurple
+                ),
             ],
             onPlayAgain: {
                 // Can't play again — show leaderboard instead

@@ -2,42 +2,48 @@
 //  AccountButton.swift
 //  The Trash
 //
-//  Extracted from AccountView.swift
-//
 
 import SwiftUI
 
-// MARK: - Environment Key for shared account sheet state
-private struct AccountSheetKey: EnvironmentKey {
+// ✨ 在本地重新定义以确保类型推断成功
+private struct ShowAccountSheetKey: EnvironmentKey {
     static let defaultValue: Binding<Bool> = .constant(false)
 }
 
 extension EnvironmentValues {
     var showAccountSheet: Binding<Bool> {
-        get { self[AccountSheetKey.self] }
-        set { self[AccountSheetKey.self] = newValue }
+        get { self[ShowAccountSheetKey.self] }
+        set { self[ShowAccountSheetKey.self] = newValue }
     }
 }
 
-// MARK: - Account Button (Neumorphic Style)
+// MARK: - Account Button
 struct AccountButton: View {
     @Environment(\.showAccountSheet) private var showAccountSheet
     @EnvironmentObject var authVM: AuthViewModel
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         Button {
             showAccountSheet.wrappedValue = true
         } label: {
             ZStack {
-                Circle()
-                    .fill(Color.neuBackground)
-                    .frame(width: 45, height: 45)
-                    .shadow(color: .neuDarkShadow, radius: 5, x: 4, y: 4)
-                    .shadow(color: .neuLightShadow, radius: 5, x: -3, y: -3)
+                Color.clear
+                    .frame(width: 42, height: 42)
+                    .trashCard(cornerRadius: 21)
 
-                Image(systemName: authVM.isAnonymous ? "person.fill" : "person.crop.circle.fill")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(.neuAccentBlue)
+                if theme.visualStyle == .ecoPaper {
+                    StampedIcon(
+                        systemName: authVM.isAnonymous ? "person.fill" : "person.crop.circle.fill",
+                        size: 22,
+                        weight: .bold,
+                        color: theme.accents.blue
+                    )
+                } else {
+                    TrashIcon(systemName: authVM.isAnonymous ? "person.fill" : "person.crop.circle.fill")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(theme.accents.blue)
+                }
             }
         }
     }

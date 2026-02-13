@@ -5,9 +5,9 @@
 //  Created by Albert Huang on 2/3/26.
 //
 
-import SwiftUI
-import Supabase
 import Combine
+import Supabase
+import SwiftUI
 
 // MARK: - Models
 struct QuizQuestion: Identifiable, Codable {
@@ -77,7 +77,8 @@ class ArenaViewModel: ObservableObject {
                 let credits: Int
             }
 
-            let profile: ProfileCredits = try await client
+            let profile: ProfileCredits =
+                try await client
                 .from("profiles")
                 .select("credits")
                 .eq("id", value: userId)
@@ -98,7 +99,8 @@ class ArenaViewModel: ObservableObject {
         resetSession()
 
         do {
-            let fetchedQuestions: [QuizQuestion] = try await client
+            let fetchedQuestions: [QuizQuestion] =
+                try await client
                 .rpc("get_quiz_questions")
                 .execute()
                 .value
@@ -147,7 +149,8 @@ class ArenaViewModel: ObservableObject {
                 }
             }
         } catch {
-            print("⚠️ [Arena] Failed to load image for \(question.id): \(error.localizedDescription)")
+            print(
+                "⚠️ [Arena] Failed to load image for \(question.id): \(error.localizedDescription)")
         }
     }
 
@@ -198,7 +201,8 @@ class ArenaViewModel: ObservableObject {
             }
 
             do {
-                try await client.rpc("increment_credits", params: ["amount": pointsEarned]).execute()
+                try await client.rpc("increment_credits", params: ["amount": pointsEarned])
+                    .execute()
             } catch {
                 totalCredits -= pointsEarned
                 sessionScore -= pointsEarned
@@ -249,6 +253,7 @@ class ArenaViewModel: ObservableObject {
 struct ArenaView: View {
     @StateObject private var viewModel = ArenaViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.trashTheme) private var theme
     @State private var pulseAnimation = false
     // showAccountSheet managed by ContentView via environment
 
@@ -256,13 +261,13 @@ struct ArenaView: View {
 
     var body: some View {
         ZStack {
-            // Neumorphic Background
-            Color.neuBackground
-                .ignoresSafeArea()
+            ThemeBackground()
 
             VStack(spacing: 0) {
-                // Header
-                appStoreHeader(title: "Arena")
+                TrashPageHeader(title: "Arena") {
+                    AccountButton()
+                        .environmentObject(authViewModel)
+                }
 
                 if authViewModel.isAnonymous {
                     EnhancedAnonymousRestrictionView()
@@ -273,33 +278,19 @@ struct ArenaView: View {
         }
         .task {
             pulseAnimation = true
-            if !authViewModel.isAnonymous && viewModel.questions.isEmpty && !viewModel.sessionCompleted {
+            if !authViewModel.isAnonymous && viewModel.questions.isEmpty
+                && !viewModel.sessionCompleted
+            {
                 await viewModel.fetchQuestions()
             }
         }
         .onReceive(authViewModel.$session) { _ in
-            if !authViewModel.isAnonymous && viewModel.questions.isEmpty && !viewModel.sessionCompleted {
+            if !authViewModel.isAnonymous && viewModel.questions.isEmpty
+                && !viewModel.sessionCompleted
+            {
                 Task { await viewModel.fetchQuestions() }
             }
         }
-    }
-
-    // MARK: - Header
-    private func appStoreHeader(title: String) -> some View {
-        HStack(alignment: .center) {
-            Text(title)
-                .font(.system(size: 34, weight: .bold, design: .default))
-                .foregroundColor(.neuText)
-
-            Spacer()
-
-            AccountButton()
-                .environmentObject(authViewModel)
-        }
-        .padding(.leading, 16)
-        .padding(.trailing, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
     }
 
     var mainArenaContent: some View {
@@ -345,7 +336,7 @@ struct ArenaView: View {
             // Progress pill
             if !viewModel.questions.isEmpty && !viewModel.sessionCompleted {
                 HStack(spacing: 6) {
-                    Image(systemName: "number.circle.fill")
+                    TrashIcon(systemName: "number.circle.fill")
                         .font(.caption)
                     Text(viewModel.progressText)
                         .font(.subheadline.bold())
@@ -359,17 +350,19 @@ struct ArenaView: View {
             // Combo pill
             if viewModel.comboCount >= 2 {
                 HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
+                    TrashIcon(systemName: "flame.fill")
                     Text("\(viewModel.comboCount)x")
                         .fontWeight(.black)
                 }
                 .font(.subheadline)
-                .foregroundColor(.neuAccentOrange)
+                .foregroundColor(theme.semanticWarning)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .neumorphicConcave(cornerRadius: 20)
                 .scaleEffect(pulseAnimation ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: pulseAnimation)
+                .animation(
+                    .easeInOut(duration: 0.5).repeatForever(autoreverses: true),
+                    value: pulseAnimation)
             }
 
             Spacer()
@@ -382,16 +375,13 @@ struct ArenaView: View {
     // Error banner
     var errorBanner: some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(theme.semanticWarning)
             Text(viewModel.errorMessage)
                 .font(.subheadline)
                 .foregroundColor(.neuText)
             Spacer()
-            Button(action: { viewModel.showError = false }) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.neuSecondaryText)
-            }
+            TrashIconButton(icon: "xmark", action: { viewModel.showError = false })
         }
         .padding(16)
         .background(
@@ -449,10 +439,12 @@ struct EnhancedAnonymousRestrictionView: View {
                     .shadow(color: .neuDarkShadow, radius: 12, x: 8, y: 8)
                     .shadow(color: .neuLightShadow, radius: 12, x: -6, y: -6)
 
-                Image(systemName: "lock.shield.fill")
+                TrashIcon(systemName: "lock.shield.fill")
                     .font(.system(size: 70))
                     .foregroundStyle(
-                        LinearGradient(colors: [.neuAccentBlue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        LinearGradient(
+                            colors: [.neuAccentBlue, .purple], startPoint: .topLeading,
+                            endPoint: .bottomTrailing)
                     )
             }
 
@@ -461,10 +453,12 @@ struct EnhancedAnonymousRestrictionView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.neuText)
 
-                Text("Trash Arena is only available for registered users.\n\nLink your Email or Phone in Account to participate and earn rewards!")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.neuSecondaryText)
-                    .padding(.horizontal, 40)
+                Text(
+                    "Trash Arena is only available for registered users.\n\nLink your Email or Phone in Account to participate and earn rewards!"
+                )
+                .multilineTextAlignment(.center)
+                .foregroundColor(.neuSecondaryText)
+                .padding(.horizontal, 40)
             }
 
             Spacer()
@@ -488,7 +482,9 @@ struct EnhancedLoadingView: View {
                 Circle()
                     .trim(from: 0, to: 0.7)
                     .stroke(
-                        LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing),
+                        LinearGradient(
+                            colors: [.neuAccentBlue, .cyan], startPoint: .leading,
+                            endPoint: .trailing),
                         style: StrokeStyle(lineWidth: 4, lineCap: .round)
                     )
                     .frame(width: 70, height: 70)
@@ -499,7 +495,7 @@ struct EnhancedLoadingView: View {
                         }
                     }
 
-                Image(systemName: "flame.fill")
+                TrashIcon(systemName: "flame.fill")
                     .font(.system(size: 30))
                     .foregroundColor(.neuAccentBlue)
             }
@@ -514,6 +510,7 @@ struct EnhancedLoadingView: View {
 // Empty state view
 struct EnhancedEmptyStateView: View {
     var onRefresh: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: 24) {
@@ -524,10 +521,14 @@ struct EnhancedEmptyStateView: View {
                     .shadow(color: .neuDarkShadow, radius: 10, x: 6, y: 6)
                     .shadow(color: .neuLightShadow, radius: 10, x: -5, y: -5)
 
-                Image(systemName: "trophy.circle.fill")
+                TrashIcon(systemName: "trophy.circle.fill")
                     .font(.system(size: 60))
                     .foregroundStyle(
-                        LinearGradient(colors: [.orange, .yellow], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        LinearGradient(
+                            colors: [theme.semanticWarning, theme.semanticHighlight],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
             }
 
@@ -540,17 +541,18 @@ struct EnhancedEmptyStateView: View {
                     .foregroundColor(.neuSecondaryText)
             }
 
-            Button(action: onRefresh) {
+            TrashButton(baseColor: theme.semanticInfo, cornerRadius: 999, action: onRefresh) {
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.clockwise")
+                    TrashIcon(systemName: "arrow.clockwise")
                     Text("Refresh Quiz")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .trashOnAccentForeground()
                 .padding(.horizontal, 32)
                 .padding(.vertical, 14)
                 .background(
-                    LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(
+                        colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
                 )
                 .clipShape(Capsule())
                 .shadow(color: .neuAccentBlue.opacity(0.4), radius: 10, y: 5)
@@ -597,16 +599,17 @@ struct EnhancedQuizCard: View {
                 // Answer buttons area
                 VStack(spacing: 16) {
                     HStack {
-                        Image(systemName: "questionmark.circle.fill")
+                        TrashIcon(systemName: "questionmark.circle.fill")
                             .font(.title3)
                         Text("What type of trash is this?")
                             .font(.headline)
                         Spacer()
                     }
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
                     .padding(.horizontal, 20)
 
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12)
+                    {
                         ForEach(categories, id: \.self) { category in
                             CategoryAnswerButton(
                                 category: category,
@@ -652,6 +655,7 @@ struct CategoryAnswerButton: View {
     let category: String
     let isDisabled: Bool
     let onTap: () -> Void
+    @Environment(\.trashTheme) private var theme
 
     var categoryColor: Color {
         switch category {
@@ -674,13 +678,16 @@ struct CategoryAnswerButton: View {
     }
 
     var body: some View {
-        Button(action: {
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-            onTap()
-        }) {
+        TrashTapArea(
+            haptics: true,
+            action: {
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                onTap()
+            }
+        ) {
             HStack(spacing: 8) {
-                Image(systemName: categoryIcon)
+                TrashIcon(systemName: categoryIcon)
                     .font(.system(size: 14, weight: .semibold))
                 Text(category)
                     .font(.subheadline.bold())
@@ -689,7 +696,7 @@ struct CategoryAnswerButton: View {
             .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white.opacity(isDisabled ? 0.6 : 0.95))
+                    .fill(theme.palette.card.opacity(isDisabled ? 0.6 : 0.95))
             )
             .foregroundColor(categoryColor)
         }
@@ -712,7 +719,7 @@ struct EnhancedCorrectFeedback: View {
             )
 
             VStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill")
+                TrashIcon(systemName: "checkmark.circle.fill")
                     .font(.system(size: 70))
                     .scaleEffect(scale)
                 Text("Correct!")
@@ -721,7 +728,7 @@ struct EnhancedCorrectFeedback: View {
                     .font(.headline)
                     .opacity(0.8)
             }
-            .foregroundColor(.white)
+            .trashOnAccentForeground()
             .onAppear {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                     scale = 1.0
@@ -747,7 +754,7 @@ struct EnhancedWrongFeedback: View {
             )
 
             VStack(spacing: 12) {
-                Image(systemName: "xmark.circle.fill")
+                TrashIcon(systemName: "xmark.circle.fill")
                     .font(.system(size: 70))
                     .offset(x: shake ? -10 : 0)
                 Text("Wrong!")
@@ -756,7 +763,7 @@ struct EnhancedWrongFeedback: View {
                     .font(.headline)
                     .opacity(0.9)
             }
-            .foregroundColor(.white)
+            .trashOnAccentForeground()
             .onAppear {
                 withAnimation(.easeInOut(duration: 0.1).repeatCount(4, autoreverses: true)) {
                     shake = true
@@ -810,6 +817,7 @@ struct EnhancedComboOverlay: View {
 // Combo break overlay
 struct EnhancedComboBreakOverlay: View {
     @State private var opacity: Double = 1
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: 12) {
@@ -817,7 +825,7 @@ struct EnhancedComboBreakOverlay: View {
                 .font(.system(size: 70))
             Text("Combo Lost!")
                 .font(.title.bold())
-                .foregroundColor(.red)
+                .foregroundColor(theme.semanticDanger)
         }
         .padding(40)
         .background(
@@ -855,12 +863,15 @@ struct EnhancedSessionSummaryView: View {
                     .shadow(color: .neuDarkShadow, radius: 12, x: 8, y: 8)
                     .shadow(color: .neuLightShadow, radius: 12, x: -6, y: -6)
 
-                Image(systemName: accuracy >= 70 ? "trophy.fill" : "flag.checkered")
+                TrashIcon(systemName: accuracy >= 70 ? "trophy.fill" : "flag.checkered")
                     .font(.system(size: 70))
                     .foregroundStyle(
-                        accuracy >= 70 ?
-                        LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom) :
-                        LinearGradient(colors: [.gray, .neuSecondaryText], startPoint: .top, endPoint: .bottom)
+                        accuracy >= 70
+                            ? LinearGradient(
+                                colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
+                            : LinearGradient(
+                                colors: [.gray, .neuSecondaryText], startPoint: .top,
+                                endPoint: .bottom)
                     )
             }
 
@@ -870,10 +881,19 @@ struct EnhancedSessionSummaryView: View {
 
             // Stats Cards
             VStack(spacing: 14) {
-                EnhancedStatRow(icon: "flame.fill", title: "Points Earned", value: "+\(viewModel.sessionScore)", color: .neuAccentOrange)
-                EnhancedStatRow(icon: "checkmark.circle.fill", title: "Correct Answers", value: "\(viewModel.correctCount)/\(viewModel.questions.count)", color: .neuAccentGreen)
-                EnhancedStatRow(icon: "percent", title: "Accuracy", value: "\(accuracy)%", color: .neuAccentBlue)
-                EnhancedStatRow(icon: "bolt.fill", title: "Best Combo", value: "\(viewModel.maxCombo)x", color: .neuAccentPurple)
+                EnhancedStatRow(
+                    icon: "flame.fill", title: "Points Earned", value: "+\(viewModel.sessionScore)",
+                    color: .neuAccentOrange)
+                EnhancedStatRow(
+                    icon: "checkmark.circle.fill", title: "Correct Answers",
+                    value: "\(viewModel.correctCount)/\(viewModel.questions.count)",
+                    color: .neuAccentGreen)
+                EnhancedStatRow(
+                    icon: "percent", title: "Accuracy", value: "\(accuracy)%", color: .neuAccentBlue
+                )
+                EnhancedStatRow(
+                    icon: "bolt.fill", title: "Best Combo", value: "\(viewModel.maxCombo)x",
+                    color: .neuAccentPurple)
             }
             .padding(20)
             .background(
@@ -887,22 +907,20 @@ struct EnhancedSessionSummaryView: View {
             .offset(y: showStats ? 0 : 20)
 
             // Play Again Button
-            Button(action: {
-                Task { await viewModel.startNewSession() }
-            }) {
+            TrashButton(
+                baseColor: .neuAccentBlue, cornerRadius: 999,
+                action: {
+                    Task { await viewModel.startNewSession() }
+                }
+            ) {
                 HStack(spacing: 10) {
-                    Image(systemName: "arrow.clockwise")
+                    TrashIcon(systemName: "arrow.clockwise")
                     Text("Play Again")
                 }
                 .font(.headline.bold())
-                .foregroundColor(.white)
+                .trashOnAccentForeground()
                 .padding(.horizontal, 40)
                 .padding(.vertical, 16)
-                .background(
-                    LinearGradient(colors: [.neuAccentBlue, .cyan], startPoint: .leading, endPoint: .trailing)
-                )
-                .clipShape(Capsule())
-                .shadow(color: .neuAccentBlue.opacity(0.4), radius: 12, y: 6)
             }
         }
         .padding()
@@ -923,9 +941,9 @@ struct EnhancedStatRow: View {
 
     var body: some View {
         HStack(spacing: theme.spacing.md) {
-            Image(systemName: icon)
+            TrashIcon(systemName: icon)
                 .font(theme.typography.subheadline)
-                .foregroundColor(.white)
+                .trashOnAccentForeground()
                 .frame(width: theme.spacing.xl, height: theme.spacing.xl)
                 .background(color)
                 .cornerRadius(theme.corners.small)

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CreateEventSheet: View {
     @Binding var isPresented: Bool
+    @Environment(\.trashTheme) private var theme
     @State private var title = ""
     @State private var description = ""
     @State private var eventDate = Date()
@@ -23,42 +24,49 @@ struct CreateEventSheet: View {
         NavigationView {
             Form {
                 Section("Event Details") {
-                    TextField("Event Title", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                    DatePicker("Date & Time", selection: $eventDate, in: Date()...)
-                    TextField("Location", text: $location)
+                    TrashFormTextField(title: "Event Title", text: $title, textInputAutocapitalization: .words)
+                    TrashFormTextField(title: "Description", text: $description, textInputAutocapitalization: .sentences)
+                    TrashFormDatePicker(title: "Date & Time", selection: $eventDate)
+                    TrashFormTextField(title: "Location", text: $location, textInputAutocapitalization: .words)
                 }
 
                 Section("Settings") {
-                    Picker("Category", selection: $category) {
-                        ForEach(categories, id: \.self) { cat in
-                            Text(cat.capitalized).tag(cat)
-                        }
-                    }
+                    TrashFormPicker(
+                        title: "Category",
+                        selection: $category,
+                        options: categories.map { TrashPickerOption(value: $0, title: $0.capitalized, icon: nil) }
+                    )
 
-                    Stepper("Max Participants: \(maxParticipants)", value: $maxParticipants, in: 10...500, step: 10)
+                    TrashFormStepper(title: "Max Participants", value: $maxParticipants, range: 10...500, step: 10)
                 }
             }
             .navigationTitle("Create Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    TrashTextButton(title: "Cancel") {
                         isPresented = false
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Create") {
+                    TrashTextButton(title: "Create", variant: .accent) {
                         showNotImplementedAlert = true
                     }
                     .disabled(title.isEmpty || location.isEmpty)
                 }
             }
-            .alert("Coming Soon", isPresented: $showNotImplementedAlert) {
-                Button("OK") { isPresented = false }
-            } message: {
-                Text("Event creation from community pages is coming soon. Use the Events tab to create events for now.")
+            .sheet(isPresented: $showNotImplementedAlert) {
+                TrashNoticeSheet(
+                    title: "Coming Soon",
+                    message: "Event creation from community pages is coming soon. Use the Events tab to create events for now.",
+                    onClose: {
+                        showNotImplementedAlert = false
+                        isPresented = false
+                    }
+                )
+                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
         }
     }

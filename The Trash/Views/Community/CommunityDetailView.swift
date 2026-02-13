@@ -5,17 +5,18 @@
 //  Created by Albert Huang on 2/6/26.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - CommunityDetailView
 
 struct CommunityDetailView: View {
     let community: Community
-    
+
     @StateObject private var viewModel = CommunityDetailViewModel()
     @ObservedObject private var userSettings = UserSettings.shared
     @Environment(\.dismiss) var dismiss
+    @Environment(\.trashTheme) private var theme
     @State private var showEventDetail: CommunityEvent? = nil
     @State private var showAdminDashboard = false
     @State private var showApprovalAlert = false
@@ -23,43 +24,33 @@ struct CommunityDetailView: View {
     var isMember: Bool {
         userSettings.isMember(of: community)
     }
-    
+
     var isAdmin: Bool {
         community.isAdmin
     }
-    
+
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Header
-                    headerSection
-                    
-                    // Description
-                    descriptionSection
-                    
-                    // Admin Section
-                    if isAdmin {
-                        adminSection
-                    }
-                    
-                    // Stats
-                    statsSection
+            ZStack {
+                ThemeBackground()
 
-                    // Events
-                    eventsSection
+                ScrollView {
+                    VStack(spacing: 0) {
+                        headerSection
+                        descriptionSection
+                        if isAdmin {
+                            adminSection
+                        }
+                        statsSection
+                        eventsSection
+                    }
                 }
             }
-            .background(Color(.systemGroupedBackground))
             .navigationTitle(community.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                    }
+                    TrashIconButton(icon: "xmark", action: { dismiss() })
                 }
             }
             .task {
@@ -69,164 +60,184 @@ struct CommunityDetailView: View {
                 if isAdmin {
                     GrantCreditsView(event: event)
                 } else {
-                    EventDetailSheetForCommunity(event: event, viewModel: viewModel, userLocation: userSettings.selectedLocation)
+                    EventDetailSheetForCommunity(
+                        event: event, viewModel: viewModel,
+                        userLocation: userSettings.selectedLocation)
                 }
             }
             .sheet(isPresented: $showAdminDashboard) {
                 CommunityAdminDashboard(community: community)
             }
-            .alert("Application Submitted", isPresented: $showApprovalAlert) {
-                Button("OK") {}
-            } message: {
-                Text("Your request to join has been submitted. An admin will review it shortly.")
+            .sheet(isPresented: $showApprovalAlert) {
+                TrashNoticeSheet(
+                    title: "Application Submitted",
+                    message:
+                        "Your request to join has been submitted. An admin will review it shortly.",
+                    onClose: { showApprovalAlert = false }
+                )
+                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.appearance.sheetBackground)
             }
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(24)
-        .presentationBackground(.regularMaterial)
+        .presentationBackground(theme.appearance.sheetBackground)
     }
-    
+
     // MARK: - Header Section
-    
+
     private var headerSection: some View {
         VStack(spacing: 16) {
-            // Community Icon
             ZStack {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.cyan.opacity(0.6), Color.blue],
+                            colors: [theme.accents.blue.opacity(0.65), theme.accents.green],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 100, height: 100)
-                
-                Image(systemName: "person.3.fill")
+
+                TrashIcon(systemName: "person.3.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
             }
-            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
-            
-            // Community Name
+            .shadow(color: theme.accents.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+
             Text(community.name)
-                .font(.title2.bold())
-            
-            // Location
+                .font(theme.typography.title)
+                .foregroundColor(theme.palette.textPrimary)
+
             HStack(spacing: 6) {
-                Image(systemName: "mappin.circle.fill")
-                    .foregroundColor(.secondary)
+                TrashIcon(systemName: "mappin.circle.fill")
+                    .foregroundColor(theme.palette.textSecondary)
                 Text(community.fullLocation)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(theme.palette.textSecondary)
             }
-            .font(.subheadline)
-            
-            // Join/Leave Button
+            .font(theme.typography.subheadline)
+
             joinButton
         }
         .padding(.vertical, 24)
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
+        .trashCard(cornerRadius: 18)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
     }
-    
+
     private var joinButton: some View {
-        Button(action: {
-            Task {
-                if isMember {
-                    _ = await userSettings.leaveCommunity(community)
-                } else {
-                    let result = await userSettings.joinCommunity(community)
-                    if result.requiresApproval {
-                        showApprovalAlert = true
+        TrashButton(
+            baseColor: isMember ? theme.accents.green.opacity(0.2) : theme.accents.blue,
+            cornerRadius: 14,
+            action: {
+                Task {
+                    if isMember {
+                        _ = await userSettings.leaveCommunity(community)
+                    } else {
+                        let result = await userSettings.joinCommunity(community)
+                        if result.requiresApproval {
+                            showApprovalAlert = true
+                        }
                     }
                 }
             }
-        }) {
+        ) {
             HStack {
                 if userSettings.isLoadingCommunities {
                     ProgressView()
                         .scaleEffect(0.8)
-                        .tint(isMember ? .green : .white)
+                        .tint(isMember ? theme.accents.green : theme.onAccentForeground)
                 } else {
-                    Image(systemName: isMember ? "checkmark.circle.fill" : "plus.circle.fill")
+                    TrashIcon(systemName: isMember ? "checkmark.circle.fill" : "plus.circle.fill")
                 }
                 Text(isMember ? "Joined" : "Join Community")
             }
-            .font(.headline)
-            .foregroundColor(isMember ? .green : .white)
+            .font(theme.typography.headline)
+            .foregroundColor(isMember ? theme.accents.green : theme.onAccentForeground)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(isMember ? Color.green.opacity(0.15) : Color.cyan)
-            .cornerRadius(14)
         }
         .padding(.horizontal, 40)
         .padding(.top, 8)
     }
-    
+
     // MARK: - Description Section
-    
+
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("About")
-                .font(.headline)
-            
-            Text(community.description.isEmpty ? "No description available." : community.description)
-                .font(.body)
-                .foregroundColor(.secondary)
+                .font(theme.typography.headline)
+                .foregroundColor(theme.palette.textPrimary)
+
+            Text(
+                community.description.isEmpty ? "No description available." : community.description
+            )
+            .font(theme.typography.body)
+            .foregroundColor(theme.palette.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
+        .trashCard(cornerRadius: 16)
         .padding(.horizontal, 16)
         .padding(.top, 16)
     }
-    
+
     // MARK: - Stats Section
-    
+
     private var statsSection: some View {
         HStack(spacing: 0) {
-            StatItem(value: "\(community.memberCount)", label: "Members", icon: "person.2.fill", color: .cyan)
-            
+            StatItem(
+                value: "\(community.memberCount)", label: "Members", icon: "person.2.fill",
+                color: theme.accents.blue)
+
             Divider()
                 .frame(height: 40)
-            
-            StatItem(value: "\(viewModel.upcomingEvents.count)", label: "Upcoming", icon: "calendar", color: .green)
-            
+
+            StatItem(
+                value: "\(viewModel.upcomingEvents.count)", label: "Upcoming", icon: "calendar",
+                color: theme.accents.green)
+
             Divider()
                 .frame(height: 40)
-            
-            StatItem(value: "\(viewModel.pastEvents.count)", label: "Past", icon: "clock.arrow.circlepath", color: .orange)
+
+            StatItem(
+                value: "\(viewModel.pastEvents.count)", label: "Past",
+                icon: "clock.arrow.circlepath", color: theme.accents.orange)
         }
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
+        .trashCard(cornerRadius: 16)
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
-    
+
     // MARK: - Events Section
-    
+
     private var eventsSection: some View {
         VStack(spacing: 16) {
             // Upcoming Events
             if !viewModel.upcomingEvents.isEmpty {
-                eventListSection(title: "Upcoming Events", events: viewModel.upcomingEvents, iconColor: .green)
+                eventListSection(
+                    title: "Upcoming Events", events: viewModel.upcomingEvents, iconColor: .green)
             }
-            
+
             // Past Events
             if !viewModel.pastEvents.isEmpty {
-                eventListSection(title: "Past Events", events: viewModel.pastEvents, iconColor: .orange)
+                eventListSection(
+                    title: "Past Events", events: viewModel.pastEvents, iconColor: .orange)
             }
-            
+
             // Empty State
-            if viewModel.upcomingEvents.isEmpty && viewModel.pastEvents.isEmpty && !viewModel.isLoading {
+            if viewModel.upcomingEvents.isEmpty && viewModel.pastEvents.isEmpty
+                && !viewModel.isLoading
+            {
                 emptyEventsView
             }
-            
+
             // Loading State
             if viewModel.isLoading {
                 loadingView
@@ -235,18 +246,21 @@ struct CommunityDetailView: View {
         .padding(.top, 16)
         .padding(.bottom, 32)
     }
-    
-    private func eventListSection(title: String, events: [CommunityEvent], iconColor: Color) -> some View {
+
+    private func eventListSection(title: String, events: [CommunityEvent], iconColor: Color)
+        -> some View
+    {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Circle()
                     .fill(iconColor)
                     .frame(width: 8, height: 8)
                 Text(title)
-                    .font(.headline)
+                    .font(theme.typography.headline)
+                    .foregroundColor(theme.palette.textPrimary)
             }
             .padding(.horizontal, 16)
-            
+
             LazyVStack(spacing: 12) {
                 ForEach(events) { event in
                     EnhancedEventCard(
@@ -261,34 +275,34 @@ struct CommunityDetailView: View {
             .padding(.horizontal, 16)
         }
     }
-    
+
     private var emptyEventsView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "calendar.badge.exclamationmark")
+            TrashIcon(systemName: "calendar.badge.exclamationmark")
                 .font(.system(size: 50))
-                .foregroundColor(.secondary)
-            
+                .foregroundColor(theme.palette.textSecondary)
+
             Text("No Events Yet")
-                .font(.headline)
-            
+                .font(theme.typography.headline)
+                .foregroundColor(theme.palette.textPrimary)
+
             Text("This community hasn't hosted any events yet.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(theme.typography.subheadline)
+                .foregroundColor(theme.palette.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical, 40)
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
+        .trashCard(cornerRadius: 16)
         .padding(.horizontal, 16)
     }
-    
+
     private var loadingView: some View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Loading events...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(theme.typography.subheadline)
+                .foregroundColor(theme.palette.textSecondary)
         }
         .padding(.vertical, 40)
     }
@@ -296,30 +310,27 @@ struct CommunityDetailView: View {
     // MARK: - Admin Section
 
     private var adminSection: some View {
-        Button(action: { showAdminDashboard = true }) {
+        TrashButton(
+            baseColor: theme.semanticWarning.opacity(0.18), cornerRadius: 16,
+            action: { showAdminDashboard = true }
+        ) {
             HStack(spacing: 12) {
-                Image(systemName: "gearshape.fill")
+                TrashIcon(systemName: "gearshape.fill")
                     .font(.title3)
-                    .foregroundColor(.orange)
+                    .foregroundColor(theme.semanticWarning)
 
                 Text("Admin Dashboard")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                    .font(theme.typography.headline)
+                    .foregroundColor(theme.palette.textPrimary)
 
                 Spacer()
 
-                // Badge for pending applications
-                // In a real app, this count would be dynamic
-                
-                Image(systemName: "chevron.right")
+                TrashIcon(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(theme.palette.textSecondary)
             }
             .padding(16)
-            .background(Color(.secondarySystemGroupedBackground))
-            .cornerRadius(16)
         }
-        .buttonStyle(.plain)
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
@@ -332,19 +343,22 @@ private struct StatItem: View {
     let label: String
     let icon: String
     let color: Color
-    
+    @Environment(\.trashTheme) private var theme
+
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption)
+                TrashIcon(systemName: icon)
+                    .font(theme.typography.caption)
                     .foregroundColor(color)
                 Text(value)
-                    .font(.title3.bold())
+                    .font(theme.typography.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.palette.textPrimary)
             }
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -355,19 +369,20 @@ private struct StatItem: View {
 private struct CommunityEventCard: View {
     let event: CommunityEvent
     let onTap: () -> Void
-    
+    @Environment(\.trashTheme) private var theme
+
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, yyyy 'at' h:mm a"
         return formatter
     }
-    
+
     private var isPast: Bool {
         event.date < Date()
     }
-    
+
     var body: some View {
-        Button(action: onTap) {
+        TrashTapArea(action: onTap) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
                     // Category Icon
@@ -375,59 +390,64 @@ private struct CommunityEventCard: View {
                         Circle()
                             .fill(event.category.color.opacity(isPast ? 0.1 : 0.15))
                             .frame(width: 44, height: 44)
-                        Image(systemName: event.imageSystemName)
+                        TrashIcon(systemName: event.imageSystemName)
                             .font(.system(size: 18))
                             .foregroundColor(isPast ? .secondary : event.category.color)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(event.category.rawValue)
-                                .font(.caption.bold())
+                                .font(theme.typography.caption)
+                                .fontWeight(.bold)
                                 .foregroundColor(isPast ? .secondary : event.category.color)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
-                                .background((isPast ? Color.gray : event.category.color).opacity(0.1))
+                                .background(
+                                    (isPast ? Color.gray : event.category.color).opacity(0.1)
+                                )
                                 .cornerRadius(6)
-                            
+
                             if isPast {
                                 Text("Past")
                                     .font(.caption2)
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(theme.semanticWarning)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(Color.orange.opacity(0.1))
+                                    .background(theme.semanticWarning.opacity(0.14))
                                     .cornerRadius(4)
                             }
-                            
+
                             Spacer()
-                            
+
                             if event.isRegistered {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
+                                TrashIcon(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(theme.semanticSuccess)
                             }
                         }
-                        
+
                         Text(event.title)
-                            .font(.subheadline.bold())
-                            .foregroundColor(isPast ? .secondary : .primary)
+                            .font(theme.typography.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(
+                                isPast ? theme.palette.textSecondary : theme.palette.textPrimary
+                            )
                             .lineLimit(1)
                     }
                 }
-                
+
                 HStack(spacing: 16) {
-                    Label(dateFormatter.string(from: event.date), systemImage: "calendar")
+                    TrashLabel(dateFormatter.string(from: event.date), icon: "calendar")
                     Spacer()
-                    Label("\(event.participantCount)/\(event.maxParticipants)", systemImage: "person.2.fill")
+                    TrashLabel(
+                        "\(event.participantCount)/\(event.maxParticipants)", icon: "person.2.fill")
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
             }
             .padding(14)
-            .background(Color(.tertiarySystemGroupedBackground))
-            .cornerRadius(14)
+            .trashCard(cornerRadius: 14)
         }
-        .buttonStyle(.plain)
         .opacity(isPast ? 0.7 : 1)
     }
 }
@@ -438,23 +458,23 @@ private struct CommunityEventCard: View {
 class CommunityDetailViewModel: ObservableObject {
     @Published var allEvents: [CommunityEvent] = []
     @Published var isLoading = false
-    
+
     private var communityService: CommunityService {
         CommunityService.shared
     }
-    
+
     var upcomingEvents: [CommunityEvent] {
         allEvents
             .filter { $0.date >= Date() }
             .sorted { $0.date < $1.date }
     }
-    
+
     var pastEvents: [CommunityEvent] {
         allEvents
             .filter { $0.date < Date() }
             .sorted { $0.date > $1.date }  // Most recent first
     }
-    
+
     func loadEvents(communityId: String) async {
         isLoading = true
         do {
@@ -490,7 +510,8 @@ class CommunityDetailViewModel: ObservableObject {
             if success {
                 if let index = allEvents.firstIndex(where: { $0.id == event.id }) {
                     allEvents[index].isRegistered = false
-                    allEvents[index].participantCount = max(0, allEvents[index].participantCount - 1)
+                    allEvents[index].participantCount = max(
+                        0, allEvents[index].participantCount - 1)
                 }
             }
             return success
@@ -499,7 +520,7 @@ class CommunityDetailViewModel: ObservableObject {
             return false
         }
     }
-    
+
     /// 切换报名状态
     func toggleRegistration(for event: CommunityEvent) async {
         if event.isRegistered {
@@ -517,131 +538,146 @@ struct EventDetailSheetForCommunity: View {
     @ObservedObject var viewModel: CommunityDetailViewModel
     let userLocation: UserLocation?
     @Environment(\.dismiss) var dismiss
-    
+    @Environment(\.trashTheme) private var theme
+
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateStyle = .full
         formatter.timeStyle = .short
         return formatter
     }
-    
+
     private var currentEvent: CommunityEvent {
         viewModel.allEvents.first(where: { $0.id == event.id }) ?? event
     }
-    
+
     private var isPast: Bool {
         event.date < Date()
     }
-    
+
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header Image
-                    ZStack {
-                        LinearGradient(
-                            colors: [event.category.color.opacity(0.8), event.category.color],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        .frame(height: 180)
-                        
-                        VStack(spacing: 12) {
-                            Image(systemName: event.imageSystemName)
-                                .font(.system(size: 50))
-                                .foregroundColor(.white)
-                            Text(event.category.rawValue)
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.9))
-                            
-                            if isPast {
-                                Text("Past Event")
-                                    .font(.caption.bold())
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 4)
-                                    .background(Color.black.opacity(0.3))
-                                    .cornerRadius(8)
+            ZStack {
+                ThemeBackground()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        ZStack {
+                            LinearGradient(
+                                colors: [event.category.color.opacity(0.8), event.category.color],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            .frame(height: 180)
+
+                            VStack(spacing: 12) {
+                                TrashIcon(systemName: event.imageSystemName)
+                                    .font(.system(size: 50))
+                                    .trashOnAccentForeground()
+                                Text(event.category.rawValue)
+                                    .font(theme.typography.headline)
+                                    .foregroundColor(theme.onAccentForeground.opacity(0.9))
+
+                                if isPast {
+                                    TrashPill(
+                                        title: "Past Event", color: .black.opacity(0.45),
+                                        isSelected: true)
+                                }
                             }
                         }
-                    }
-                    .cornerRadius(20)
-                    .padding(.horizontal)
-                    
-                    // Title & Organizer
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(event.title)
-                            .font(.title2.bold())
-                        
-                        HStack {
-                            Image(systemName: "building.2.fill")
-                                .foregroundColor(.secondary)
-                            Text(event.organizer)
-                                .foregroundColor(.secondary)
+                        .cornerRadius(20)
+                        .padding(.horizontal)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(event.title)
+                                .font(theme.typography.title)
+                                .foregroundColor(theme.palette.textPrimary)
+
+                            HStack {
+                                TrashIcon(systemName: "building.2.fill")
+                                    .foregroundColor(theme.palette.textSecondary)
+                                Text(event.organizer)
+                                    .foregroundColor(theme.palette.textSecondary)
+                            }
+                            .font(theme.typography.subheadline)
                         }
-                        .font(.subheadline)
+                        .padding(.horizontal)
+
+                        VStack(spacing: 12) {
+                            InfoRowForCommunity(
+                                icon: "calendar", title: "Date & Time",
+                                value: dateFormatter.string(from: event.date))
+                            InfoRowForCommunity(
+                                icon: "mappin.circle.fill", title: "Location", value: event.location
+                            )
+                            InfoRowForCommunity(
+                                icon: "person.2.fill", title: "Participants",
+                                value: "\(event.participantCount) / \(event.maxParticipants)")
+                        }
+                        .padding(.horizontal)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("About")
+                                .font(theme.typography.headline)
+                                .foregroundColor(theme.palette.textPrimary)
+                            Text(
+                                event.description.isEmpty
+                                    ? "No description available." : event.description
+                            )
+                            .font(theme.typography.body)
+                            .foregroundColor(theme.palette.textSecondary)
+                        }
+                        .padding(.horizontal)
+
+                        Spacer(minLength: 100)
                     }
-                    .padding(.horizontal)
-                    
-                    // Info Cards
-                    VStack(spacing: 12) {
-                        InfoRowForCommunity(icon: "calendar", title: "Date & Time", value: dateFormatter.string(from: event.date))
-                        InfoRowForCommunity(icon: "mappin.circle.fill", title: "Location", value: event.location)
-                        InfoRowForCommunity(icon: "person.2.fill", title: "Participants", value: "\(event.participantCount) / \(event.maxParticipants)")
-                    }
-                    .padding(.horizontal)
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("About")
-                            .font(.headline)
-                        Text(event.description.isEmpty ? "No description available." : event.description)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal)
-                    
-                    Spacer(minLength: 100)
+                    .padding(.top)
                 }
-                .padding(.top)
             }
             .navigationTitle("Event Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    TrashTextButton(title: "Close", variant: .accent) { dismiss() }
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 if !isPast {
                     VStack {
-                        Button(action: {
-                            Task {
-                                let generator = UINotificationFeedbackGenerator()
-                                generator.notificationOccurred(currentEvent.isRegistered ? .warning : .success)
-                                await viewModel.toggleRegistration(for: event)
+                        TrashButton(
+                            baseColor: currentEvent.isRegistered
+                                ? theme.accents.green
+                                : (currentEvent.participantCount >= currentEvent.maxParticipants
+                                    ? .gray : event.category.color),
+                            cornerRadius: 14,
+                            action: {
+                                Task {
+                                    let generator = UINotificationFeedbackGenerator()
+                                    generator.notificationOccurred(
+                                        currentEvent.isRegistered ? .warning : .success)
+                                    await viewModel.toggleRegistration(for: event)
+                                }
                             }
-                        }) {
+                        ) {
                             HStack {
-                                Image(systemName: currentEvent.isRegistered ? "checkmark.circle.fill" : "plus.circle.fill")
+                                TrashIcon(
+                                    systemName: currentEvent.isRegistered
+                                        ? "checkmark.circle.fill" : "plus.circle.fill")
                                 Text(currentEvent.isRegistered ? "Registered" : "Register Now")
                             }
-                            .font(.headline)
-                            .foregroundColor(.white)
+                            .font(theme.typography.headline)
+                            .trashOnAccentForeground()
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(
-                                currentEvent.isRegistered ?
-                                Color.green :
-                                (currentEvent.participantCount >= currentEvent.maxParticipants ? Color.gray : event.category.color)
-                            )
-                            .cornerRadius(14)
                         }
-                        .disabled(currentEvent.participantCount >= currentEvent.maxParticipants && !currentEvent.isRegistered)
+                        .disabled(
+                            currentEvent.participantCount >= currentEvent.maxParticipants
+                                && !currentEvent.isRegistered
+                        )
                         .padding(.horizontal)
                         .padding(.bottom, 8)
                     }
-                    .background(.ultraThinMaterial)
+                    .background(theme.appearance.sheetBackground)
                 }
             }
         }
@@ -652,41 +688,44 @@ private struct InfoRowForCommunity: View {
     let icon: String
     let title: String
     let value: String
-    
+    @Environment(\.trashTheme) private var theme
+
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: icon)
+            TrashIcon(systemName: icon)
                 .font(.title3)
-                .foregroundColor(.blue)
+                .foregroundColor(theme.accents.blue)
                 .frame(width: 30)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textSecondary)
                 Text(value)
-                    .font(.subheadline)
+                    .font(theme.typography.subheadline)
+                    .foregroundColor(theme.palette.textPrimary)
             }
-            
+
             Spacer()
         }
         .padding(12)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(12)
+        .trashCard(cornerRadius: 12)
     }
 }
 
 #Preview {
     NavigationStack {
-        CommunityDetailView(community: Community(
-            id: "test-id",
-            name: "NYC Trash Cleanup",
-            city: "New York",
-            state: "NY",
-            description: "A community dedicated to cleaning up New York City streets and parks. We organize regular cleanup events and educational workshops.",
-            memberCount: 156,
-            latitude: 40.7128,
-            longitude: -74.0060
-        ))
+        CommunityDetailView(
+            community: Community(
+                id: "test-id",
+                name: "NYC Trash Cleanup",
+                city: "New York",
+                state: "NY",
+                description:
+                    "A community dedicated to cleaning up New York City streets and parks. We organize regular cleanup events and educational workshops.",
+                memberCount: 156,
+                latitude: 40.7128,
+                longitude: -74.0060
+            ))
     }
 }

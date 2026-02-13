@@ -8,6 +8,7 @@ import SwiftUI
 struct ChangePasswordSheet: View {
     @ObservedObject var authVM: AuthViewModel
     @Binding var isPresented: Bool
+    @Environment(\.trashTheme) private var theme
     @State private var newPassword: String = ""
     @State private var confirmPassword: String = ""
     @State private var localError: String?
@@ -17,14 +18,14 @@ struct ChangePasswordSheet: View {
         NavigationView {
             Form {
                 Section(header: Text("New Password")) {
-                    SecureField("Enter new password", text: $newPassword)
-                    SecureField("Confirm password", text: $confirmPassword)
+                    TrashFormSecureField(title: "Enter new password", text: $newPassword)
+                    TrashFormSecureField(title: "Confirm password", text: $confirmPassword)
                 }
 
                 Section {
-                    Button {
+                    TrashButton(baseColor: theme.accents.blue, action: {
                         Task { await submit() }
-                    } label: {
+                    }) {
                         if authVM.isLoading {
                             HStack {
                                 ProgressView()
@@ -55,7 +56,7 @@ struct ChangePasswordSheet: View {
             .navigationTitle("Change Password")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
+                    TrashTextButton(title: "Done", variant: .accent) {
                         resetFields()
                         isPresented = false
                     }

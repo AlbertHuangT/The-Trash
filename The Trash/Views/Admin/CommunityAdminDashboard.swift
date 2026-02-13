@@ -5,19 +5,19 @@
 //  Created by Albert Huang on 2/6/26.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct CommunityAdminDashboard: View {
     let community: Community
     @StateObject private var viewModel: AdminDashboardViewModel
     @Environment(\.dismiss) var dismiss
-    
+
     init(community: Community) {
         self.community = community
         _viewModel = StateObject(wrappedValue: AdminDashboardViewModel(communityId: community.id))
     }
-    
+
     var body: some View {
         NavigationView {
             List {
@@ -28,7 +28,10 @@ struct CommunityAdminDashboard: View {
                             ApplicationRow(
                                 application: application,
                                 onApprove: { await viewModel.approveApplication(application.id) },
-                                onReject: { reason in await viewModel.rejectApplication(application.id, reason: reason) }
+                                onReject: { reason in
+                                    await viewModel.rejectApplication(
+                                        application.id, reason: reason)
+                                }
                             )
                         }
                     } header: {
@@ -36,7 +39,7 @@ struct CommunityAdminDashboard: View {
                             Text("Pending Applications")
                             Spacer()
                             Text("\(viewModel.pendingApplications.count)")
-                                .foregroundColor(.white)
+                                .trashOnAccentForeground()
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
                                 .background(Color.red)
@@ -44,26 +47,27 @@ struct CommunityAdminDashboard: View {
                         }
                     }
                 }
-                
+
                 // Management Features
                 Section("Management") {
                     NavigationLink(destination: EditCommunityInfoView(community: community)) {
-                        Label("Edit Community Info", systemImage: "pencil")
+                        TrashLabel("Edit Community Info", icon: "pencil")
                     }
-                    
-                    NavigationLink(destination: CommunityMembersListView(communityId: community.id)) {
-                        Label("Manage Members", systemImage: "person.2.fill")
+
+                    NavigationLink(destination: CommunityMembersListView(communityId: community.id))
+                    {
+                        TrashLabel("Manage Members", icon: "person.2.fill")
                     }
-                    
+
                     NavigationLink(destination: AdminLogsView(communityId: community.id)) {
-                        Label("Audit Logs", systemImage: "doc.text.magnifyingglass")
+                        TrashLabel("Audit Logs", icon: "doc.text.magnifyingglass")
                     }
-                    
+
                     NavigationLink(destination: ManageAchievementsView(communityId: community.id)) {
-                        Label("Manage Achievements", systemImage: "trophy")
+                        TrashLabel("Manage Achievements", icon: "trophy")
                     }
                 }
-                
+
                 // Stats
                 Section("Statistics") {
                     HStack {
@@ -73,7 +77,7 @@ struct CommunityAdminDashboard: View {
                             .foregroundColor(.blue)
                             .bold()
                     }
-                    
+
                     HStack {
                         Text("Pending Approvals")
                         Spacer()
@@ -87,7 +91,7 @@ struct CommunityAdminDashboard: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    TrashTextButton(title: "Close") { dismiss() }
                 }
             }
             .refreshable {
@@ -106,14 +110,14 @@ struct CommunityAdminDashboard: View {
 class AdminDashboardViewModel: ObservableObject {
     @Published var pendingApplications: [JoinApplicationResponse] = []
     @Published var isLoading = false
-    
+
     let communityId: String
     private let service = CommunityService.shared
-    
+
     init(communityId: String) {
         self.communityId = communityId
     }
-    
+
     func loadApplications() async {
         isLoading = true
         do {
@@ -137,7 +141,8 @@ class AdminDashboardViewModel: ObservableObject {
 
     func rejectApplication(_ id: UUID, reason: String?) async {
         do {
-            let result = try await service.reviewApplication(applicationId: id, approve: false, rejectionReason: reason)
+            let result = try await service.reviewApplication(
+                applicationId: id, approve: false, rejectionReason: reason)
             if result.success {
                 pendingApplications.removeAll { $0.id == id }
             }
@@ -153,22 +158,22 @@ struct ApplicationRow: View {
     let application: JoinApplicationResponse
     let onApprove: () async -> Void
     let onReject: (String?) async -> Void
-    
+
     @State private var showRejectSheet = false
     @State private var rejectionReason = ""
     @State private var isProcessing = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // User Header
             HStack {
                 UserAvatarView(name: application.username)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(application.username)
                         .font(.headline)
                     HStack(spacing: 12) {
-                        Label("\(application.userCredits) Credits", systemImage: "star.fill")
+                        TrashLabel("\(application.userCredits) Credits", icon: "star.fill")
                             .font(.caption)
                             .foregroundColor(.orange)
                         Text(timeAgo(from: application.createdAt))
@@ -176,10 +181,10 @@ struct ApplicationRow: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 Spacer()
             }
-            
+
             // Message
             if let message = application.message, !message.isEmpty {
                 Text(message)
@@ -189,41 +194,38 @@ struct ApplicationRow: View {
                     .background(Color(.tertiarySystemGroupedBackground))
                     .cornerRadius(8)
             }
-            
+
             // Action Buttons
             HStack(spacing: 12) {
-                Button(action: {
-                    isProcessing = true
-                    Task {
-                        await onApprove()
-                        isProcessing = false
+                TrashButton(
+                    baseColor: .green,
+                    action: {
+                        isProcessing = true
+                        Task {
+                            await onApprove()
+                            isProcessing = false
+                        }
                     }
-                }) {
+                ) {
                     HStack {
-                        Image(systemName: "checkmark.circle.fill")
+                        TrashIcon(systemName: "checkmark.circle.fill")
                         Text("Approve")
                     }
+                    .trashOnAccentForeground()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
                 }
-                .buttonStyle(.plain)
                 .disabled(isProcessing)
-                
-                Button(action: { showRejectSheet = true }) {
+
+                TrashButton(baseColor: .red, action: { showRejectSheet = true }) {
                     HStack {
-                        Image(systemName: "xmark.circle.fill")
+                        TrashIcon(systemName: "xmark.circle.fill")
                         Text("Reject")
                     }
+                    .trashOnAccentForeground()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
                 }
-                .buttonStyle(.plain)
                 .disabled(isProcessing)
             }
         }
@@ -243,7 +245,7 @@ struct ApplicationRow: View {
             )
         }
     }
-    
+
     private func timeAgo(from date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
@@ -258,7 +260,7 @@ struct RejectApplicationSheet: View {
     @Binding var rejectionReason: String
     let onConfirm: () -> Void
     @Environment(\.dismiss) var dismiss
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -266,14 +268,15 @@ struct RejectApplicationSheet: View {
                     Text("Are you sure you want to reject the application from \(username)?")
                         .foregroundColor(.secondary)
                 }
-                
+
                 Section("Rejection Reason (Optional)") {
-                    TextEditor(text: $rejectionReason)
-                        .frame(height: 100)
+                    TrashFormTextEditor(text: $rejectionReason, minHeight: 100)
                 }
-                
+
                 Section {
-                    Button("Reject Application", role: .destructive) {
+                    TrashTextButton(
+                        title: "Reject Application", role: .destructive, variant: .destructive
+                    ) {
                         onConfirm()
                     }
                 }
@@ -282,7 +285,7 @@ struct RejectApplicationSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    TrashTextButton(title: "Cancel") { dismiss() }
                 }
             }
         }

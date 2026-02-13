@@ -17,7 +17,7 @@ struct UserAvatarView: View {
             .overlay(
                 Text(String(name.prefix(1)))
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .trashOnAccentForeground()
             )
     }
 }

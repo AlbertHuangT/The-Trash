@@ -62,7 +62,7 @@ struct EventResponse: Codable, Identifiable, Hashable, Equatable {
     static func == (lhs: EventResponse, rhs: EventResponse) -> Bool {
         return lhs.id == rhs.id
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
@@ -118,6 +118,12 @@ struct MyCommunityResponse: Codable, Identifiable {
 struct APIResult: Codable {
     let success: Bool
     let message: String
+    let eventId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case success, message
+        case eventId = "event_id"
+    }
 }
 
 struct CanCreateResult: Codable {
@@ -260,6 +266,23 @@ struct NearbyEventsParams: Sendable {
     let p_category: String?
     let p_only_joined_communities: Bool
     let p_sort_by: String
+}
+
+struct JoinCommunityParams: Sendable {
+    let p_community_id: String
+    let p_message: String?
+}
+
+extension JoinCommunityParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(p_community_id, forKey: .p_community_id)
+        try container.encodeIfPresent(p_message, forKey: .p_message)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case p_community_id, p_message
+    }
 }
 
 extension NearbyEventsParams: Encodable {
