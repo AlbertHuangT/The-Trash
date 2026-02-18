@@ -1,0 +1,46 @@
+name: RN CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "the-trash-rn/**"
+      - "supabase/migrations/**"
+      - "scripts/**"
+      - "Makefile"
+      - "README.md"
+      - ".github/workflows/rn-ci.yml"
+    paths-ignore:
+      - "legacy/**"
+  workflow_dispatch:
+
+jobs:
+  rn-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Install Dependencies
+        run: pnpm --dir the-trash-rn install --frozen-lockfile
+
+      - name: Lint RN
+        run: pnpm --dir the-trash-rn lint
+
+      - name: Check Backend Contracts
+        run: bash scripts/check_backend_contracts.sh --strict
+
+      - name: Check Migration Source
+        run: bash scripts/check_migration_mirror.sh --strict

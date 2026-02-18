@@ -1,53 +1,48 @@
 # The Trash
 
-The Trash 是一个垃圾分类与环保互动产品仓库，包含两个客户端实现：
+The Trash 是一个垃圾分类与环保互动产品仓库。
 
-- `The Trash/`：SwiftUI 原生 iOS 版本（主工程）
-- `the-trash-rn/`：Expo + React Native 版本（跨平台）
+当前主线客户端：
+
+- `the-trash-rn/`：Expo + React Native（主线）
+
+已归档客户端（Legacy）：
+
+- `legacy/swift-ios/The Trash/`：SwiftUI iOS 版本（不再主线维护）
 
 ## 仓库结构
 
 ```text
 .
-├── The Trash/                     # SwiftUI iOS 代码
-├── The Trash.xcodeproj            # Xcode 工程
-├── the-trash-rn/                  # Expo / RN 代码
-├── supabase/migrations/           # Supabase 迁移源
-├── The Trash/migrations/          # App 侧 SQL 镜像
-├── scripts/                       # 契约检查与迁移同步脚本
+├── the-trash-rn/                  # Expo / RN 代码（主线）
+├── legacy/swift-ios/              # 归档 Swift 工程
+├── supabase/migrations/           # Supabase 迁移唯一来源
+├── scripts/                       # 契约与迁移检查脚本
 ├── Makefile
 └── docs/
 ```
 
-## 1) Swift iOS 开发
+## 1) React Native 开发（主线）
+
+详细说明见 `the-trash-rn/README.md`。
 
 ### 环境
 
-- Xcode 16+
-- iOS Simulator 或真机
-- `MobileCLIPImage.mlpackage` 放在 `The Trash/` 下
-- 本地私密配置 `The Trash/Secrets.swift`（不要提交）
+- Node.js 20+
+- pnpm 10+
+- Xcode / Android Studio（按平台需要）
 
 ### 常用命令
 
 ```bash
-make open
-make build
-make build-device
-make test
+make install
+make start
+make ios
+make android
+make lint
 ```
 
-也可直接打开工程：
-
-```bash
-open "The Trash.xcodeproj"
-```
-
-## 2) React Native 开发（推荐先走这条）
-
-详细说明见 `the-trash-rn/README.md`。
-
-快速启动：
+也可直接在 RN 目录执行：
 
 ```bash
 cd the-trash-rn
@@ -55,17 +50,7 @@ pnpm install
 pnpm expo start --dev-client --tunnel --clear
 ```
 
-### RN iOS 真机最短路径
-
-```bash
-cd the-trash-rn
-pnpm install
-pnpm pods:install
-pnpm expo run:ios --device
-pnpm expo start --dev-client --tunnel --clear
-```
-
-## 3) 数据库迁移（Supabase）
+## 2) 数据库迁移（Supabase）
 
 ### 迁移执行
 
@@ -75,28 +60,46 @@ supabase db push --project-ref <your-project-ref>
 
 `project-ref` 就是 Supabase 项目短 ID（Dashboard URL 里 `project/<ref>` 这段）。
 
-### 镜像同步与契约检查
+### 契约与迁移检查
 
 ```bash
-make migrations-sync
-make migrations-check
 make contracts
+make migrations-check
 make doctor
 ```
+
+说明：
+
+- `supabase/migrations/` 是唯一真相源。
+- `make migrations-sync` 仅保留兼容入口，现为 no-op。
 
 建议流程：
 
 1. 新增 `supabase/migrations/*.sql`
 2. `supabase db push --project-ref <ref>`
-3. `make migrations-sync`
-4. `make doctor`
-5. 提交 `supabase/migrations` 和 `The Trash/migrations`
+3. `make contracts`
+4. `make migrations-check`
+5. 提交 `supabase/migrations`
+
+## 3) Swift iOS（Legacy 归档）
+
+Swift 工程已归档，仅在需要回溯时使用：
+
+```bash
+make legacy-open
+```
+
+或直接：
+
+```bash
+open "legacy/swift-ios/The Trash.xcodeproj"
+```
 
 ## 4) 常见问题
 
-- `Could not find table ... in schema cache`：
-  - 说明远端 schema 还没应用完整迁移，先执行 `supabase db push`。
-- Expo iOS 出现 ATS 明文连接报错：
+- `Could not find table ... in schema cache`
+  - 远端 schema 未应用完整迁移，先执行 `supabase db push`。
+- Expo iOS 出现 ATS 明文连接报错
   - 使用 `pnpm expo start --dev-client --tunnel --clear`。
-- `Authentication with Apple Developer Portal failed / no team`：
-  - 不能走 EAS iOS 云构建；可用本地 Xcode 真机安装，或先用 Android 开发机。
+- `Authentication with Apple Developer Portal failed / no team`
+  - iOS 云构建不可用时，可先走本地 Xcode 真机安装或 Android 开发流程。

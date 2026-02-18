@@ -1,22 +1,27 @@
-PROJECT := The Trash.xcodeproj
-SCHEME := The Trash
-SIMULATOR ?= iPhone 16
-DEST_SIM := platform=iOS Simulator,name=$(SIMULATOR)
-DEST_DEVICE := generic/platform=iOS
+RN_DIR := the-trash-rn
 
-.PHONY: open build build-device test contracts contracts-strict migrations-check migrations-check-strict migrations-sync doctor
+.PHONY: install start ios android pods lint format contracts contracts-strict migrations-check migrations-check-strict migrations-sync doctor legacy-open
 
-open:
-	open "$(PROJECT)"
+install:
+	pnpm --dir "$(RN_DIR)" install
 
-build:
-	xcodebuild -project "$(PROJECT)" -scheme "$(SCHEME)" -destination '$(DEST_SIM)' build
+start:
+	pnpm --dir "$(RN_DIR)" expo start --dev-client --tunnel --clear
 
-build-device:
-	xcodebuild -project "$(PROJECT)" -scheme "$(SCHEME)" -destination '$(DEST_DEVICE)' build
+ios:
+	pnpm --dir "$(RN_DIR)" expo run:ios
 
-test:
-	xcodebuild -project "$(PROJECT)" -scheme "$(SCHEME)" -destination '$(DEST_SIM)' test
+android:
+	pnpm --dir "$(RN_DIR)" expo run:android
+
+pods:
+	pnpm --dir "$(RN_DIR)" pods:install
+
+lint:
+	pnpm --dir "$(RN_DIR)" lint
+
+format:
+	pnpm --dir "$(RN_DIR)" format
 
 contracts:
 	bash scripts/check_backend_contracts.sh
@@ -36,3 +41,6 @@ migrations-sync:
 doctor:
 	bash scripts/check_backend_contracts.sh --strict
 	bash scripts/check_migration_mirror.sh --strict
+
+legacy-open:
+	open "legacy/swift-ios/The Trash.xcodeproj"

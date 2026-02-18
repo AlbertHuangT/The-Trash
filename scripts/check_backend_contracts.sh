@@ -4,9 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-SWIFT_DIR="The Trash"
+RN_DIR="the-trash-rn"
 SUPABASE_MIGRATIONS_DIR="supabase/migrations"
-APP_MIRROR_MIGRATIONS_DIR="The Trash/migrations"
 STRICT_MODE=0
 
 usage() {
@@ -54,34 +53,36 @@ cleanup() {
 }
 trap cleanup EXIT
 
-extract_swift_rpcs() {
-  rg -o --no-filename --pcre2 'rpc\(\s*"[A-Za-z0-9_]+"' "$SWIFT_DIR" \
-    | sed -E 's/.*rpc\(\s*"([A-Za-z0-9_]+)"/\1/' \
+extract_rn_rpcs() {
+  if [[ ! -d "$RN_DIR" ]]; then
+    return 0
+  fi
+
+  (
+    rg -o --no-filename --pcre2 '\.rpc\(\s*["'"'"'`][A-Za-z0-9_]+' "$RN_DIR" || true
+  ) | sed -E 's/.*\.rpc\(\s*["'"'"'`]([A-Za-z0-9_]+).*/\1/' \
     | tr 'A-Z' 'a-z' \
     | sort -u
 }
 
 extract_sql_functions() {
   local source_dir="$1"
-  rg -o --no-filename -i --pcre2 'create\s+(?:or\s+replace\s+)?function\s+((?:"[^"]+"|[A-Za-z0-9_]+)(?:\.(?:"[^"]+"|[A-Za-z0-9_]+))?)' "$source_dir" \
-    | tr 'A-Z' 'a-z' \
+  (
+    rg -o --no-filename -i --pcre2 'create\s+(?:or\s+replace\s+)?function\s+((?:"[^"]+"|[A-Za-z0-9_]+)(?:\.(?:"[^"]+"|[A-Za-z0-9_]+))?)' "$source_dir" || true
+  ) | tr 'A-Z' 'a-z' \
     | sed -E 's/.*function[[:space:]]+//' \
     | sed -E 's/"//g' \
     | awk -F'.' '{print $NF}' \
     | sort -u
 }
 
-swift_rpcs_file="$(mktemp)"
-register_tmp "$swift_rpcs_file"
-extract_swift_rpcs > "$swift_rpcs_file"
+rn_rpcs_file="$(mktemp)"
+register_tmp "$rn_rpcs_file"
+extract_rn_rpcs > "$rn_rpcs_file"
 
 sql_functions_supabase_file="$(mktemp)"
 register_tmp "$sql_functions_supabase_file"
 extract_sql_functions "$SUPABASE_MIGRATIONS_DIR" > "$sql_functions_supabase_file"
-
-sql_functions_app_mirror_file="$(mktemp)"
-register_tmp "$sql_functions_app_mirror_file"
-extract_sql_functions "$APP_MIRROR_MIGRATIONS_DIR" > "$sql_functions_app_mirror_file"
 
 # Helper to print sorted set difference A - B
 set_diff() {
@@ -90,12 +91,11 @@ set_diff() {
   comm -23 "$left_file" "$right_file"
 }
 
-echo "=== Backend Contract Check ==="
+echo "=== Backend Contract Check (RN + Supabase) ==="
 echo
 
-echo "Swift RPC count: $(wc -l < "$swift_rpcs_file" | tr -d ' ')"
+echo "RN RPC count: $(wc -l < "$rn_rpcs_file" | tr -d ' ')"
 echo "Supabase migration function count: $(wc -l < "$sql_functions_supabase_file" | tr -d ' ')"
-echo "App mirror migration function count: $(wc -l < "$sql_functions_app_mirror_file" | tr -d ' ')"
 echo
 
 drift_detected=0
@@ -117,28 +117,13 @@ print_diff() {
 
 missing_in_supabase_file="$(mktemp)"
 register_tmp "$missing_in_supabase_file"
-set_diff "$swift_rpcs_file" "$sql_functions_supabase_file" > "$missing_in_supabase_file" || true
+set_diff "$rn_rpcs_file" "$sql_functions_supabase_file" > "$missing_in_supabase_file" || true
 print_diff "RPCs missing in supabase/migrations" "$missing_in_supabase_file" 1
 
-missing_in_app_mirror_file="$(mktemp)"
-register_tmp "$missing_in_app_mirror_file"
-set_diff "$swift_rpcs_file" "$sql_functions_app_mirror_file" > "$missing_in_app_mirror_file" || true
-print_diff "RPCs missing in app mirror migrations (The Trash/migrations)" "$missing_in_app_mirror_file" 1
-
-unused_mirror_file="$(mktemp)"
-register_tmp "$unused_mirror_file"
-set_diff "$sql_functions_app_mirror_file" "$swift_rpcs_file" > "$unused_mirror_file" || true
-print_diff "Mirror-only functions not used by current Swift RPC calls" "$unused_mirror_file" 0
-
-missing_in_mirror_vs_supabase_file="$(mktemp)"
-register_tmp "$missing_in_mirror_vs_supabase_file"
-set_diff "$sql_functions_supabase_file" "$sql_functions_app_mirror_file" > "$missing_in_mirror_vs_supabase_file" || true
-print_diff "Functions present in supabase/migrations but missing in app mirror" "$missing_in_mirror_vs_supabase_file" 1
-
-missing_in_supabase_vs_mirror_file="$(mktemp)"
-register_tmp "$missing_in_supabase_vs_mirror_file"
-set_diff "$sql_functions_app_mirror_file" "$sql_functions_supabase_file" > "$missing_in_supabase_vs_mirror_file" || true
-print_diff "Functions present in app mirror but missing in supabase/migrations" "$missing_in_supabase_vs_mirror_file" 0
+unused_supabase_functions_file="$(mktemp)"
+register_tmp "$unused_supabase_functions_file"
+set_diff "$sql_functions_supabase_file" "$rn_rpcs_file" > "$unused_supabase_functions_file" || true
+print_diff "Functions present in supabase/migrations but unused by current RN RPC calls" "$unused_supabase_functions_file" 0
 
 if [[ "$STRICT_MODE" -eq 1 && "$drift_detected" -eq 1 ]]; then
   echo "Strict mode enabled: drift detected."
