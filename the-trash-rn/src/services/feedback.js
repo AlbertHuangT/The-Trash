@@ -11,8 +11,7 @@ export const feedbackService = {
     }
 
     if (!hasSupabaseConfig()) {
-      console.log('[feedback] mock submit', { resultId, correction, note });
-      return { mocked: true };
+      return { success: true, mocked: true };
     }
 
     try {

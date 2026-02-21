@@ -41,6 +41,8 @@ export const clearQueuedDuelEvents = (duelId) => {
   duelEventQueues.delete(duelId);
 };
 
+export const hasDuelCountdown = (duelId) => duelCountdownTimers.has(duelId);
+
 export const createDuelState = (duelId, submit) => ({
   id: duelId,
   status: 'loading',
@@ -96,6 +98,13 @@ export const patchDuel = (state, duelId, patch) => {
 };
 
 const ACTIVE_DUEL_STATUSES = new Set(['playing', 'countdown', 'finalizing']);
+
+export const stopDuelWatchdog = () => {
+  if (duelGcInterval) {
+    clearInterval(duelGcInterval);
+    duelGcInterval = null;
+  }
+};
 
 export const ensureDuelWatchdog = (get, set) => {
   if (duelGcInterval) return;

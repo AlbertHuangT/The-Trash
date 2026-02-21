@@ -192,9 +192,6 @@ class ClassifierService {
       );
       this.ready = true;
       this.initializationError = null;
-      console.log(
-        `[classifier] knowledge base ready: ${this.knowledgeBase.length} vectors, dim=${this.dimension}`
-      );
     } catch (error) {
       this.ready = false;
       this.initializationError =

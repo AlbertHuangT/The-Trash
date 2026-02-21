@@ -54,10 +54,13 @@ export const useAchievementStore = create((set, get) => ({
     ]);
 
     if (badgesResult.status === 'rejected') {
-      console.log('[achievementStore] badges load failed', badgesResult.reason);
+      console.warn(
+        '[achievementStore] badges load failed',
+        badgesResult.reason
+      );
     }
     if (rewardsResult.status === 'rejected') {
-      console.log(
+      console.warn(
         '[achievementStore] rewards load failed',
         rewardsResult.reason
       );

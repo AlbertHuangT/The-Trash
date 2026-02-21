@@ -1,18 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { hasSupabaseConfig } from 'src/services/config';
-import {
-  AppError,
-  ERROR_CODES,
-  fromSupabaseError,
-  messageFromError
-} from 'src/utils/errors';
+import { AppError, ERROR_CODES, fromSupabaseError } from 'src/utils/errors';
 
 import { supabase } from './supabase';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+// Fallback quiz options (English) — these match the quiz_questions.correct_category
+// schema, NOT the classifier's Chinese category names (可回收/湿垃圾/干垃圾/有害垃圾).
 const QUIZ_OPTIONS = ['Recyclable', 'Compostable', 'Hazardous', 'Landfill'];
 const SPEED_DURATION = 60;
 const CLASSIC_SESSIONS_STORAGE_KEY = 'the-trash/arena/classic-sessions-v1';
@@ -417,12 +414,15 @@ export const arenaService = {
     const data = await rpc('create_arena_challenge', {
       p_opponent_id: friendId
     });
+    if (!data?.challenge_id) {
+      throw new AppError('创建对战失败', { code: ERROR_CODES.BACKEND });
+    }
     return {
-      id: data?.challenge_id,
+      id: data.challenge_id,
       opponentId: friendId,
       mode: 'duel',
-      status: data?.status ?? 'pending',
-      channelName: data?.channel_name
+      status: data.status ?? 'pending',
+      channelName: data.channel_name
     };
   },
 
@@ -479,19 +479,11 @@ export const arenaService = {
   },
 
   async completeDuel(challengeId) {
-    if (!hasSupabaseConfig) {
+    if (!hasSupabaseConfig()) {
       return null;
     }
-    try {
-      return await rpc('complete_arena_challenge', {
-        p_challenge_id: challengeId
-      });
-    } catch (error) {
-      console.warn(
-        '[arenaService] complete duel failed',
-        messageFromError(error, '完成对战失败')
-      );
-      return null;
-    }
+    return rpc('complete_arena_challenge', {
+      p_challenge_id: challengeId
+    });
   }
 };

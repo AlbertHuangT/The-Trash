@@ -6,6 +6,7 @@ import {
   clearQueuedDuelEvents,
   createDuelState,
   ensureDuelWatchdog,
+  hasDuelCountdown,
   patchDuel,
   queueDuelEvent,
   registerDuelCountdown
@@ -409,6 +410,7 @@ export const createDuelArenaSlice = (set, get) => {
       if (!duel) return;
       if (!duel.questions?.length) return;
       if (duel.status === 'playing' || duel.status === 'completed') return;
+      if (hasDuelCountdown(duelId) && duel.status === 'countdown') return;
 
       const countdownStartAt =
         toNumber(startAtServerMs) ?? toNumber(duel.countdownStartAtServerMs);
@@ -665,6 +667,7 @@ export const createDuelArenaSlice = (set, get) => {
         return duels ? { duels } : {};
       });
 
+      let hardErrors = 0;
       for (
         let attempt = 0;
         attempt < DUEL_COMPLETE_MAX_ATTEMPTS;
@@ -686,7 +689,9 @@ export const createDuelArenaSlice = (set, get) => {
             return;
           }
         } catch (error) {
+          hardErrors += 1;
           console.warn('[arenaStore] finalize duel failed', error);
+          if (hardErrors >= 3) break;
         }
         await sleep(DUEL_COMPLETE_RETRY_MS);
       }
@@ -707,7 +712,11 @@ export const createDuelArenaSlice = (set, get) => {
       clearDuelCountdown(duelId);
       clearQueuedDuelEvents(duelId);
       const duel = get().duels[duelId];
-      duel?.unsubscribe?.();
+      try {
+        duel?.unsubscribe?.();
+      } catch (_) {
+        // Swallow cleanup errors to ensure state is always cleared
+      }
       set((state) => {
         const duels = { ...state.duels };
         delete duels[duelId];
