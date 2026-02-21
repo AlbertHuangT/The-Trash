@@ -6,7 +6,7 @@ install:
 	pnpm --dir "$(RN_DIR)" install
 
 start:
-	pnpm --dir "$(RN_DIR)" exec expo start --dev-client --tunnel --clear
+	pnpm --dir "$(RN_DIR)" exec expo start --dev-client --clear
 
 ios:
 	pnpm --dir "$(RN_DIR)" run ios
