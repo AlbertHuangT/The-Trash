@@ -6,22 +6,22 @@ install:
 	pnpm --dir "$(RN_DIR)" install
 
 start:
-	pnpm --dir "$(RN_DIR)" expo start --dev-client --tunnel --clear
+	pnpm --dir "$(RN_DIR)" exec expo start --dev-client --tunnel --clear
 
 ios:
-	pnpm --dir "$(RN_DIR)" expo run:ios
+	pnpm --dir "$(RN_DIR)" run ios
 
 android:
-	pnpm --dir "$(RN_DIR)" expo run:android
+	pnpm --dir "$(RN_DIR)" run android
 
 pods:
-	pnpm --dir "$(RN_DIR)" pods:install
+	pnpm --dir "$(RN_DIR)" run pods:install
 
 lint:
-	pnpm --dir "$(RN_DIR)" lint
+	pnpm --dir "$(RN_DIR)" run lint
 
 format:
-	pnpm --dir "$(RN_DIR)" format
+	pnpm --dir "$(RN_DIR)" run format
 
 contracts:
 	bash scripts/check_backend_contracts.sh
