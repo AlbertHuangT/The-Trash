@@ -196,7 +196,8 @@ export default function TrashButton({
               fontSize: labelType.size ?? 13,
               lineHeight: labelType.lineHeight ?? 18,
               fontWeight: '600',
-              letterSpacing: labelType.letterSpacing ?? 0.26
+              letterSpacing: labelType.letterSpacing ?? 0.26,
+              textAlign: 'center'
             },
             textStyle
           ]}

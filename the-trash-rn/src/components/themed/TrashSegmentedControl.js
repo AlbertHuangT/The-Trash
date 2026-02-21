@@ -163,7 +163,8 @@ export default function TrashSegmentedControl({
                   lineHeight: labelType.lineHeight ?? 18,
                   letterSpacing: active
                     ? -0.08
-                    : (labelType.letterSpacing ?? 0.26)
+                    : (labelType.letterSpacing ?? 0.26),
+                  textAlign: 'center'
                 },
                 labelStyle
               ]}
