@@ -93,7 +93,7 @@ class FriendService: ObservableObject {
         // 🚀 优化：取消之前的请求
         fetchTask?.cancel()
 
-        let task = Task {
+        let task = Task { @MainActor in
             guard !Task.isCancelled else { return }
 
             self.isLoading = true

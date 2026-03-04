@@ -9,13 +9,7 @@ swift_rpcs=$(rg -o 'rpc\("[a-zA-Z0-9_]+' -n 'The Trash' \
   | tr 'A-Z' 'a-z' \
   | sort -u)
 
-sql_functions_supabase=$(rg -n "create\s+or\s+replace\s+function" supabase/migrations -i \
-  | sed -E 's/.*create[[:space:]]+or[[:space:]]+replace[[:space:]]+function[[:space:]]+((public\.)?[a-zA-Z0-9_]+).*/\1/I' \
-  | sed 's/^public\.//' \
-  | tr 'A-Z' 'a-z' \
-  | sort -u)
-
-sql_functions_app_mirror=$(rg -n "create\s+or\s+replace\s+function" 'The Trash/migrations' -i \
+sql_functions=$(rg -n "create\s+or\s+replace\s+function" supabase/migrations -i \
   | sed -E 's/.*create[[:space:]]+or[[:space:]]+replace[[:space:]]+function[[:space:]]+((public\.)?[a-zA-Z0-9_]+).*/\1/I' \
   | sed 's/^public\.//' \
   | tr 'A-Z' 'a-z' \
@@ -30,32 +24,22 @@ echo "=== Backend Contract Check ==="
 echo
 
 echo "Swift RPC count: $(printf "%s\n" "$swift_rpcs" | sed '/^$/d' | wc -l | tr -d ' ')"
-echo "Supabase migration function count: $(printf "%s\n" "$sql_functions_supabase" | sed '/^$/d' | wc -l | tr -d ' ')"
-echo "App mirror migration function count: $(printf "%s\n" "$sql_functions_app_mirror" | sed '/^$/d' | wc -l | tr -d ' ')"
+echo "Supabase migration function count: $(printf "%s\n" "$sql_functions" | sed '/^$/d' | wc -l | tr -d ' ')"
 echo
 
-echo "-- RPCs missing in supabase/migrations --"
-missing_in_supabase=$(set_diff "$swift_rpcs" "$sql_functions_supabase" || true)
-if [[ -n "${missing_in_supabase}" ]]; then
-  printf "%s\n" "$missing_in_supabase"
+echo "-- Swift RPCs missing in supabase/migrations --"
+missing_in_sql=$(set_diff "$swift_rpcs" "$sql_functions" || true)
+if [[ -n "${missing_in_sql}" ]]; then
+  printf "%s\n" "$missing_in_sql"
 else
   echo "(none)"
 fi
 
 echo
-echo "-- RPCs missing in app mirror migrations (The Trash/migrations) --"
-missing_in_app_mirror=$(set_diff "$swift_rpcs" "$sql_functions_app_mirror" || true)
-if [[ -n "${missing_in_app_mirror}" ]]; then
-  printf "%s\n" "$missing_in_app_mirror"
-else
-  echo "(none)"
-fi
-
-echo
-echo "-- Mirror-only functions not used by current Swift RPC calls --"
-unused_mirror=$(set_diff "$sql_functions_app_mirror" "$swift_rpcs" || true)
-if [[ -n "${unused_mirror}" ]]; then
-  printf "%s\n" "$unused_mirror"
+echo "-- SQL functions not called by any Swift RPC --"
+unused_sql=$(set_diff "$sql_functions" "$swift_rpcs" || true)
+if [[ -n "${unused_sql}" ]]; then
+  printf "%s\n" "$unused_sql"
 else
   echo "(none)"
 fi

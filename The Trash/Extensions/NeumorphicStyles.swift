@@ -1,54 +1,24 @@
 import SwiftUI
 
-// MARK: - Neumorphic Colors (Theme Driven)
+// MARK: - Legacy Theme Color Aliases
+// These bypass @Environment(\.trashTheme) and read from the singleton directly.
+// Prefer using `theme.palette.*` / `theme.accents.*` / `theme.shadows.*` via
+// `@Environment(\.trashTheme) private var theme` in new code.
 extension Color {
     private static var theme: TrashTheme {
         ThemeManager.shared.currentTheme
     }
 
-    static var neuBackground: Color {
-        theme.palette.background
-    }
-
-    static var neuLightShadow: Color {
-        theme.shadows.light
-    }
-
-    static var neuDarkShadow: Color {
-        theme.shadows.dark
-    }
-
-    static var neuText: Color {
-        theme.palette.textPrimary
-    }
-
-    static var neuSecondaryText: Color {
-        theme.palette.textSecondary
-    }
-
-    static var neuAccentBlue: Color {
-        theme.accents.blue
-    }
-
-    static var neuAccentGreen: Color {
-        theme.accents.green
-    }
-
-    static var neuAccentOrange: Color {
-        theme.accents.orange
-    }
-
-    static var neuAccentPurple: Color {
-        theme.accents.purple
-    }
-
-    static var neuCardBackground: Color {
-        theme.palette.card
-    }
-
-    static var neuDivider: Color {
-        theme.palette.divider
-    }
+    static var neuBackground: Color { theme.palette.background }
+    static var neuLightShadow: Color { theme.shadows.light }
+    static var neuDarkShadow: Color { theme.shadows.dark }
+    static var neuText: Color { theme.palette.textPrimary }
+    static var neuSecondaryText: Color { theme.palette.textSecondary }
+    static var neuAccentBlue: Color { theme.accents.blue }
+    static var neuAccentGreen: Color { theme.accents.green }
+    static var neuAccentOrange: Color { theme.accents.orange }
+    static var neuAccentPurple: Color { theme.accents.purple }
+    static var neuDivider: Color { theme.palette.divider }
 }
 
 // MARK: - Smart Theme Modifiers

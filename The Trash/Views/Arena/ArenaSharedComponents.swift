@@ -16,6 +16,7 @@ struct SharedQuizCard: View {
     let showCorrect: Bool
     let showWrong: Bool
     let isSubmitting: Bool
+    let pointsText: String
     let onAnswer: (String) -> Void
     var timerView: AnyView? = nil
     @Environment(\.trashTheme) private var theme
@@ -90,7 +91,7 @@ struct SharedQuizCard: View {
 
                 // Correct/Wrong feedback overlays
                 if showCorrect {
-                    EnhancedCorrectFeedback()
+                    EnhancedCorrectFeedback(pointsText: pointsText)
                 }
 
                 if showWrong {

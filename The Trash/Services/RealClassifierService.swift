@@ -50,9 +50,6 @@ class RealClassifierService: TrashClassifierService {
     private var _initializationError: String? = nil
 
 
-    // 🚀 优化：缓存向量维度，避免重复计算
-    private var embeddingDimension: Int = 0
-
     // 线程安全的访问入口
     private var normalizedKnowledgeBase: [NormalizedTrashItem] {
         get { accessQueue.sync { _normalizedKnowledgeBase } }
@@ -124,15 +121,15 @@ class RealClassifierService: TrashClassifierService {
     private func warmupModel() {
         guard let model = self.model else { return }
 
-        // 创建一个 224x224 的空白图片进行预热
+        // 创建一个 224x224 的空白图片进行预热（使用线程安全的 UIGraphicsImageRenderer）
         let size = CGSize(width: 224, height: 224)
-        UIGraphicsBeginImageContext(size)
-        UIColor.gray.setFill()
-        UIRectFill(CGRect(origin: .zero, size: size))
-        let warmupImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let warmupImage = renderer.image { ctx in
+            UIColor.gray.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+        }
 
-        guard let cgImage = warmupImage?.cgImage else { return }
+        guard let cgImage = warmupImage.cgImage else { return }
         let ciImage = CIImage(cgImage: cgImage)
 
         let request = VNCoreMLRequest(model: model) { _, _ in }
@@ -179,7 +176,6 @@ class RealClassifierService: TrashClassifierService {
                 return
             }
 
-            self.embeddingDimension = items.first?.embedding.count ?? 0
             self.normalizedKnowledgeBase = normalized
             self.isKnowledgeBaseReady = true
             print("✅ [System] 成功加载知识库: \(normalized.count) 个预归一化向量")
@@ -194,138 +190,107 @@ class RealClassifierService: TrashClassifierService {
 
     // MARK: - Classification Logic
 
-    func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void) {
-        // 🔥 Fix: Check for initialization error first
+    func classifyImage(image: UIImage) async -> TrashAnalysisResult {
+        // Check for initialization error first
         if let initError = self.initializationError {
-            let errorResult = TrashAnalysisResult(
+            return TrashAnalysisResult(
                 itemName: "System Error",
                 category: "Error",
                 confidence: 0.0,
                 actionTip: initError,
                 color: .red
             )
-            DispatchQueue.main.async { completion(errorResult) }
-            return
         }
 
         if !isReady {
             print("⚠️ 系统尚未准备就绪")
-            let loadingResult = TrashAnalysisResult(
+            return TrashAnalysisResult(
                 itemName: "AI Warming Up...",
                 category: "Please Wait",
                 confidence: 0.0,
                 actionTip: "The AI brain is waking up. This usually takes 2-3 seconds. Please tap 'Retake' to try again.",
                 color: .gray
             )
-            // 🔥 FIX: 确保在主线程回调
-            DispatchQueue.main.async {
-                completion(loadingResult)
-            }
-            return
         }
 
         guard let model = self.model,
               let ciImage = image.ciImage ?? (image.cgImage.map { CIImage(cgImage: $0) }) else {
-            let errorResult = TrashAnalysisResult(
+            return TrashAnalysisResult(
                 itemName: "Image Error",
                 category: "Retry",
                 confidence: 0.0,
                 actionTip: "Could not process image data.",
                 color: .red
             )
-            // 🔥 FIX: 确保在主线程回调
-            DispatchQueue.main.async {
-                completion(errorResult)
-            }
-            return
         }
 
-        let request = VNCoreMLRequest(model: model) { [weak self] request, error in
-            guard let self = self else { return }
-
-            if let error = error {
-                print("❌ [Error] Vision request error: \(error)")
-                let errorResult = TrashAnalysisResult(
-                    itemName: "Analysis Failed",
-                    category: "Error",
-                    confidence: 0.0,
-                    actionTip: "Vision processing error. Please try again.",
-                    color: .red
-                )
-                // 🔥 FIX: 确保在主线程回调
-                DispatchQueue.main.async {
-                    completion(errorResult)
+        return await withCheckedContinuation { continuation in
+            let request = VNCoreMLRequest(model: model) { [weak self] request, error in
+                guard let self = self else {
+                    continuation.resume(returning: TrashAnalysisResult(
+                        itemName: "Analysis Failed", category: "Error",
+                        confidence: 0.0, actionTip: "Service unavailable.", color: .red
+                    ))
+                    return
                 }
-                return
-            }
 
-            if let results = request.results as? [VNCoreMLFeatureValueObservation],
-               let featureValue = results.first?.featureValue,
-               let multiArray = featureValue.multiArrayValue {
+                if let error = error {
+                    print("❌ [Error] Vision request error: \(error)")
+                    continuation.resume(returning: TrashAnalysisResult(
+                        itemName: "Analysis Failed", category: "Error",
+                        confidence: 0.0, actionTip: "Vision processing error. Please try again.", color: .red
+                    ))
+                    return
+                }
 
-                let imageEmbedding = self.convertMultiArray(multiArray)
-                let bestMatch = self.findBestMatchOptimized(imageVector: imageEmbedding)
+                if let results = request.results as? [VNCoreMLFeatureValueObservation],
+                   let featureValue = results.first?.featureValue,
+                   let multiArray = featureValue.multiArrayValue {
 
-                if let match = bestMatch {
-                    let result = TrashAnalysisResult(
-                        itemName: match.label.capitalized,
-                        category: match.category,
-                        confidence: Double(match.score),
-                        actionTip: self.getTipForCategory(match.category),
-                        color: self.getColorForCategory(match.category)
-                    )
-                    // 🔥 FIX: 确保在主线程回调
-                    DispatchQueue.main.async {
-                        completion(result)
+                    let imageEmbedding = self.convertMultiArray(multiArray)
+                    let bestMatch = self.findBestMatchOptimized(imageVector: imageEmbedding)
+
+                    if let match = bestMatch {
+                        continuation.resume(returning: TrashAnalysisResult(
+                            itemName: match.label.capitalized,
+                            category: match.category,
+                            confidence: Double(match.score),
+                            actionTip: self.getTipForCategory(match.category),
+                            color: self.getColorForCategory(match.category)
+                        ))
+                    } else {
+                        continuation.resume(returning: TrashAnalysisResult(
+                            itemName: "Unknown Object", category: "Try Closer",
+                            confidence: 0.0,
+                            actionTip: "I can't recognize this clearly. Try moving closer or improving lighting.",
+                            color: .orange
+                        ))
                     }
                 } else {
-                    let failResult = TrashAnalysisResult(
-                        itemName: "Unknown Object",
-                        category: "Try Closer",
+                    continuation.resume(returning: TrashAnalysisResult(
+                        itemName: "Processing Error", category: "Retry",
                         confidence: 0.0,
-                        actionTip: "I can't recognize this clearly. Try moving closer or improving lighting.",
+                        actionTip: "Could not extract features from image. Please try again.",
                         color: .orange
-                    )
-                    // 🔥 FIX: 确保在主线程回调
-                    DispatchQueue.main.async {
-                        completion(failResult)
-                    }
-                }
-            } else {
-                let failResult = TrashAnalysisResult(
-                    itemName: "Processing Error",
-                    category: "Retry",
-                    confidence: 0.0,
-                    actionTip: "Could not extract features from image. Please try again.",
-                    color: .orange
-                )
-                // 🔥 FIX: 确保在主线程回调
-                DispatchQueue.main.async {
-                    completion(failResult)
+                    ))
                 }
             }
-        }
 
-        request.imageCropAndScaleOption = .centerCrop
-        let handler = VNImageRequestHandler(ciImage: ciImage, orientation: .up)
+            request.imageCropAndScaleOption = .centerCrop
+            let handler = VNImageRequestHandler(ciImage: ciImage, orientation: .up)
 
-        // 🚀 优化：使用更高优先级的 QoS
-        DispatchQueue.global(qos: .userInteractive).async {
-            autoreleasepool {
-                do {
-                    try handler.perform([request])
-                } catch {
-                    print("❌ [Error] Vision 请求失败: \(error)")
-                    let errorResult = TrashAnalysisResult(
-                        itemName: "Analysis Failed",
-                        category: "Error",
-                        confidence: 0.0,
-                        actionTip: "Vision request failed. Please try again.",
-                        color: .red
-                    )
-                    // 🔥 FIX: 确保在主线程回调
-                    DispatchQueue.main.async {
-                        completion(errorResult)
+            DispatchQueue.global(qos: .userInteractive).async {
+                autoreleasepool {
+                    do {
+                        try handler.perform([request])
+                    } catch {
+                        print("❌ [Error] Vision 请求失败: \(error)")
+                        continuation.resume(returning: TrashAnalysisResult(
+                            itemName: "Analysis Failed", category: "Error",
+                            confidence: 0.0,
+                            actionTip: "Vision request failed. Please try again.",
+                            color: .red
+                        ))
                     }
                 }
             }
@@ -358,6 +323,14 @@ class RealClassifierService: TrashClassifierService {
         var bestIndex = -1
 
         // 使用 vDSP 批量计算点积
+        var bestScore: Float = -1
+        var bestIndex = -1
+
+        #if DEBUG
+        // 在首次遍历中收集 top-5，避免双重计算
+        var topScores: [(index: Int, score: Float)] = []
+        #endif
+
         for (index, item) in currentKnowledge.enumerated() {
             guard item.normalizedEmbedding.count == normalizedImage.count else { continue }
 
@@ -368,20 +341,22 @@ class RealClassifierService: TrashClassifierService {
                 bestScore = score
                 bestIndex = index
             }
+
+            #if DEBUG
+            // 维护一个最多 5 个元素的有序数组
+            if topScores.count < 5 {
+                topScores.append((index, score))
+                topScores.sort { $0.score > $1.score }
+            } else if score > topScores.last!.score {
+                topScores[4] = (index, score)
+                topScores.sort { $0.score > $1.score }
+            }
+            #endif
         }
 
         #if DEBUG
-        // 仅在 Debug 模式打印前5名
-        var allScores: [(index: Int, score: Float)] = []
-        for (index, item) in currentKnowledge.enumerated() {
-            guard item.normalizedEmbedding.count == normalizedImage.count else { continue }
-            var score: Float = 0
-            vDSP_dotpr(normalizedImage, 1, item.normalizedEmbedding, 1, &score, vDSP_Length(normalizedImage.count))
-            allScores.append((index, score))
-        }
-        let top5 = allScores.sorted { $0.score > $1.score }.prefix(5)
         print("\n-------- 🧠 AI 思考过程 (Top 5) --------")
-        for (rank, match) in top5.enumerated() {
+        for (rank, match) in topScores.enumerated() {
             print("👉 #\(rank + 1) [\(currentKnowledge[match.index].label)] 得分: \(match.score)")
         }
         print("---------------------------------------\n")

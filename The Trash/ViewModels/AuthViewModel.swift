@@ -32,7 +32,8 @@ class AuthViewModel: ObservableObject {
     private let client = SupabaseManager.shared.client
     
     // 🔥 存储任务引用，防止内存泄漏
-    private var authStateTask: Task<Void, Never>?
+    // nonisolated(unsafe)：允许在 nonisolated deinit 中安全取消任务
+    nonisolated(unsafe) private var authStateTask: Task<Void, Never>?
     
     // Check if the current user is a guest
     var isAnonymous: Bool {

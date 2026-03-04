@@ -14,7 +14,7 @@ import UIKit
 // MARK: - 1. Protocol
 protocol TrashClassifierService {
     var initializationError: String? { get }
-    func classifyImage(image: UIImage, completion: @escaping (TrashAnalysisResult) -> Void)
+    func classifyImage(image: UIImage) async -> TrashAnalysisResult
 }
 
 // MARK: - 2. ViewModel
@@ -42,17 +42,9 @@ class TrashViewModel: ObservableObject {
         
         self.appState = .analyzing
 
-        classifier.classifyImage(image: image) { [weak self] result in
-            Task { @MainActor [weak self] in
-                // 🔥 Fix: Removed artificial delay for snappier UI
-                
-                self?.appState = .finished(result)
-                
-                if result.confidence > 0.8 {
-                    self?.grantPoints(amount: 10)
-                }
-            }
-
+        Task {
+            let result = await classifier.classifyImage(image: image)
+            self.appState = .finished(result)
         }
     }
     
@@ -60,7 +52,7 @@ class TrashViewModel: ObservableObject {
     
     func handleCorrectFeedback() {
         print("✅ User confirmed result.")
-        grantPoints(amount: 5)
+        grantPoints(amount: 10)
         self.reset()
     }
     
@@ -112,6 +104,11 @@ class TrashViewModel: ObservableObject {
     // MARK: - Gamification
     
     func grantPoints(amount: Int) {
+        guard let user = client.auth.currentUser else { return }
+        let isAnonymous = (user.email == nil || user.email?.isEmpty == true) &&
+                          (user.phone == nil || user.phone?.isEmpty == true)
+        guard !isAnonymous else { return }
+
         Task {
             do {
                 _ = try await client.rpc("increment_credits", params: ["amount": amount]).execute()

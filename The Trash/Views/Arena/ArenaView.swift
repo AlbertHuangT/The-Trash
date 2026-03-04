@@ -207,7 +207,7 @@ class ArenaViewModel: ObservableObject {
                 totalCredits -= pointsEarned
                 sessionScore -= pointsEarned
                 correctCount -= 1
-                comboCount -= 1
+                comboCount = max(0, comboCount - 1)
                 print("❌ [Arena] Credit update failed: \(error)")
             }
 
@@ -412,7 +412,8 @@ struct ArenaView: View {
                     categories: categories,
                     showCorrect: viewModel.showCorrectFeedback,
                     showWrong: viewModel.showWrongFeedback,
-                    isSubmitting: viewModel.isSubmitting
+                    isSubmitting: viewModel.isSubmitting,
+                    pointsText: viewModel.pointAnimationText.isEmpty ? "+20" : viewModel.pointAnimationText
                 ) { selectedCategory in
                     Task { await viewModel.submitAnswer(selectedCategory: selectedCategory) }
                 }
@@ -569,6 +570,7 @@ struct EnhancedQuizCard: View {
     let showCorrect: Bool
     let showWrong: Bool
     let isSubmitting: Bool
+    let pointsText: String
     let onAnswer: (String) -> Void
 
     var body: some View {
@@ -632,7 +634,7 @@ struct EnhancedQuizCard: View {
 
                 // Correct/Wrong feedback overlays
                 if showCorrect {
-                    EnhancedCorrectFeedback()
+                    EnhancedCorrectFeedback(pointsText: pointsText)
                 }
 
                 if showWrong {
@@ -708,6 +710,7 @@ struct CategoryAnswerButton: View {
 
 // Correct feedback
 struct EnhancedCorrectFeedback: View {
+    let pointsText: String
     @State private var scale: CGFloat = 0.5
 
     var body: some View {
@@ -724,7 +727,7 @@ struct EnhancedCorrectFeedback: View {
                     .scaleEffect(scale)
                 Text("Correct!")
                     .font(.system(size: 32, weight: .heavy, design: .rounded))
-                Text("+20 points")
+                Text(pointsText)
                     .font(.headline)
                     .opacity(0.8)
             }
@@ -983,6 +986,7 @@ struct QuizCard: View {
     let showCorrect: Bool
     let showWrong: Bool
     let isSubmitting: Bool
+    let pointsText: String
     let onAnswer: (String) -> Void
 
     var body: some View {
@@ -993,14 +997,16 @@ struct QuizCard: View {
             showCorrect: showCorrect,
             showWrong: showWrong,
             isSubmitting: isSubmitting,
+            pointsText: pointsText,
             onAnswer: onAnswer
         )
     }
 }
 
 struct CorrectFeedbackOverlay: View {
+    let pointsText: String
     var body: some View {
-        EnhancedCorrectFeedback()
+        EnhancedCorrectFeedback(pointsText: pointsText)
     }
 }
 

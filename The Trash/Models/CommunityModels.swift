@@ -484,18 +484,4 @@ extension GetAdminLogsParams: Encodable {
     }
 }
 
-struct SimpleCommunity: Codable, Sendable {
-    let id: String
-    let name: String
-    let city: String
-    let state: String?
-    let description: String?
-    let memberCount: Int
-    let latitude: Double?
-    let longitude: Double?
 
-    enum CodingKeys: String, CodingKey {
-        case id, name, city, state, description, latitude, longitude
-        case memberCount = "member_count"
-    }
-}

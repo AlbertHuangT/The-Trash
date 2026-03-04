@@ -37,7 +37,10 @@ Package.pins
 # --- Custom Ignore (Sensitive Data) ---
 Secrets.swift
 TODO/
-CLAUDE.md
 AGENTS.md
-supabase/.temp/
+supabase/
+CLAUDE.md
 GEMINI.md
+plan.md
+.claude/
+

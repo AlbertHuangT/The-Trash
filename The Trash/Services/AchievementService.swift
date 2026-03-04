@@ -176,10 +176,41 @@ class AchievementService: ObservableObject {
         }
     }
 
-    /// 批量检查多个触发条件
+    /// 批量检查多个触发条件（并发执行 RPC）
     func checkMultipleTriggers(_ triggers: [String]) async {
-        for trigger in triggers {
-            await checkAndGrant(triggerKey: trigger)
+        // Fire all RPC calls concurrently, collect granted results
+        let grantedResults: [AchievementGrantResult] = await withTaskGroup(of: AchievementGrantResult?.self) { group in
+            for trigger in triggers {
+                group.addTask { [client] in
+                    do {
+                        let result: AchievementGrantResult = try await client
+                            .rpc("check_and_grant_achievement", params: ["p_trigger_key": trigger])
+                            .execute()
+                            .value
+                        return result.granted ? result : nil
+                    } catch {
+                        print("Error checking achievement \(trigger): \(error)")
+                        return nil
+                    }
+                }
+            }
+
+            var results: [AchievementGrantResult] = []
+            for await result in group {
+                if let result = result {
+                    results.append(result)
+                }
+            }
+            return results
+        }
+
+        // Process granted achievements on MainActor
+        if let lastGrant = grantedResults.last {
+            for grant in grantedResults {
+                print("🏆 Achievement unlocked: \(grant.name ?? "Unknown")")
+            }
+            self.lastGrantedAchievement = lastGrant
+            await fetchMyAchievements()
         }
     }
 

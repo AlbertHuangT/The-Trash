@@ -139,27 +139,13 @@ class CommunityService {
 
     /// 获取所有社区列表
     func getAllCommunities() async throws -> [CommunityResponse] {
-        let communities: [SimpleCommunity] = try await client
+        return try await client
             .from("communities")
-            .select()
+            .select("id, name, city, state, description, member_count, latitude, longitude")
             .eq("is_active", value: true)
             .order("member_count", ascending: false)
             .execute()
             .value
-
-        return communities.map {
-            CommunityResponse(
-                id: $0.id,
-                name: $0.name,
-                city: $0.city,
-                state: $0.state,
-                description: $0.description,
-                memberCount: $0.memberCount,
-                latitude: $0.latitude,
-                longitude: $0.longitude,
-                isMember: nil
-            )
-        }
     }
 
     // MARK: - Create Content Methods

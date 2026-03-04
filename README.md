@@ -26,7 +26,11 @@ The Trash/
 │   └── ContentView.swift
 ├── Theme/
 │   ├── TrashTheme.swift
-│   ├── ThemeComponents.swift
+│   ├── TrashCorePrimitives.swift
+│   ├── TrashSegmentedControl.swift
+│   ├── TrashBottomTabBar.swift
+│   ├── TrashPageHeader.swift
+│   ├── TrashFormControls.swift
 │   ├── NeumorphicTheme.swift
 │   ├── VibrantTheme.swift
 │   └── EcoSkeuomorphicTheme.swift
@@ -40,13 +44,15 @@ The Trash/
 │   ├── Admin/
 │   └── Shared/
 ├── Services/
-├── ViewModels/
+├── ViewModels/          (app-level: AuthViewModel, TrashViewModel)
 ├── Models/
-├── migrations/
 └── trash_knowledge.json
 
 supabase/
 └── migrations/
+    ├── 001_core_schema.sql
+    ├── 002_arena.sql
+    └── 003_security_and_rls.sql
 
 scripts/
 └── check_backend_contracts.sh
@@ -118,17 +124,22 @@ scripts/check_backend_contracts.sh
 该脚本会对比：
 - Swift 中实际 `rpc("...")` 调用
 - `supabase/migrations` 中函数定义
-- `The Trash/migrations` 中镜像函数定义
 
 用于发现前后端契约漂移。
 
 ## 本次代码梳理结论（摘要）
 
-- 已修复全局“页面超宽”问题（主题背景层导致根布局被撑开）
+- 已修复全局"页面超宽"问题（主题背景层导致根布局被撑开）
 - 社区页面切换容器改为显式渲染，规避分页容器异常
-- 新增后端契约检查脚本，帮助持续发现 RPC/SQL 不一致
+- 后端迁移从 20 个增量文件压缩为 3 个基线文件（奥卡姆剃刀）
+- 修复 `member_count`/`participant_count` 双重计数 bug（触发器+RPC 手动更新并存）
+- 收紧 `get_event_participants` 权限（仅管理员/活动创建者可查看）
+- 删除 `The Trash/migrations/` 镜像目录，消除同步负担
+- 后端契约检查脚本简化为仅对比 Swift ↔ supabase/migrations
 
 ## 注意事项
 
-- `supabase/migrations/` 与 `The Trash/migrations/` 当前存在函数定义不完全一致，改 SQL 时请同时同步两处
+- `supabase/migrations/` 是 SQL 唯一 source of truth（3 个基线文件）
+- `member_count` 和 `participant_count` 由数据库触发器独占维护，RPC 函数中不得手动更新
 - 若改动 RPC 名称，必须同步更新对应 Service 调用和迁移
+- 运行 `scripts/check_backend_contracts.sh` 可检测前后端契约漂移

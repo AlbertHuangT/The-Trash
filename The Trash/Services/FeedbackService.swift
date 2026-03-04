@@ -19,6 +19,7 @@ struct FeedbackRecord: Encodable {
     let image_path: String
 }
 
+@MainActor
 class FeedbackService {
     static let shared = FeedbackService()
     

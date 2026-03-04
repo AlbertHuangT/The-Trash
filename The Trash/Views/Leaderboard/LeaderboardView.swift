@@ -333,11 +333,18 @@ struct LeaderboardView: View {
         guard let me = currentUserVM.myProfile,
             let myId = SupabaseManager.shared.client.auth.currentUser?.id
         else {
-            return friends
+            // 即使没有 myProfile，也要按积分排序
+            return friends.sorted { $0.credits > $1.credits }
         }
 
         var combined = friends
-        if !combined.contains(where: { $0.id == myId }) {
+        if let existingIndex = combined.firstIndex(where: { $0.id == myId }) {
+            // 当前用户已经在列表中，更新为最新的 credits
+            combined[existingIndex] = FriendUser(
+                id: myId, username: me.username ?? "Me", credits: me.credits,
+                email: combined[existingIndex].email, phone: combined[existingIndex].phone
+            )
+        } else {
             let myEntry = FriendUser(
                 id: myId, username: me.username ?? "Me", credits: me.credits, email: nil, phone: nil
             )
@@ -449,19 +456,21 @@ struct LeaderboardView: View {
             .padding(.horizontal)
             .foregroundColor(theme.palette.textSecondary)
 
-            ShareLink(
-                item: URL(string: "https://yourappurl.com")!,
-                subject: Text("Join me on The Trash!"),
-                message: Text("Come verify trash and earn credits with me!")
-            ) {
-                TrashLabel("Invite Friends", icon: "square.and.arrow.up")
-                    .font(theme.typography.button)
-                    .padding(.horizontal, theme.spacing.xl)
-                    .padding(.vertical, theme.spacing.sm)
-                    .background(theme.accents.green)
-                    .trashOnAccentForeground()
-                    .cornerRadius(theme.corners.medium)
-                    .shadow(color: theme.accents.green.opacity(0.4), radius: 8, y: 4)
+            if let shareURL = URL(string: "https://apps.apple.com/app/the-trash") {
+                ShareLink(
+                    item: shareURL,
+                    subject: Text("Join me on The Trash!"),
+                    message: Text("Come verify trash and earn credits with me!")
+                ) {
+                    TrashLabel("Invite Friends", icon: "square.and.arrow.up")
+                        .font(theme.typography.button)
+                        .padding(.horizontal, theme.spacing.xl)
+                        .padding(.vertical, theme.spacing.sm)
+                        .background(theme.accents.green)
+                        .trashOnAccentForeground()
+                        .cornerRadius(theme.corners.medium)
+                        .shadow(color: theme.accents.green.opacity(0.4), radius: 8, y: 4)
+                }
             }
         }
         .padding(.vertical, theme.spacing.xxl)

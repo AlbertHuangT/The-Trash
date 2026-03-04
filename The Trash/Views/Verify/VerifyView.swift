@@ -23,6 +23,7 @@ struct VerifyView: View {
 
     // Form Data
     @State private var feedbackItemName = ""
+    @State private var isSubmittingFeedback = false
 
     var showFeedbackForm: Bool {
         if case .collectingFeedback = viewModel.appState, showingFeedbackForm { return true }
@@ -334,7 +335,7 @@ struct VerifyView: View {
             }
         }
         .padding(.bottom, 8)
-        .disabled(viewModel.appState == .analyzing)
+        .disabled(viewModel.appState == .analyzing || isSubmittingFeedback)
     }
 
     // MARK: - 🎨 Analyzing Overlay
@@ -469,15 +470,18 @@ struct VerifyView: View {
     }
 
     private func submitFeedback() {
+        guard !isSubmittingFeedback else { return }
         guard case .collectingFeedback(let originalResult) = viewModel.appState,
             let currentImage = cameraManager.capturedImage
         else { return }
+        isSubmittingFeedback = true
         Task {
             await viewModel.submitCorrection(
                 image: currentImage,
                 originalResult: originalResult,
                 correctedName: feedbackItemName
             )
+            isSubmittingFeedback = false
             if viewModel.appState == .idle {
                 finishFlowAndReset(closeCamera: true)
             } else if case .error = viewModel.appState {

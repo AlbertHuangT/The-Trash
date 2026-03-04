@@ -231,6 +231,7 @@ class DuelViewModel: ObservableObject {
     // MARK: - Countdown
 
     private func startCountdown() {
+        countdownTask?.cancel()
         phase = .countdown
         countdownValue = 3
 
