@@ -33,7 +33,6 @@ struct CommunitySelectionSheet: View {
                     communitiesView
                 }
             }
-            .background(ThemeBackgroundView())
             .navigationTitle("Location & Communities")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -69,7 +68,7 @@ struct CommunitySelectionSheet: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .trashCard(cornerRadius: 12)
+                .surfaceCard(cornerRadius: 12)
 
                 localCommunitiesSection
             } else {
@@ -207,15 +206,18 @@ struct LocationRowView: View {
     var body: some View {
         TrashTapArea(action: onSelect) {
             HStack(spacing: 14) {
-                ZStack {
-                    Color.clear
-                        .frame(width: 40, height: 40)
-                        .trashCard(cornerRadius: 20)
-
-                    TrashIcon(systemName: "mappin.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(theme.accents.blue)
-                }
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
+                    .frame(width: 42, height: 42)
+                    .overlay(
+                        TrashIcon(systemName: "mappin.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(theme.accents.blue)
+                    )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(location.city)
@@ -261,10 +263,13 @@ struct CommunityCardView: View {
         TrashTapArea(action: { showDetail = true }) {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
-                    // Header Background
-                    Color.clear
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
                         .frame(height: 120)
-                        .trashCard(cornerRadius: 16)
                         .overlay(
                             TrashIcon(systemName: "person.3.fill")
                                 .font(.system(size: 50))
@@ -306,7 +311,10 @@ struct CommunityCardView: View {
                         .foregroundColor(theme.palette.textSecondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .trashCard(cornerRadius: 6)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(theme.surfaceBackground)
+                        )
                     }
 
                     HStack(spacing: 6) {
@@ -358,7 +366,7 @@ struct CommunityCardView: View {
                 }
                 .padding(16)
             }
-            .trashCard(cornerRadius: 16)
+            .surfaceCard(cornerRadius: 16)
         }
         .sheet(isPresented: $showDetail) {
             CommunityDetailView(community: community)
@@ -379,6 +387,9 @@ struct CommunityCardView: View {
         .foregroundColor(foreground)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .trashCard(cornerRadius: 8)
+        .background(
+            Capsule(style: .continuous)
+                .fill(theme.surfaceBackground)
+        )
     }
 }

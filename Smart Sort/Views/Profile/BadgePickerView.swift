@@ -15,25 +15,24 @@ struct BadgePickerView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 16) {
             if service.isLoading {
-                Spacer()
+                Spacer(minLength: 0)
                 ProgressView("Loading badges...")
-                Spacer()
+                Spacer(minLength: 0)
             } else if service.myAchievements.isEmpty {
-                CompatibleContentUnavailableView {
-                    Label("No Badges Yet", systemImage: "shield")
-                } description: {
-                    Text("Earn achievements to unlock badges!")
-                }
+                EmptyStateView(
+                    icon: "shield.fill",
+                    title: "No Badges Yet",
+                    subtitle: "Earn achievements to unlock badges."
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         if let equipped = equippedBadge {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Currently Equipped")
-                                    .font(.headline)
-                                    .foregroundColor(theme.palette.textPrimary)
+                                sectionHeader("Currently Equipped")
 
                                 AchievementCard(achievement: equipped) {
                                     Task { await service.unequipAchievement() }
@@ -41,9 +40,7 @@ struct BadgePickerView: View {
                             }
                         }
 
-                        Text("All Badges")
-                            .font(.headline)
-                            .foregroundColor(theme.palette.textPrimary)
+                        sectionHeader("All Badges")
 
                         LazyVStack(spacing: 12) {
                             ForEach(service.myAchievements) { achievement in
@@ -65,12 +62,19 @@ struct BadgePickerView: View {
                 }
             }
         }
-        .background(theme.palette.background.ignoresSafeArea())
         .optionalNavigationTitle(showsNavigationTitle ? "Badges" : nil)
         .onAppear {
             Task {
                 await service.fetchMyAchievements()
             }
         }
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote.weight(.semibold))
+            .foregroundColor(theme.palette.textSecondary)
+            .textCase(.uppercase)
+            .tracking(0.8)
     }
 }

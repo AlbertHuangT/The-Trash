@@ -21,7 +21,6 @@ struct ArenaView: View {
 
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
 
             VStack(spacing: 0) {
                 if authViewModel.isAnonymous {
@@ -107,7 +106,7 @@ struct ArenaView: View {
                 .foregroundColor(theme.accents.blue)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .neumorphicConcave(cornerRadius: 20)
+                .background(statusPillBackground)
             }
 
             // Combo pill
@@ -121,7 +120,7 @@ struct ArenaView: View {
                 .foregroundColor(theme.semanticWarning)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .neumorphicConcave(cornerRadius: 20)
+                .background(statusPillBackground)
                 .scaleEffect(pulseAnimation ? 1.05 : 1.0)
                 .animation(theme.animations.pulse, value: pulseAnimation)
             }
@@ -131,6 +130,15 @@ struct ArenaView: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.comboCount)
+    }
+
+    private var statusPillBackground: some View {
+        Capsule(style: .continuous)
+            .fill(theme.surfaceBackground)
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+            )
     }
 
     // Error banner
@@ -146,10 +154,12 @@ struct ArenaView: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 6, x: 4, y: 4)
-                .shadow(color: theme.shadows.light, radius: 6, x: -3, y: -3)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
         )
         .padding(.horizontal)
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -191,11 +201,11 @@ struct ArenaView: View {
 // Anonymous restriction view
 struct EnhancedAnonymousRestrictionView: View {
     var body: some View {
-        CompatibleContentUnavailableView {
-            Label("Access Restricted", systemImage: "lock.shield")
-        } description: {
-            Text("Trash Arena is only available for registered users.\n\nLink your Email or Phone in Account to participate and earn rewards!")
-        }
+        EmptyStateView(
+            icon: "lock.shield.fill",
+            title: "Access Restricted",
+            subtitle: "Trash Arena is only available for registered users. Link your email or phone in Account to participate and earn rewards."
+        )
     }
 }
 
@@ -222,16 +232,21 @@ struct EnhancedEmptyStateView: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        CompatibleContentUnavailableView {
-            Label("All Caught Up!", systemImage: "trophy.circle")
-        } description: {
-            Text("No quiz questions available.\nCheck back later for more challenges!")
-        } actions: {
-            Button(action: onRefresh) {
-                Label("Refresh Quiz", systemImage: "arrow.clockwise")
+        VStack(spacing: 20) {
+            EmptyStateView(
+                icon: "trophy.circle.fill",
+                title: "All Caught Up",
+                subtitle: "No quiz questions available right now. Check back later for more challenges."
+            )
+
+            TrashButton(baseColor: theme.accents.blue, action: onRefresh) {
+                HStack(spacing: 8) {
+                    TrashIcon(systemName: "arrow.clockwise")
+                    Text("Refresh Quiz")
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(theme.accents.blue)
         }
     }
 }
@@ -260,7 +275,7 @@ struct EnhancedQuizCard: View {
                         .clipped()
                 } else {
                     Rectangle()
-                        .fill(theme.palette.background)
+                        .fill(theme.surfaceBackground)
                         .overlay(
                             VStack(spacing: 16) {
                                 ProgressView()
@@ -317,8 +332,11 @@ struct EnhancedQuizCard: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 28))
-            .shadow(color: theme.shadows.dark, radius: 15, x: 8, y: 8)
-            .shadow(color: theme.shadows.light, radius: 10, x: -5, y: -5)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(theme.palette.divider.opacity(0.5), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 6)
         }
     }
 
@@ -480,9 +498,11 @@ struct EnhancedComboOverlay: View {
         .padding(50)
         .background(
             RoundedRectangle(cornerRadius: 36)
-                .fill(theme.palette.background.opacity(0.95))
-                .shadow(color: theme.shadows.dark, radius: 20, x: 10, y: 10)
-                .shadow(color: theme.shadows.light, radius: 20, x: -8, y: -8)
+                .fill(theme.surfaceBackground.opacity(0.97))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 36, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
         )
         .shadow(color: .orange.opacity(0.5), radius: 30)
         .onAppear {
@@ -514,9 +534,11 @@ struct EnhancedComboBreakOverlay: View {
         .padding(40)
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(theme.palette.background.opacity(0.95))
-                .shadow(color: theme.shadows.dark, radius: 15, x: 8, y: 8)
-                .shadow(color: theme.shadows.light, radius: 15, x: -6, y: -6)
+                .fill(theme.surfaceBackground.opacity(0.97))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
         )
         .opacity(opacity)
         .onAppear {
@@ -543,10 +565,12 @@ struct EnhancedSessionSummaryView: View {
             // Trophy
             ZStack {
                 Circle()
-                    .fill(theme.palette.background)
+                    .fill(theme.surfaceBackground)
                     .frame(width: 140, height: 140)
-                    .shadow(color: theme.shadows.dark, radius: 12, x: 8, y: 8)
-                    .shadow(color: theme.shadows.light, radius: 12, x: -6, y: -6)
+                    .overlay(
+                        Circle()
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
 
                 TrashIcon(systemName: accuracy >= 70 ? "trophy.fill" : "flag.checkered")
                     .font(.system(size: 70))
@@ -582,10 +606,12 @@ struct EnhancedSessionSummaryView: View {
             }
             .padding(20)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(theme.palette.background)
-                    .shadow(color: theme.shadows.dark, radius: 10, x: 6, y: 6)
-                    .shadow(color: theme.shadows.light, radius: 10, x: -5, y: -5)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
             )
             .padding(.horizontal)
             .opacity(showStats ? 1 : 0)

@@ -15,9 +15,11 @@ struct TrashIconButton: View {
            TrashIcon(systemName: icon)
                .font(.system(size: 14, weight: .semibold))
                .foregroundColor(foreground)
-               .frame(width: 34, height: 34)
+               .frame(width: 38, height: 38)
                .background {
-                   Circle().fill(background)
+                   Circle()
+                       .fill(background)
+                       .shadow(color: Color.black.opacity(0.035), radius: 8, x: 0, y: 3)
                }
                .overlay {
                    Circle().stroke(borderColor, lineWidth: borderWidth)
@@ -35,7 +37,7 @@ struct TrashIconButton: View {
        if isActive {
            return activeColor ?? theme.accents.blue
        }
-       return theme.palette.card.opacity(0.98)
+       return theme.surfaceBackground
    }
 
    private var borderColor: Color {
@@ -97,10 +99,11 @@ struct TrashPill: View {
                .lineLimit(1)
        }
        .padding(.horizontal, 12)
-       .padding(.vertical, 7)
+       .padding(.vertical, 8)
        .background {
            RoundedRectangle(cornerRadius: theme.corners.pill, style: .continuous)
                .fill(background)
+               .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
        }
        .overlay {
            RoundedRectangle(cornerRadius: theme.corners.pill, style: .continuous)
@@ -124,7 +127,7 @@ struct TrashPill: View {
        if isSelected {
            return selectedColor
        }
-       return theme.palette.card.opacity(0.98)
+       return theme.surfaceBackground
    }
 
    private var borderColor: Color {
@@ -192,7 +195,7 @@ struct TrashInputSurface: ViewModifier {
    private var background: some View {
        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
        shape
-           .fill(theme.palette.card)
+           .fill(theme.surfaceBackground)
    }
 
    private var borderColor: Color {
@@ -208,9 +211,11 @@ struct TrashSectionTitle: View {
 
    var body: some View {
        Text(title)
-           .font(theme.typography.subheadline)
+           .font(.footnote.weight(.semibold))
            .foregroundColor(theme.palette.textSecondary)
            .frame(maxWidth: .infinity, alignment: .leading)
+           .textCase(.uppercase)
+           .tracking(0.5)
    }
 }
 
@@ -481,9 +486,6 @@ struct TrashNoticeSheet: View {
 
    var body: some View {
        ZStack {
-           ThemeBackgroundView()
-               .ignoresSafeArea()
-
            VStack(spacing: 18) {
                Text(title)
                    .font(theme.typography.title)
@@ -511,7 +513,15 @@ struct TrashNoticeSheet: View {
                }
            }
            .padding(22)
-           .trashCard(cornerRadius: 20)
+           .background(
+               RoundedRectangle(cornerRadius: 20, style: .continuous)
+                   .fill(theme.surfaceBackground)
+                   .overlay(
+                       RoundedRectangle(cornerRadius: 20, style: .continuous)
+                           .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                   )
+                   .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+           )
            .padding(.horizontal, 20)
        }
    }
@@ -548,9 +558,6 @@ struct TrashConfirmSheet: View {
 
    var body: some View {
        ZStack {
-           ThemeBackgroundView()
-               .ignoresSafeArea()
-
            VStack(spacing: 18) {
                Text(title)
                    .font(theme.typography.title)
@@ -577,7 +584,15 @@ struct TrashConfirmSheet: View {
                }
            }
            .padding(22)
-           .trashCard(cornerRadius: 20)
+           .background(
+               RoundedRectangle(cornerRadius: 20, style: .continuous)
+                   .fill(theme.surfaceBackground)
+                   .overlay(
+                       RoundedRectangle(cornerRadius: 20, style: .continuous)
+                           .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                   )
+                   .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+           )
            .padding(.horizontal, 20)
        }
    }
@@ -595,9 +610,6 @@ struct TrashTextInputSheet: View {
 
    var body: some View {
        ZStack {
-           ThemeBackgroundView()
-               .ignoresSafeArea()
-
            VStack(spacing: 18) {
                Text(title)
                    .font(theme.typography.title)
@@ -636,7 +648,15 @@ struct TrashTextInputSheet: View {
                }
            }
            .padding(22)
-           .trashCard(cornerRadius: 20)
+           .background(
+               RoundedRectangle(cornerRadius: 20, style: .continuous)
+                   .fill(theme.surfaceBackground)
+                   .overlay(
+                       RoundedRectangle(cornerRadius: 20, style: .continuous)
+                           .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                   )
+                   .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+           )
            .padding(.horizontal, 20)
        }
    }

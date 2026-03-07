@@ -19,7 +19,6 @@ struct ChallengeListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                ThemeBackgroundView()
 
                 if viewModel.isLoading {
                     EnhancedLoadingView()
@@ -27,7 +26,7 @@ struct ChallengeListView: View {
                     emptyState
                 } else {
                     ScrollView {
-                        VStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 16) {
                             // Pending section
                             if !viewModel.pendingChallenges.isEmpty {
                                 sectionHeader("Pending")
@@ -78,7 +77,8 @@ struct ChallengeListView: View {
                             }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .padding(.top, 16)
+                        .padding(.bottom, 24)
                     }
                 }
             }
@@ -108,20 +108,20 @@ struct ChallengeListView: View {
     private func sectionHeader(_ title: String) -> some View {
         HStack {
             Text(title)
-                .font(theme.typography.subheadline)
-                .fontWeight(.bold)
+                .font(.footnote.weight(.semibold))
                 .foregroundColor(theme.palette.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
             Spacer()
         }
-        .padding(.top, 8)
     }
 
     private var emptyState: some View {
-        CompatibleContentUnavailableView {
-            Label("No challenges yet", systemImage: "tray")
-        } description: {
-            Text("Challenge a friend to start a duel!")
-        }
+        EmptyStateView(
+            icon: "tray",
+            title: "No Challenges Yet",
+            subtitle: "Challenge a friend to start a duel."
+        )
     }
 }
 
@@ -173,7 +173,6 @@ struct ChallengeRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Avatar placeholder
             Circle()
                 .fill(statusColor.opacity(0.2))
                 .frame(width: 44, height: 44)
@@ -234,7 +233,14 @@ struct ChallengeRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .trashCard(cornerRadius: 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
     }
 }
 

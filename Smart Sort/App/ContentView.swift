@@ -3,33 +3,27 @@ import Supabase
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab = Tab.verify
-    @State private var showAccountSheet = false
-    @ObservedObject private var arenaRouter = ArenaRouter.shared
     @EnvironmentObject var authVM: AuthViewModel
-
-    enum Tab: Hashable {
-        case verify
-        case arena
-        case leaderboard
-        case community
-    }
+    @EnvironmentObject private var appRouter: AppRouter
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        ZStack {
+            ThemeBackgroundView()
+            
+            TabView(selection: $appRouter.selectedTab) {
             NavigationStack {
                 VerifyView()
             }
             .tabItem {
                 Label("Verify", systemImage: "camera")
             }
-            .tag(Tab.verify)
+            .tag(AppRouter.Tab.verify)
 
             ArenaHubView()
                 .tabItem {
                     Label("Arena", systemImage: "flag.checkered")
                 }
-                .tag(Tab.arena)
+                .tag(AppRouter.Tab.arena)
 
             NavigationStack {
                 LeaderboardView()
@@ -37,7 +31,7 @@ struct ContentView: View {
             .tabItem {
                 Label("Leaderboard", systemImage: "chart.bar")
             }
-            .tag(Tab.leaderboard)
+            .tag(AppRouter.Tab.leaderboard)
 
             NavigationStack {
                 CommunityView()
@@ -45,21 +39,24 @@ struct ContentView: View {
             .tabItem {
                 Label("Community", systemImage: "person.3")
             }
-            .tag(Tab.community)
+            .tag(AppRouter.Tab.community)
         }
-        .sheet(isPresented: $showAccountSheet) {
+        .sheet(
+            isPresented: Binding(
+                get: { appRouter.activeSheet == .account },
+                set: { isPresented in
+                    if !isPresented && appRouter.activeSheet == .account {
+                        appRouter.dismissSheet()
+                    }
+                }
+            )
+        ) {
             AccountView()
                 .environmentObject(authVM)
+                .environmentObject(appRouter)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .showAccountSheet)) { _ in
-            showAccountSheet = true
-        }
-        .onChange(of: arenaRouter.pendingChallengeId) { newValue in
-            if newValue != nil {
-                selectedTab = .arena
-            }
         }
     }
 }

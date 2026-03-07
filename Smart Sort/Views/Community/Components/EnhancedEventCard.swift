@@ -49,128 +49,6 @@ struct EnhancedEventCard: View {
         }
     }
 
-    private var legacyEventCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                theme.palette.background
-                    .frame(height: 140)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(theme.palette.background, lineWidth: 3)
-                            .shadow(color: theme.shadows.dark, radius: 4, x: 3, y: 3)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(color: theme.shadows.light, radius: 4, x: -3, y: -3)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    )
-                    .overlay(
-                        TrashIcon(systemName: event.imageSystemName)
-                            .font(.system(size: 60))
-                            .foregroundColor(theme.palette.textSecondary.opacity(0.3))
-                    )
-
-                HStack {
-                    Text(event.category.rawValue)
-                        .font(.caption.bold())
-                        .foregroundColor(event.category.color)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(theme.palette.background)
-                        .cornerRadius(8)
-                        .shadow(color: theme.shadows.dark, radius: 2, x: 1, y: 1)
-                        .shadow(color: theme.shadows.light, radius: 2, x: -1, y: -1)
-
-                    Spacer()
-
-                    if isAlmostFull {
-                        HStack(spacing: 4) {
-                            TrashIcon(systemName: "flame.fill")
-                            Text("Filling Fast")
-                        }
-                        .font(.caption.bold())
-                        .trashOnAccentForeground()
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(theme.semanticWarning)
-                        .cornerRadius(8)
-                    } else if isFull {
-                        Text("Full")
-                            .font(.caption.bold())
-                            .trashOnAccentForeground()
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(theme.semanticDanger)
-                            .cornerRadius(8)
-                    }
-                }
-                .padding(12)
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    Text(event.title)
-                        .font(.title3.bold())
-                        .lineLimit(2)
-                        .foregroundColor(theme.palette.textPrimary)
-
-                    Spacer()
-
-                    if !distanceText.isEmpty {
-                        TrashLabel(distanceText, icon: "location.fill")
-                            .font(.caption)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
-                }
-
-                HStack(spacing: 16) {
-                    TrashLabel(dateFormatter.string(from: event.date), icon: "calendar")
-                    Spacer()
-                    TrashLabel(event.location, icon: "mappin.and.ellipse")
-                        .lineLimit(1)
-                }
-                .font(.subheadline)
-                .foregroundColor(theme.palette.textSecondary)
-
-                theme.palette.divider.frame(height: 1)
-                    .padding(.vertical, 4)
-
-                HStack {
-                    HStack(spacing: 6) {
-                        TrashIcon(systemName: "person.circle.fill")
-                            .foregroundColor(theme.palette.textSecondary)
-                        Text(event.organizer)
-                            .font(.caption)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        TrashIcon(systemName: "person.2.fill")
-                            .font(.caption)
-                        Text("\(event.participantCount)/\(event.maxParticipants)")
-                            .font(.caption.bold())
-                    }
-                    .foregroundColor(isFull ? theme.semanticDanger : theme.accents.blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .neumorphicConcave(cornerRadius: 6)
-
-                    if event.isRegistered {
-                        TrashIcon(systemName: "checkmark.circle.fill")
-                            .foregroundColor(theme.accents.green)
-                            .font(.title3)
-                            .padding(.leading, 8)
-                    }
-                }
-            }
-            .padding(16)
-            .background(theme.palette.background)
-        }
-        .cornerRadius(16)
-        .shadow(color: theme.shadows.dark, radius: 8, x: 5, y: 5)
-        .shadow(color: theme.shadows.light, radius: 8, x: -4, y: -4)
-    }
-
     private var ecoEventCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
@@ -201,7 +79,11 @@ struct EnhancedEventCard: View {
                         .padding(.vertical, 5)
                         .background(
                             Capsule()
-                                .fill(theme.palette.background.opacity(0.85))
+                                .fill(theme.surfaceBackground)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                                )
                         )
                 }
             }
@@ -273,13 +155,13 @@ struct EnhancedEventCard: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(theme.palette.card)
+                .fill(theme.surfaceBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(theme.palette.divider, lineWidth: 1)
                 )
         }
-        .shadow(color: theme.shadows.dark.opacity(0.3), radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
 
     private var ecoJoinTag: some View {
@@ -312,7 +194,7 @@ struct EnhancedEventCard: View {
         )
         .overlay(alignment: .topLeading) {
             Circle()
-                .fill(theme.palette.card.opacity(0.95))
+                .fill(theme.surfaceBackground.opacity(0.98))
                 .frame(width: 7, height: 7)
                 .offset(x: 8, y: -3)
         }

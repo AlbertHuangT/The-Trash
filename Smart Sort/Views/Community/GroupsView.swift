@@ -25,6 +25,7 @@ enum CommunityTabSection: String, CaseIterable {
 struct GroupsView: View {
     @ObservedObject private var userSettings = UserSettings.shared
     @EnvironmentObject var authVM: AuthViewModel
+    @EnvironmentObject private var appRouter: AppRouter
     @State private var selectedSection: CommunityTabSection = .nearby
     @State private var showLocationPicker = false
     @State private var showCreateEventSheet = false
@@ -46,19 +47,6 @@ struct GroupsView: View {
                 }
             }
         }
-        .background(ThemeBackgroundView())
-        .toolbar {
-            if !authVM.isAnonymous {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCreateCommunitySheet = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Create Community")
-                }
-            }
-        }
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerSheet(isPresented: $showLocationPicker)
         }
@@ -72,6 +60,11 @@ struct GroupsView: View {
             if userSettings.joinedCommunities.isEmpty {
                 await userSettings.loadMyCommunities()
             }
+        }
+        .onChange(of: appRouter.activeSheet) { sheet in
+            guard sheet == .createCommunity, !authVM.isAnonymous else { return }
+            showCreateCommunitySheet = true
+            appRouter.dismissSheet()
         }
     }
 
@@ -268,7 +261,7 @@ struct GroupsView: View {
         ZStack {
             Color.clear
                 .frame(width: size, height: size)
-                .trashCard(cornerRadius: size / 2)
+                .surfaceCard(cornerRadius: size / 2)
 
             StampedIcon(systemName: icon, size: size * 0.45, weight: .bold, color: iconColor)
         }

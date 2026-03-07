@@ -10,11 +10,11 @@ import SwiftUI
 
 struct RewardView: View {
     var body: some View {
-        CompatibleContentUnavailableView {
-            Label("Rewards", systemImage: "gift")
-        } description: {
-            Text("Rewards are coming soon. Stay tuned!")
-        }
+        EmptyStateView(
+            icon: "gift.fill",
+            title: "Rewards Coming Soon",
+            subtitle: "Rewards are on the way. Check back soon."
+        )
         .navigationTitle("Rewards")
     }
 }

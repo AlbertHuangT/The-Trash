@@ -20,9 +20,6 @@ struct DailyChallengeView: View {
 
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
-                .ignoresSafeArea()
-
             VStack(spacing: 0) {
                 if viewModel.alreadyPlayed && !viewModel.sessionCompleted {
                     alreadyPlayedView
@@ -71,10 +68,12 @@ struct DailyChallengeView: View {
 
             ZStack {
                 Circle()
-                    .fill(theme.palette.background)
+                    .fill(theme.surfaceBackground)
                     .frame(width: 140, height: 140)
-                    .shadow(color: theme.shadows.dark, radius: 12, x: 8, y: 8)
-                    .shadow(color: theme.shadows.light, radius: 12, x: -6, y: -6)
+                    .overlay(
+                        Circle()
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
 
                 TrashIcon(systemName: "checkmark.seal.fill")
                     .font(.system(size: 70))
@@ -151,7 +150,7 @@ struct DailyChallengeView: View {
                     .foregroundColor(theme.semanticSuccess)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .neumorphicConcave(cornerRadius: 20)
+                    .background(statusPillBackground)
                 )
             )
 
@@ -208,10 +207,12 @@ struct DailyChallengeView: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 6, x: 4, y: 4)
-                .shadow(color: theme.shadows.light, radius: 6, x: -3, y: -3)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
         )
         .padding(.horizontal)
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -254,5 +255,14 @@ struct DailyChallengeView: View {
                 showLeaderboard = true
             }
         )
+    }
+
+    private var statusPillBackground: some View {
+        Capsule(style: .continuous)
+            .fill(theme.surfaceBackground)
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+            )
     }
 }

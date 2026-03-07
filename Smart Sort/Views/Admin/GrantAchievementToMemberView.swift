@@ -34,8 +34,16 @@ struct GrantAchievementToMemberView: View {
             // 搜索栏
             TrashSearchField(placeholder: "Search members...", text: $searchText)
                 .padding(.horizontal, 12)
-                .trashCard(cornerRadius: 12)
-            .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
+                .padding(.horizontal, 16)
             .padding(.top, 12)
 
             // 成员列表
@@ -45,10 +53,17 @@ struct GrantAchievementToMemberView: View {
                     .padding()
                 Spacer()
             } else if filteredMembers.isEmpty {
-                CompatibleContentUnavailableView.search(text: searchText)
+                EmptyStateView(
+                    icon: "magnifyingglass",
+                    title: "No Members Found",
+                    subtitle: searchText.isEmpty
+                        ? "No eligible members are available right now."
+                        : "Try a different name or clear your search."
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(spacing: 10) {
                         ForEach(filteredMembers) { member in
                             memberRow(member)
                         }
@@ -59,7 +74,6 @@ struct GrantAchievementToMemberView: View {
                 }
             }
         }
-        .background(theme.palette.background)
         .navigationTitle("Grant Achievement")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -76,7 +90,7 @@ struct GrantAchievementToMemberView: View {
             )
             .presentationDetents([.fraction(0.3), .medium])
             .presentationDragIndicator(.visible)
-            .presentationBackground(theme.appearance.sheetBackground)
+            .presentationBackground(theme.appBackground)
         }
     }
 
@@ -123,9 +137,11 @@ struct GrantAchievementToMemberView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 6, x: 4, y: 4)
-                .shadow(color: theme.shadows.light, radius: 6, x: -3, y: -3)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
         )
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -138,10 +154,12 @@ struct GrantAchievementToMemberView: View {
             // 头像
             ZStack {
                 Circle()
-                    .fill(theme.palette.background)
+                    .fill(theme.surfaceBackground)
                     .frame(width: 44, height: 44)
-                    .shadow(color: theme.shadows.dark, radius: 3, x: 2, y: 2)
-                    .shadow(color: theme.shadows.light, radius: 3, x: -2, y: -2)
+                    .overlay(
+                        Circle()
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
 
                 Text(String(member.username.prefix(1)).uppercased())
                     .font(.headline)
@@ -164,7 +182,14 @@ struct GrantAchievementToMemberView: View {
                 .foregroundColor(theme.accents.green)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .neumorphicConcave(cornerRadius: 8)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
             } else {
                 TrashButton(baseColor: theme.accents.blue, cornerRadius: 8, action: {
                     grantingUserId = member.userId
@@ -207,9 +232,11 @@ struct GrantAchievementToMemberView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 4, x: 3, y: 3)
-                .shadow(color: theme.shadows.light, radius: 4, x: -2, y: -2)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
         )
     }
 }

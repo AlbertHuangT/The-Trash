@@ -75,7 +75,7 @@ struct EditCommunityInfoView: View {
         .task {
             isLoadingSettings = true
             do {
-                if let settings = try await CommunityService.shared.getCommunitySettings(communityId: community.id) {
+                if let settings = try await AdminService.shared.getCommunitySettings(communityId: community.id) {
                     description = settings.description ?? community.description
                     welcomeMessage = settings.welcomeMessage ?? ""
                     rules = settings.rules ?? ""
@@ -97,7 +97,7 @@ struct EditCommunityInfoView: View {
             )
             .presentationDetents([.fraction(0.3), .medium])
             .presentationDragIndicator(.visible)
-            .presentationBackground(theme.appearance.sheetBackground)
+            .presentationBackground(theme.appBackground)
         }
     }
 
@@ -105,7 +105,7 @@ struct EditCommunityInfoView: View {
         isSaving = true
         Task {
             do {
-                let result = try await CommunityService.shared.updateCommunityInfo(
+                let result = try await AdminService.shared.updateCommunityInfo(
                     communityId: community.id,
                     description: description,
                     welcomeMessage: welcomeMessage.isEmpty ? nil : welcomeMessage,

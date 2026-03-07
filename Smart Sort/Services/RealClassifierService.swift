@@ -99,6 +99,20 @@ class RealClassifierService: TrashClassifierService {
         }
     }
 
+    func prepare() async {
+        if isReady || initializationError != nil {
+            return
+        }
+
+        for _ in 0..<40 {
+            if isReady || initializationError != nil {
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
     private func setupModel() {
         do {
             let config = MLModelConfiguration()

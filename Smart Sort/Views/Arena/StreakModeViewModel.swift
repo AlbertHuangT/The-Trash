@@ -38,6 +38,7 @@ class StreakModeViewModel: ObservableObject {
    private let prefetchThreshold = 5
 
    private let client = SupabaseManager.shared.client
+   private let gamificationService: GamificationServicing
 
    var currentQuestion: QuizQuestion? {
        guard currentQuestionIndex < questions.count else { return nil }
@@ -46,6 +47,14 @@ class StreakModeViewModel: ObservableObject {
 
    var questionsRemaining: Int {
        max(0, questions.count - currentQuestionIndex)
+   }
+
+   init() {
+       self.gamificationService = GamificationService.shared
+   }
+
+   init(gamificationService: GamificationServicing) {
+       self.gamificationService = gamificationService
    }
 
    // MARK: - Data Fetching
@@ -122,7 +131,7 @@ class StreakModeViewModel: ObservableObject {
            }
 
            do {
-               try await client.rpc("increment_credits", params: ["amount": pointsEarned]).execute()
+               try await gamificationService.awardCredits(pointsEarned)
            } catch {
                sessionScore -= pointsEarned
                streakCount -= 1

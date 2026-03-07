@@ -48,6 +48,7 @@ class SpeedSortViewModel: ObservableObject {
     @Published var lastTimeBonus = 0
 
     private let client = SupabaseManager.shared.client
+    private let gamificationService: GamificationServicing
 
     var currentQuestion: QuizQuestion? {
         guard currentQuestionIndex < questions.count else { return nil }
@@ -57,6 +58,14 @@ class SpeedSortViewModel: ObservableObject {
     var progressText: String {
         guard questions.count > 0 else { return "" }
         return "\(min(currentQuestionIndex + 1, questions.count))/\(questions.count)"
+    }
+
+    init() {
+        self.gamificationService = GamificationService.shared
+    }
+
+    init(gamificationService: GamificationServicing) {
+        self.gamificationService = gamificationService
     }
 
     // MARK: - Data Fetching
@@ -169,7 +178,7 @@ class SpeedSortViewModel: ObservableObject {
             }
 
             do {
-                try await client.rpc("increment_credits", params: ["amount": pointsEarned]).execute()
+                try await gamificationService.awardCredits(pointsEarned)
             } catch {
                 sessionScore -= pointsEarned
                 correctCount -= 1

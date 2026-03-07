@@ -112,7 +112,7 @@ class AdminDashboardViewModel: ObservableObject {
     @Published var isLoading = false
 
     let communityId: String
-    private let service = CommunityService.shared
+    private let service = AdminService.shared
 
     init(communityId: String) {
         self.communityId = communityId

@@ -133,7 +133,7 @@ struct CreateCommunitySheet: View {
                 )
                 .presentationDetents([.fraction(0.32), .medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(theme.appearance.sheetBackground)
+                .presentationBackground(theme.appBackground)
             }
         }
     }

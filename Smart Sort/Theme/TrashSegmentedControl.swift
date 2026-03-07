@@ -21,6 +21,7 @@ struct TrashTabItem<Value: Hashable>: Identifiable {
 struct TrashSegmentedControl<Value: Hashable>: View {
     let options: [TrashSegmentOption<Value>]
     @Binding var selection: Value
+    private let theme = TrashTheme()
 
     var body: some View {
         Picker("", selection: $selection) {
@@ -31,5 +32,14 @@ struct TrashSegmentedControl<Value: Hashable>: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.75), lineWidth: 1)
+                )
+        )
     }
 }

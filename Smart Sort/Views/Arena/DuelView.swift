@@ -21,7 +21,6 @@ struct DuelView: View {
 
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
 
             VStack(spacing: 0) {
                 switch viewModel.phase {
@@ -254,7 +253,10 @@ struct DuelLobbyContent: View {
                     .trashOnAccentForeground()
                     .padding(.horizontal, 32)
                     .padding(.vertical, 16)
-                    .trashCard(cornerRadius: 28)  // Using card as background for better texture
+                    .background(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(theme.accents.blue)
+                    )
                 }
             }
 
@@ -265,9 +267,13 @@ struct DuelLobbyContent: View {
     @ViewBuilder
     private func badgeCircle(icon: String, iconColor: Color) -> some View {
         ZStack {
-            Color.clear
+            Circle()
+                .fill(theme.surfaceBackground)
                 .frame(width: 120, height: 120)
-                .trashCard(cornerRadius: 60)
+                .overlay(
+                    Circle()
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
 
             StampedIcon(systemName: icon, size: 50, weight: .semibold, color: iconColor)
         }
@@ -347,7 +353,14 @@ struct DuelResultsContent: View {
                 }
             }
             .padding(20)
-            .trashCard(cornerRadius: 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
+            )
             .opacity(showStats ? 1 : 0)
             .offset(y: showStats ? 0 : 20)
 
@@ -379,9 +392,13 @@ struct DuelResultsContent: View {
     @ViewBuilder
     private var resultBadge: some View {
         ZStack {
-            Color.clear
+            Circle()
+                .fill(theme.surfaceBackground)
                 .frame(width: 120, height: 120)
-                .trashCard(cornerRadius: 60)
+                .overlay(
+                    Circle()
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
 
             if isTie {
                 StampedIcon(

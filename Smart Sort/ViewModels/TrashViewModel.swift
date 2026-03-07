@@ -14,21 +14,67 @@ import UIKit
 // MARK: - 1. Protocol
 protocol TrashClassifierService {
     var initializationError: String? { get }
+    var isReady: Bool { get }
+    func prepare() async
     func classifyImage(image: UIImage) async -> TrashAnalysisResult
+}
+
+enum ClassifierPreparationState: Equatable {
+    case idle
+    case preparing
+    case ready
+    case failed(String)
 }
 
 // MARK: - 2. ViewModel
 @MainActor
 class TrashViewModel: ObservableObject {
     @Published var appState: AppState = .idle
+    @Published private(set) var classifierPreparationState: ClassifierPreparationState = .idle
     
     private let classifier: TrashClassifierService
     private let client = SupabaseManager.shared.client
+    private let feedbackService: FeedbackSubmitting
+    private let gamificationService: GamificationServicing
     
     // 🔥 修改：移除了默认参数 = nil，强制要求传入 classifier
     // 这样你就永远不会意外用到假服务了
     init(classifier: TrashClassifierService) {
         self.classifier = classifier
+        self.feedbackService = FeedbackService.shared
+        self.gamificationService = GamificationService.shared
+    }
+
+    init(
+        classifier: TrashClassifierService,
+        feedbackService: FeedbackSubmitting,
+        gamificationService: GamificationServicing
+    ) {
+        self.classifier = classifier
+        self.feedbackService = feedbackService
+        self.gamificationService = gamificationService
+    }
+
+    func prepareClassifier() async {
+        if let initError = classifier.initializationError {
+            classifierPreparationState = .failed(initError)
+            return
+        }
+
+        if classifier.isReady {
+            classifierPreparationState = .ready
+            return
+        }
+
+        guard classifierPreparationState != .preparing else { return }
+        classifierPreparationState = .preparing
+        await classifier.prepare()
+
+        if let initError = classifier.initializationError {
+            classifierPreparationState = .failed(initError)
+        } else {
+            classifierPreparationState = classifier.isReady ? .ready : .preparing
+        }
     }
     
     func analyzeImage(image: UIImage) {
@@ -36,14 +82,24 @@ class TrashViewModel: ObservableObject {
         
         // 🔥 Fix: Check for initialization error immediately
         if let initError = classifier.initializationError {
+            classifierPreparationState = .failed(initError)
             self.appState = .error(initError)
             return
+        }
+
+        if !classifier.isReady {
+            Task {
+                await prepareClassifier()
+            }
         }
         
         self.appState = .analyzing
 
         Task {
             let result = await classifier.classifyImage(image: image)
+            if self.classifier.isReady {
+                self.classifierPreparationState = .ready
+            }
             self.appState = .finished(result)
         }
     }
@@ -74,7 +130,7 @@ class TrashViewModel: ObservableObject {
         self.appState = .analyzing
 
         do {
-            try await FeedbackService.shared.submitFeedback(
+            try await feedbackService.submitFeedback(
                 image: image,
                 predictedLabel: originalResult.itemName,
                 predictedCategory: originalResult.category,
@@ -111,33 +167,11 @@ class TrashViewModel: ObservableObject {
 
         Task {
             do {
-                _ = try await client.rpc("increment_credits", params: ["amount": amount]).execute()
+                try await gamificationService.awardVerifyCredits(amount)
                 LogManager.shared.log("Points granted: \(amount)", level: .info, category: "Gamification")
-                
-                // 成就自动检查
-                await checkAchievementTriggers()
             } catch {
                 LogManager.shared.log("Gamification error: \(error)", level: .error, category: "Gamification")
             }
         }
-    }
-    
-    // MARK: - Achievement Auto-Grant
-    
-    private func checkAchievementTriggers() async {
-        let achievementService = AchievementService.shared
-        
-        // 增加扫描计数
-        await achievementService.incrementTotalScans()
-        
-        // 批量检查触发条件
-        await achievementService.checkMultipleTriggers([
-            "first_scan",
-            "scans_10",
-            "scans_50",
-            "credits_100",
-            "credits_500",
-            "credits_2000"
-        ])
     }
 }

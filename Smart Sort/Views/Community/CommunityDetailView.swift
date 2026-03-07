@@ -32,7 +32,7 @@ struct CommunityDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: 16) {
                     headerSection
                     descriptionSection
                     if isAdmin {
@@ -41,8 +41,9 @@ struct CommunityDetailView: View {
                     statsSection
                     eventsSection
                 }
+                .padding(.top, 12)
+                .padding(.bottom, 28)
             }
-            .background(ThemeBackgroundView())
             .navigationTitle(community.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -115,12 +116,11 @@ struct CommunityDetailView: View {
 
             joinButton
         }
-        .padding(.vertical, 24)
-        .padding(.horizontal, 16)
+        .padding(.vertical, 22)
+        .padding(.horizontal, 18)
         .frame(maxWidth: .infinity)
-        .trashCard(cornerRadius: 18)
+        .surfaceCard(cornerRadius: 18)
         .padding(.horizontal, 16)
-        .padding(.top, 12)
     }
 
     private var joinButton: some View {
@@ -163,9 +163,7 @@ struct CommunityDetailView: View {
 
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("About")
-                .font(theme.typography.headline)
-                .foregroundColor(theme.palette.textPrimary)
+            sectionHeader("About")
 
             Text(
                 community.description.isEmpty ? "No description available." : community.description
@@ -175,7 +173,7 @@ struct CommunityDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .trashCard(cornerRadius: 16)
+        .surfaceCard(cornerRadius: 16)
         .padding(.horizontal, 16)
         .padding(.top, 16)
     }
@@ -204,7 +202,7 @@ struct CommunityDetailView: View {
         }
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .trashCard(cornerRadius: 16)
+        .surfaceCard(cornerRadius: 16)
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
@@ -237,22 +235,14 @@ struct CommunityDetailView: View {
                 loadingView
             }
         }
-        .padding(.top, 16)
-        .padding(.bottom, 32)
+        .padding(.top, 8)
     }
 
     private func eventListSection(title: String, events: [CommunityEvent], iconColor: Color)
         -> some View
     {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Circle()
-                    .fill(iconColor)
-                    .frame(width: 8, height: 8)
-                Text(title)
-                    .font(theme.typography.headline)
-                    .foregroundColor(theme.palette.textPrimary)
-            }
+            sectionHeader(title)
             .padding(.horizontal, 16)
 
             LazyVStack(spacing: 12) {
@@ -287,7 +277,7 @@ struct CommunityDetailView: View {
         }
         .padding(.vertical, 40)
         .frame(maxWidth: .infinity)
-        .trashCard(cornerRadius: 16)
+        .surfaceCard(cornerRadius: 16)
         .padding(.horizontal, 16)
     }
 
@@ -299,6 +289,14 @@ struct CommunityDetailView: View {
                 .foregroundColor(theme.palette.textSecondary)
         }
         .padding(.vertical, 40)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote.weight(.semibold))
+            .foregroundColor(theme.palette.textSecondary)
+            .textCase(.uppercase)
+            .tracking(0.5)
     }
 
     // MARK: - Admin Section
@@ -440,7 +438,7 @@ private struct CommunityEventCard: View {
                 .foregroundColor(theme.palette.textSecondary)
             }
             .padding(14)
-            .trashCard(cornerRadius: 14)
+            .surfaceCard(cornerRadius: 14)
         }
         .opacity(isPast ? 0.7 : 1)
     }
@@ -453,8 +451,8 @@ class CommunityDetailViewModel: ObservableObject {
     @Published var allEvents: [CommunityEvent] = []
     @Published var isLoading = false
 
-    private var communityService: CommunityService {
-        CommunityService.shared
+    private var eventService: EventService {
+        EventService.shared
     }
 
     var upcomingEvents: [CommunityEvent] {
@@ -472,7 +470,7 @@ class CommunityDetailViewModel: ObservableObject {
     func loadEvents(communityId: String) async {
         isLoading = true
         do {
-            let response = try await communityService.getCommunityEvents(communityId: communityId)
+            let response = try await eventService.getCommunityEvents(communityId: communityId)
             allEvents = response.map { CommunityEvent(from: $0) }
         } catch {
             print("❌ Get community events error: \(error)")
@@ -483,7 +481,7 @@ class CommunityDetailViewModel: ObservableObject {
     /// 报名活动
     func registerForEvent(_ event: CommunityEvent) async -> Bool {
         do {
-            let success = try await communityService.registerForEvent(event.id)
+            let success = try await eventService.registerForEvent(event.id)
             if success {
                 if let index = allEvents.firstIndex(where: { $0.id == event.id }) {
                     allEvents[index].isRegistered = true
@@ -500,7 +498,7 @@ class CommunityDetailViewModel: ObservableObject {
     /// 取消报名
     func cancelRegistration(_ event: CommunityEvent) async -> Bool {
         do {
-            let success = try await communityService.cancelEventRegistration(event.id)
+            let success = try await eventService.cancelEventRegistration(event.id)
             if success {
                 if let index = allEvents.firstIndex(where: { $0.id == event.id }) {
                     allEvents[index].isRegistered = false
@@ -552,7 +550,6 @@ struct EventDetailSheetForCommunity: View {
     var body: some View {
         NavigationView {
             ZStack {
-                ThemeBackgroundView()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
@@ -700,7 +697,7 @@ private struct InfoRowForCommunity: View {
             Spacer()
         }
         .padding(12)
-        .trashCard(cornerRadius: 12)
+        .surfaceCard(cornerRadius: 12)
     }
 }
 

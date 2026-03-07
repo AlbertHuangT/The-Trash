@@ -79,7 +79,7 @@ struct LeaderboardRow: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .shadow(color: theme.shadows.dark.opacity(0.3), radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
     }
 }
 
@@ -131,7 +131,7 @@ struct MyRankBar: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .shadow(color: theme.shadows.dark.opacity(0.3), radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
         .padding(.horizontal, theme.spacing.lg)
     }
 }

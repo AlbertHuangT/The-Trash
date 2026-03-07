@@ -17,16 +17,20 @@ struct DailyLeaderboardView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                theme.palette.background
-                    .ignoresSafeArea()
-
                 if viewModel.isLoading {
                     EnhancedLoadingView()
                 } else if viewModel.entries.isEmpty {
                     emptyState
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        VStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("Top Runs Today")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundColor(theme.palette.textSecondary)
+                                .textCase(.uppercase)
+                                .tracking(0.8)
+
                             ForEach(viewModel.entries) { entry in
                                 DailyLeaderboardRow(entry: entry)
                             }
@@ -50,11 +54,11 @@ struct DailyLeaderboardView: View {
     }
 
     private var emptyState: some View {
-        CompatibleContentUnavailableView {
-            Label("No results yet", systemImage: "calendar.badge.clock")
-        } description: {
-            Text("Be the first to complete today's challenge!")
-        }
+        EmptyStateView(
+            icon: "calendar.badge.clock",
+            title: "No Results Yet",
+            subtitle: "Be the first to complete today's challenge."
+        )
     }
 }
 
@@ -128,10 +132,14 @@ struct DailyLeaderboardRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(theme.palette.background)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: theme.shadows.dark, radius: 8, x: 5, y: 5)
-        .shadow(color: theme.shadows.light, radius: 8, x: -4, y: -4)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
     }
 }
 

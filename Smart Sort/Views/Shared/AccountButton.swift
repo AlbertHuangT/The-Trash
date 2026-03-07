@@ -5,16 +5,13 @@
 
 import SwiftUI
 
-extension Notification.Name {
-    static let showAccountSheet = Notification.Name("showAccountSheet")
-}
-
 struct AccountButton: View {
     @EnvironmentObject var authVM: AuthViewModel
+    @EnvironmentObject private var appRouter: AppRouter
 
     var body: some View {
         Button {
-            NotificationCenter.default.post(name: .showAccountSheet, object: nil)
+            appRouter.presentAccount()
         } label: {
             Image(systemName: authVM.isAnonymous ? "person.fill" : "person.crop.circle")
                 .font(.title3)

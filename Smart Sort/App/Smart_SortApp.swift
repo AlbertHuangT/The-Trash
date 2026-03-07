@@ -12,6 +12,7 @@ import SwiftUI
 struct Smart_SortApp: App {
     @StateObject private var authVM = AuthViewModel()
     @StateObject private var trashVM = TrashViewModel(classifier: RealClassifierService.shared)
+    @StateObject private var appRouter = AppRouter.shared
 
     init() {
         TrashTheme().configureAppearance()
@@ -41,11 +42,12 @@ struct Smart_SortApp: App {
                 }
             }
             .environmentObject(authVM)
+            .environmentObject(appRouter)
             // Observe URL
             .onOpenURL { url in
                 print("🔗 Received Deep Link: \(url)")
                 // Try arena challenge deep link first
-                if ArenaRouter.shared.handleDeepLink(url: url) {
+                if appRouter.handleDeepLink(url: url) {
                     return
                 }
                 Task {

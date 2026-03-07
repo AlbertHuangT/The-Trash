@@ -103,11 +103,11 @@ struct TrashTheme {
         name = "Eco Skeuomorphism"
 
         palette = ThemePalette(
-            background: Color(red: 0.949, green: 0.941, blue: 0.918),  // #F2F0EA
-            card: Color(red: 0.776, green: 0.682, blue: 0.545),        // #C6AE8B
+            background: Color(red: 0.952, green: 0.945, blue: 0.925),
+            card: Color(red: 0.965, green: 0.944, blue: 0.897),
             textPrimary: Color(red: 0.239, green: 0.231, blue: 0.196), // #3D3B32
             textSecondary: Color(red: 0.263, green: 0.349, blue: 0.161), // #435928 — WCAG AA ≥ 4.5:1
-            divider: Color(red: 0.78, green: 0.74, blue: 0.68)
+            divider: Color(red: 0.81, green: 0.78, blue: 0.71)
         )
 
         accents = ThemeAccents(
@@ -118,8 +118,8 @@ struct TrashTheme {
         )
 
         shadows = ThemeShadowPalette(
-            light: Color.white.opacity(0.22),
-            dark: Color(red: 0.10, green: 0.12, blue: 0.07).opacity(0.35)
+            light: Color.white.opacity(0.12),
+            dark: Color.black.opacity(0.08)
         )
 
         typography = ThemeTypography(
@@ -165,7 +165,7 @@ struct TrashTheme {
             tabBarUnselectedTint: inkColor.withAlphaComponent(0.50),
             navigationBarBackground: paperColor,
             segmentedControl: ThemeAppearance.SegmentedControlAppearance(
-                background: UIColor(red: 0.85, green: 0.82, blue: 0.76, alpha: 1),
+                background: UIColor(red: 0.94, green: 0.91, blue: 0.85, alpha: 1),
                 selectedBackground: UIColor(red: 0.310, green: 0.490, blue: 0.471, alpha: 1),
                 text: UIColor(red: 0.263, green: 0.349, blue: 0.161, alpha: 1),
                 selectedText: UIColor(red: 0.95, green: 0.94, blue: 0.90, alpha: 1)
@@ -219,8 +219,8 @@ struct TrashTheme {
         let selectedColor = UIColor(red: 0.310, green: 0.490, blue: 0.471, alpha: 1)
 
         let tabBarAppearance = UITabBarAppearance()
-        tabBarAppearance.configureWithOpaqueBackground()
-        tabBarAppearance.backgroundColor = paperColor
+        tabBarAppearance.configureWithTransparentBackground()
+        tabBarAppearance.backgroundColor = .clear
         tabBarAppearance.shadowColor = UIColor.clear
         tabBarAppearance.stackedLayoutAppearance.normal.iconColor = inkColor.withAlphaComponent(0.50)
         tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: inkColor.withAlphaComponent(0.50)]
@@ -240,8 +240,8 @@ struct TrashTheme {
         UITabBar.appearance().unselectedItemTintColor = inkColor.withAlphaComponent(0.50)
 
         let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.backgroundColor = paperColor
+        navAppearance.configureWithTransparentBackground()
+        navAppearance.backgroundColor = .clear
         navAppearance.shadowColor = UIColor.clear
         navAppearance.titleTextAttributes = [.foregroundColor: inkColor]
         navAppearance.largeTitleTextAttributes = [.foregroundColor: inkColor]
@@ -314,15 +314,15 @@ struct TrashTheme {
     // MARK: - Unified Light Surface Tokens
 
     var appBackground: Color {
-        Color(red: 0.949, green: 0.941, blue: 0.918)
+        Color(red: 0.952, green: 0.945, blue: 0.925)
     }
 
     var surfaceBackground: Color {
-        Color(red: 0.973, green: 0.965, blue: 0.941)
+        Color(red: 0.979, green: 0.969, blue: 0.944)
     }
 
     var cardBackground: Color {
-        Color(red: 0.953, green: 0.925, blue: 0.871)
+        Color(red: 0.965, green: 0.944, blue: 0.897)
     }
 }
 

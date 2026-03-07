@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct CommunityView: View {
+    @EnvironmentObject var authVM: AuthViewModel
+    @EnvironmentObject private var appRouter: AppRouter
     @State private var selectedTab: CommunityTab = .events
 
     enum CommunityTab: String, CaseIterable {
@@ -45,11 +47,25 @@ struct CommunityView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .animation(.easeInOut(duration: 0.2), value: selectedTab)
         }
-        .background(ThemeBackgroundView())
         .navigationTitle("Community")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if !authVM.isAnonymous {
+                    Button {
+                        if selectedTab == .events {
+                            appRouter.presentCreateEvent()
+                        } else {
+                            appRouter.presentCreateCommunity()
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(
+                        selectedTab == .events ? "Create Event" : "Create Community"
+                    )
+                }
+
                 AccountButton()
             }
         }

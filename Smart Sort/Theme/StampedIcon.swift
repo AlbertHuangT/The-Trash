@@ -12,6 +12,6 @@ struct StampedIcon: View {
         let resolvedName = ThemeIconResolver.resolve(systemName: systemName)
         Image(systemName: resolvedName)
             .font(.system(size: size, weight: weight))
-            .foregroundColor(color)
+            .foregroundColor(color ?? theme.palette.textSecondary)
     }
 }

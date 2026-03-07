@@ -66,7 +66,7 @@ struct CreateEventSheet: View {
                 )
                 .presentationDetents([.fraction(0.3), .medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(theme.appearance.sheetBackground)
+                .presentationBackground(theme.appBackground)
             }
         }
     }

@@ -66,7 +66,14 @@ struct EnhancedSwipeableCard: View {
                 .font(.caption2.bold())
             }
             .padding(16)
-            .trashCard(cornerRadius: 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
+            )
         }
         .offset(x: offset.width, y: offset.height * 0.4)
         .rotationEffect(.degrees(Double(offset.width / 20)))
@@ -121,7 +128,14 @@ struct EnhancedFeedbackForm: View {
             )
         }
         .padding(16)
-        .trashCard(cornerRadius: 20)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -153,7 +167,15 @@ struct ErrorCard: View {
             }
         }
         .padding(24)
-        .trashCard(cornerRadius: 28)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+        )
     }
 }
 

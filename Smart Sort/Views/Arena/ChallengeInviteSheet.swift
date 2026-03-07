@@ -22,9 +22,6 @@ struct ChallengeInviteSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                ThemeBackgroundView()
-                    .ignoresSafeArea()
-
                 if viewModel.isLoading {
                     EnhancedLoadingView()
                 } else if viewModel.members.isEmpty {
@@ -58,17 +55,11 @@ struct ChallengeInviteSheet: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            TrashIcon(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 50))
-                .foregroundColor(theme.palette.textSecondary)
-            Text("No members found")
-                .font(.headline)
-                .foregroundColor(theme.palette.textPrimary)
-            Text("Join a community to find opponents!")
-                .font(.subheadline)
-                .foregroundColor(theme.palette.textSecondary)
-        }
+        EmptyStateView(
+            icon: "person.crop.circle.badge.questionmark",
+            title: "No Members Found",
+            subtitle: "Join a community to find opponents."
+        )
     }
 }
 
@@ -82,7 +73,7 @@ struct InviteMemberRow: View {
     var body: some View {
         HStack(spacing: 14) {
             Circle()
-                .fill(theme.accents.blue.opacity(0.2))
+                .fill(theme.surfaceBackground)
                 .frame(width: 44, height: 44)
                 .overlay(
                     Text(String(member.displayName.prefix(1)).uppercased())
@@ -111,10 +102,14 @@ struct InviteMemberRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(theme.palette.background)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: theme.shadows.dark, radius: 8, x: 5, y: 5)
-        .shadow(color: theme.shadows.light, radius: 8, x: -4, y: -4)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
     }
 }
 

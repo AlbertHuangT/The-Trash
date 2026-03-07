@@ -69,8 +69,12 @@ struct EventsMapView: View {
                             TrashIcon(systemName: "location.fill")
                                 .padding(10)
                                 .background(theme.surfaceBackground)
+                                .overlay(
+                                    Circle()
+                                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                                )
                                 .clipShape(Circle())
-                                .shadow(radius: 2)
+                                .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 2)
                         }
                     }
                     .padding()
@@ -149,9 +153,12 @@ struct EventsMapView: View {
         private func eventMarker(_ event: CommunityEvent) -> some View {
             ZStack {
                 Circle()
-                    .fill(theme.palette.card)
+                    .fill(theme.surfaceBackground)
                     .frame(width: 36, height: 36)
-                    .shadow(color: theme.shadows.dark, radius: 2)
+                    .overlay(
+                        Circle()
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
 
                 TrashIcon(systemName: event.imageSystemName)
                     .foregroundColor(event.category.color)

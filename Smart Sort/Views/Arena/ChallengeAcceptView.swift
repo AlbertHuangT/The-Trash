@@ -23,9 +23,6 @@ struct ChallengeAcceptView: View {
 
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
-                .ignoresSafeArea()
-
             if isLoading {
                 EnhancedLoadingView()
             } else if let error = errorMessage {
@@ -66,10 +63,12 @@ struct ChallengeAcceptView: View {
 
             ZStack {
                 Circle()
-                    .fill(theme.palette.background)
+                    .fill(theme.surfaceBackground)
                     .frame(width: 120, height: 120)
-                    .shadow(color: theme.shadows.dark, radius: 10, x: 6, y: 6)
-                    .shadow(color: theme.shadows.light, radius: 10, x: -4, y: -4)
+                    .overlay(
+                        Circle()
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
 
                 TrashIcon(systemName: "bolt.circle.fill")
                     .font(.system(size: 60))
@@ -125,10 +124,14 @@ struct ChallengeAcceptView: View {
                     .foregroundColor(theme.semanticDanger)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 16)
-                    .background(theme.palette.background)
-                    .clipShape(Capsule())
-                    .shadow(color: theme.shadows.dark, radius: 8, x: 4, y: 4)
-                    .shadow(color: theme.shadows.light, radius: 8, x: -3, y: -3)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(theme.surfaceBackground)
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                            )
+                    )
                 }
             }
 

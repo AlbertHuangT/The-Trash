@@ -61,7 +61,7 @@ class MembersListViewModel: ObservableObject {
     @Published var isLoading = false
 
     let communityId: String
-    private let service = CommunityService.shared
+    private let service = AdminService.shared
 
     init(communityId: String) {
         self.communityId = communityId
@@ -93,9 +93,10 @@ class MembersListViewModel: ObservableObject {
 struct MemberRow: View {
     let member: CommunityMemberResponse
     let onTap: () -> Void
+    private let theme = TrashTheme()
 
     var body: some View {
-        TrashButton(baseColor: Color.clear, action: onTap) {
+        Button(action: onTap) {
             HStack(spacing: 12) {
                 UserAvatarView(
                     name: member.username,
@@ -130,7 +131,18 @@ struct MemberRow: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.75), lineWidth: 1)
+                    )
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 

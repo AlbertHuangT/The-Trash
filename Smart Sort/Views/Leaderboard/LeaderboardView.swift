@@ -26,43 +26,38 @@ struct LeaderboardView: View {
     @State private var myCommunities: [MyCommunityResponse] = []
 
     var body: some View {
-        ZStack {
-            ThemeBackgroundView()
+        VStack(spacing: 0) {
+            leaderboardTypePicker
 
-            VStack(spacing: 0) {
-                leaderboardTypePicker
-
-                ZStack(alignment: .bottom) {
-                    if authVM.isAnonymous {
-                        anonymousRestrictionView
-                    } else {
-                        switch selectedType {
-                        case .friends:
-                            friendsLeaderboardContent
-                        case .community:
-                            communityLeaderboardContent
-                        }
+            ZStack(alignment: .bottom) {
+                if authVM.isAnonymous {
+                    anonymousRestrictionView
+                } else {
+                    switch selectedType {
+                    case .friends:
+                        friendsLeaderboardContent
+                    case .community:
+                        communityLeaderboardContent
                     }
+                }
 
-                    if selectedType == .friends && !authVM.isAnonymous
-                        && friendService.permissionStatus == .authorized,
-                        let me = currentUserVM.myProfile
-                    {
-                        let myRank = calculateMyRank(
-                            friends: friendService.friends, myScore: me.credits ?? 0)
-                        VStack {
-                            Spacer()
-                            MyRankBar(
-                                rank: myRank, username: me.username ?? "You", credits: me.credits ?? 0
-                            )
-                            .padding(.bottom, 0)
-                        }
+                if selectedType == .friends && !authVM.isAnonymous
+                    && friendService.permissionStatus == .authorized,
+                    let me = currentUserVM.myProfile
+                {
+                    let myRank = calculateMyRank(
+                        friends: friendService.friends, myScore: me.credits ?? 0)
+                    VStack {
+                        Spacer()
+                        MyRankBar(
+                            rank: myRank, username: me.username ?? "You", credits: me.credits ?? 0
+                        )
+                        .padding(.bottom, 0)
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .clipped()
         }
+        .trashScreenBackground()
         .task {
             await refreshData()
         }
@@ -230,23 +225,11 @@ struct LeaderboardView: View {
     private var noCommunityView: some View {
         VStack(spacing: theme.spacing.lg) {
             Spacer()
-            ZStack {
-                Color.clear
-                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
-                    .trashCard(cornerRadius: theme.spacing.xxl)
-
-                TrashIcon(systemName: "building.2.crop.circle")
-                    .font(.system(size: 60))
-                    .foregroundColor(theme.palette.textSecondary)
-            }
-            Text("No Communities Joined")
-                .font(theme.typography.headline)
-                .fontWeight(.bold)
-                .foregroundColor(theme.palette.textPrimary)
-            Text("Join a community in the Community tab to see its leaderboard!")
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-                .foregroundColor(theme.palette.textSecondary)
+            EmptyStateView(
+                icon: "building.2.crop.circle",
+                title: "No Communities Joined",
+                subtitle: "Join a community in the Community tab to see its leaderboard."
+            )
             Spacer()
         }
     }
@@ -254,23 +237,11 @@ struct LeaderboardView: View {
     private var emptyCommunityLeaderboardView: some View {
         VStack(spacing: theme.spacing.lg) {
             Spacer()
-            ZStack {
-                Color.clear
-                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
-                    .trashCard(cornerRadius: theme.spacing.xxl)
-
-                TrashIcon(systemName: "chart.bar.xaxis")
-                    .font(.system(size: 60))
-                    .foregroundColor(theme.palette.textSecondary)
-            }
-            Text("No Data Yet")
-                .font(theme.typography.headline)
-                .fontWeight(.bold)
-                .foregroundColor(theme.palette.textPrimary)
-            Text("Be the first to earn points in this community!")
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-                .foregroundColor(theme.palette.textSecondary)
+            EmptyStateView(
+                icon: "chart.bar.xaxis",
+                title: "No Data Yet",
+                subtitle: "Be the first to earn points in this community."
+            )
             Spacer()
         }
     }
@@ -355,29 +326,11 @@ struct LeaderboardView: View {
     var anonymousRestrictionView: some View {
         VStack(spacing: theme.spacing.xl) {
             Spacer()
-
-            ZStack {
-                Color.clear
-                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
-                    .trashCard(cornerRadius: theme.spacing.xxl)
-
-                TrashIcon(systemName: "lock.shield.fill")
-                    .font(theme.typography.title)
-                    .foregroundStyle(theme.gradients.primary)
-            }
-
-            Text("Access Restricted")
-                .font(theme.typography.headline)
-                .fontWeight(.bold)
-                .foregroundColor(theme.palette.textPrimary)
-
-            Text(
-                "Leaderboard is only available for registered users.\n\nPlease link your Email or Phone in your Account to access this feature."
+            EmptyStateView(
+                icon: "lock.shield.fill",
+                title: "Access Restricted",
+                subtitle: "Leaderboard is only available for registered users. Link your email or phone in Account to unlock it."
             )
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, theme.spacing.xl)
-            .foregroundColor(theme.palette.textSecondary)
-
             Spacer()
         }
     }
@@ -385,27 +338,11 @@ struct LeaderboardView: View {
     var permissionRequestView: some View {
         VStack(spacing: theme.spacing.xl) {
             Spacer()
-            ZStack {
-                Color.clear
-                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
-                    .trashCard(cornerRadius: theme.spacing.xxl)
-
-                TrashIcon(systemName: "lock.shield.fill")
-                    .font(theme.typography.title)
-                    .foregroundColor(theme.accents.orange)
-            }
-
-            Text("See Who's Winning")
-                .font(theme.typography.headline)
-                .fontWeight(.bold)
-                .foregroundColor(theme.palette.textPrimary)
-
-            Text(
-                "Sync your contacts to find friends playing Smart Sort and compete for the top spot!"
+            EmptyStateView(
+                icon: "person.crop.circle.badge.checkmark",
+                title: "See Who's Winning",
+                subtitle: "Sync your contacts to find friends playing Smart Sort and compete for the top spot."
             )
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, theme.spacing.xl)
-            .foregroundColor(theme.palette.textSecondary)
 
             TrashButton(
                 baseColor: theme.accents.blue,
@@ -426,26 +363,11 @@ struct LeaderboardView: View {
 
     var noFriendsState: some View {
         VStack(spacing: theme.spacing.lg) {
-            ZStack {
-                Color.clear
-                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
-                    .trashCard(cornerRadius: theme.spacing.xxl)
-
-                TrashIcon(systemName: "hand.wave")
-                    .font(.system(size: 60))
-                    .foregroundColor(theme.palette.textSecondary)
-            }
-
-            Text("No Friends Found Yet")
-                .font(theme.typography.headline)
-                .fontWeight(.bold)
-                .foregroundColor(theme.palette.textPrimary)
-            Text(
-                "None of your contacts are playing Smart Sort yet.\nInvite them to join the challenge!"
+            EmptyStateView(
+                icon: "hand.wave",
+                title: "No Friends Found Yet",
+                subtitle: "None of your contacts are playing Smart Sort yet. Invite them to join the challenge."
             )
-            .multilineTextAlignment(.center)
-            .padding(.horizontal)
-            .foregroundColor(theme.palette.textSecondary)
 
             if let shareURL = URL(string: "https://apps.apple.com/app/smart-sort") {
                 ShareLink(
@@ -460,7 +382,7 @@ struct LeaderboardView: View {
                         .background(theme.accents.green)
                         .trashOnAccentForeground()
                         .cornerRadius(theme.corners.medium)
-                        .shadow(color: theme.accents.green.opacity(0.4), radius: 8, y: 4)
+                        .shadow(color: theme.accents.green.opacity(0.2), radius: 8, y: 4)
                 }
             }
         }

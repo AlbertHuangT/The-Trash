@@ -95,8 +95,7 @@ struct SharedQuizCard: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 28))
-            .shadow(color: cardShadowDark, radius: 15, x: 8, y: 8)
-            .shadow(color: cardShadowLight, radius: 10, x: -5, y: -5)
+            .shadow(color: Color.black.opacity(0.08), radius: 14, x: 0, y: 8)
         }
     }
 
@@ -104,13 +103,6 @@ struct SharedQuizCard: View {
         showCorrect || showWrong || isSubmitting || image == nil
     }
 
-    private var cardShadowDark: Color {
-        theme.shadows.dark
-    }
-
-    private var cardShadowLight: Color {
-        theme.shadows.light
-    }
 }
 
 // MARK: - Arena Status Bar
@@ -136,7 +128,7 @@ struct ArenaStatusBar: View {
                 .foregroundColor(theme.accents.blue)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .neumorphicConcave(cornerRadius: 20)
+                .background(statusPillBackground)
             }
 
             // Combo pill
@@ -150,7 +142,7 @@ struct ArenaStatusBar: View {
                 .foregroundColor(theme.accents.orange)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .neumorphicConcave(cornerRadius: 20)
+                .background(statusPillBackground)
                 .scaleEffect(pulseAnimation ? 1.05 : 1.0)
                 .animation(theme.animations.pulse, value: pulseAnimation)
             }
@@ -164,6 +156,15 @@ struct ArenaStatusBar: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: comboCount)
+    }
+
+    private var statusPillBackground: some View {
+        Capsule(style: .continuous)
+            .fill(theme.surfaceBackground)
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+            )
     }
 }
 
@@ -185,10 +186,12 @@ struct GenericSessionSummaryView: View {
             // Trophy/result icon
             ZStack {
                 Circle()
-                    .fill(theme.palette.background)
+                    .fill(theme.surfaceBackground)
                     .frame(width: 140, height: 140)
-                    .shadow(color: theme.shadows.dark, radius: 12, x: 8, y: 8)
-                    .shadow(color: theme.shadows.light, radius: 12, x: -6, y: -6)
+                    .overlay(
+                        Circle()
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
 
                 TrashIcon(systemName: isGoodResult ? "trophy.fill" : "flag.checkered")
                     .font(.system(size: 70))
@@ -211,10 +214,12 @@ struct GenericSessionSummaryView: View {
             }
             .padding(20)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(theme.palette.background)
-                    .shadow(color: theme.shadows.dark, radius: 10, x: 6, y: 6)
-                    .shadow(color: theme.shadows.light, radius: 10, x: -5, y: -5)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
             )
             .padding(.horizontal)
             .opacity(showStats ? 1 : 0)
@@ -243,10 +248,14 @@ struct GenericSessionSummaryView: View {
                         .foregroundColor(theme.accents.blue)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 16)
-                        .background(theme.palette.background)
-                        .clipShape(Capsule())
-                        .shadow(color: theme.shadows.dark, radius: 8, x: 4, y: 4)
-                        .shadow(color: theme.shadows.light, radius: 8, x: -3, y: -3)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(theme.surfaceBackground)
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                                )
+                        )
                     }
                 }
             }

@@ -23,31 +23,43 @@ class UserSettings: ObservableObject {
     @Published var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
     @Published var isRequestingLocation = false
 
-    // 用户已加入的社区 ID 集合 (本地缓存)
-    @Published var joinedCommunityIds: Set<String> = []
-
-    // 当前城市的社区列表 (从后端获取)
-    @Published var communitiesInCity: [Community] = []
-
-    // 用户已加入的社区列表 (从后端获取)
-    @Published var joinedCommunities: [Community] = []
-
-    // 加载状态
-    @Published var isLoadingCommunities = false
-
     private let locationKey = "selectedLocation"
-    private let joinedCommunitiesKey = "joinedCommunityIds"
-
-    // 🚀 新增：定位管理器
     private let locationManager = LocationManager()
-
-    private var communityService: CommunityService {
-        CommunityService.shared
-    }
+    private let communityStore = CommunityMembershipStore.shared
+    private var cancellables = Set<AnyCancellable>()
 
     private init() {
         loadSavedData()
         setupLocationManager()
+        bindCommunityStore()
+    }
+
+    var joinedCommunityIds: Set<String> {
+        communityStore.joinedCommunityIds
+    }
+
+    var communitiesInCity: [Community] {
+        communityStore.communitiesInCity
+    }
+
+    var joinedCommunities: [Community] {
+        communityStore.joinedCommunities
+    }
+
+    var isLoadingCommunities: Bool {
+        communityStore.isLoadingCommunities
+    }
+
+    var adminCommunities: [Community] {
+        communityStore.adminCommunities
+    }
+
+    private func bindCommunityStore() {
+        communityStore.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     // 🚀 新增：设置定位管理器
@@ -94,10 +106,6 @@ class UserSettings: ObservableObject {
             selectedLocation = location
         }
 
-        // 加载已加入的社区 ID (本地缓存)
-        if let ids = UserDefaults.standard.array(forKey: joinedCommunitiesKey) as? [String] {
-            joinedCommunityIds = Set(ids)
-        }
     }
 
     // MARK: - Location Methods
@@ -112,7 +120,7 @@ class UserSettings: ObservableObject {
             }
 
             // 同步到后端
-            _ = try? await communityService.updateUserLocation(
+            _ = try? await CommunityService.shared.updateUserLocation(
                 city: location.city,
                 state: location.state,
                 latitude: location.latitude,
@@ -123,7 +131,7 @@ class UserSettings: ObservableObject {
             await loadCommunitiesForCity(location.city)
         } else {
             UserDefaults.standard.removeObject(forKey: locationKey)
-            communitiesInCity = []
+            communityStore.clearCommunitiesInCity()
         }
     }
 
@@ -138,183 +146,47 @@ class UserSettings: ObservableObject {
 
     /// 加载指定城市的社区
     func loadCommunitiesForCity(_ city: String) async {
-        isLoadingCommunities = true
-        do {
-            let response = try await communityService.getCommunitiesByCity(city)
-            communitiesInCity = response.map { Community(from: $0) }
-
-            // 更新本地缓存
-            for community in communitiesInCity where community.isMember {
-                joinedCommunityIds.insert(community.id)
-            }
-            saveJoinedCommunities()
-        } catch {
-            print("❌ Get communities error: \(error)")
-        }
-        isLoadingCommunities = false
+        await communityStore.loadCommunitiesForCity(city)
     }
 
     /// 加载用户已加入的社区
     func loadMyCommunities() async {
-        // 只在列表为空时显示 loading 状态，避免刷新时闪烁
-        let showLoading = joinedCommunities.isEmpty
-        if showLoading {
-            isLoadingCommunities = true
-        }
-
-        do {
-            let response = try await communityService.getMyCommunities()
-            joinedCommunities = response.map { resp in
-                Community(
-                    id: resp.id,
-                    name: resp.name,
-                    city: resp.city,
-                    state: resp.state ?? "",
-                    description: resp.description ?? "",
-                    memberCount: resp.memberCount,
-                    latitude: 0,
-                    longitude: 0,
-                    isMember: true,
-                    isAdmin: resp.isAdmin
-                )
-            }
-
-            // 更新本地缓存
-            joinedCommunityIds = Set(joinedCommunities.map { $0.id })
-            saveJoinedCommunities()
-        } catch {
-            print("❌ Get my communities error: \(error)")
-        }
-
-        isLoadingCommunities = false
-    }
-
-    // 🚀 新增：获取用户管理的社区
-    var adminCommunities: [Community] {
-        joinedCommunities.filter { $0.isAdmin }
-    }
-
-    /// Update local state safely without snapshotting
-    private func setOptimisticMembership(community: Community, isMember: Bool) {
-        // 1. Update IDs
-        if isMember {
-            joinedCommunityIds.insert(community.id)
-        } else {
-            joinedCommunityIds.remove(community.id)
-        }
-        saveJoinedCommunities()
-
-        // 2. Update communitiesInCity
-        if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
-            if communitiesInCity[index].isMember != isMember {
-                communitiesInCity[index].isMember = isMember
-                communitiesInCity[index].memberCount += isMember ? 1 : -1
-                if communitiesInCity[index].memberCount < 0 { communitiesInCity[index].memberCount = 0 }
-            }
-        }
-
-        // 3. Update joinedCommunities
-        if isMember {
-            if !joinedCommunities.contains(where: { $0.id == community.id }) {
-                var newC = community
-                newC.isMember = true
-                if let updated = communitiesInCity.first(where: { $0.id == community.id }) {
-                    newC = updated
-                } else {
-                     newC.memberCount += 1
-                }
-                joinedCommunities.append(newC)
-            }
-        } else {
-            joinedCommunities.removeAll { $0.id == community.id }
-        }
+        await communityStore.loadMyCommunities()
     }
 
     /// 加入社区（支持审批流程）- Optimistic UI
     func joinCommunity(_ community: Community) async -> (success: Bool, requiresApproval: Bool) {
-        // 1. Optimistic Update
-        setOptimisticMembership(community: community, isMember: true)
-
-        // 2. Perform Network Request
-        do {
-            let result = try await communityService.joinCommunity(community.id)
-
-            // 3. Handle Result
-            if result.success && !result.requiresApproval {
-                // Success: Keep optimistic state
-            } else {
-                // Failure or Approval Required: Revert Optimistic State
-                setOptimisticMembership(community: community, isMember: false)
-            }
-
-            return (result.success, result.requiresApproval)
-        } catch {
-            // Revert on error
-            print("❌ Join community error: \(error)")
-            setOptimisticMembership(community: community, isMember: false)
-            return (false, false)
-        }
+        await communityStore.joinCommunity(community)
     }
 
     /// 离开社区 - Optimistic UI
     func leaveCommunity(_ community: Community) async -> Bool {
-        // 1. Optimistic Update
-        setOptimisticMembership(community: community, isMember: false)
-
-        // 2. Perform Network Request
-        do {
-            let success = try await communityService.leaveCommunity(community.id)
-
-            // 3. Revert on Failure
-            if !success {
-                setOptimisticMembership(community: community, isMember: true)
-            }
-
-            return success
-        } catch {
-            print("❌ Leave community error: \(error)")
-            setOptimisticMembership(community: community, isMember: true)
-            return false
-        }
+        await communityStore.leaveCommunity(community)
     }
 
     /// 检查是否是社区成员
     func isMember(of community: Community) -> Bool {
-        joinedCommunityIds.contains(community.id)
+        communityStore.isMember(of: community)
     }
 
     /// 检查是否是社区管理员
     func isAdmin(of community: Community) -> Bool {
-        joinedCommunities.first(where: { $0.id == community.id })?.isAdmin ?? false
+        communityStore.isAdmin(of: community)
     }
 
     /// 获取已加入的社区 (本地缓存)
     func getJoinedCommunities() -> [Community] {
-        joinedCommunities
+        communityStore.getJoinedCommunities()
     }
 
     /// 获取当前城市的社区
     func getCommunitiesNearLocation(_ location: UserLocation? = nil) -> [Community] {
-        communitiesInCity
-    }
-
-    private func saveJoinedCommunities() {
-        UserDefaults.standard.set(Array(joinedCommunityIds), forKey: joinedCommunitiesKey)
+        communityStore.getCommunitiesNearLocation(location)
     }
 
     // MARK: - Search (本地)
 
     func searchCommunities(query: String, inCity: String? = nil) -> [Community] {
-        var results = communitiesInCity
-
-        if !query.isEmpty {
-            let q = query.lowercased()
-            results = results.filter {
-                $0.name.lowercased().contains(q) ||
-                $0.description.lowercased().contains(q)
-            }
-        }
-
-        return results
+        communityStore.searchCommunities(query: query, inCity: inCity)
     }
 }

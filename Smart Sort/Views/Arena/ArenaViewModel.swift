@@ -40,6 +40,7 @@ class ArenaViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let client = SupabaseManager.shared.client
+    private let gamificationService: GamificationServicing
 
     var currentQuestion: QuizQuestion? {
         guard currentQuestionIndex < questions.count else { return nil }
@@ -54,6 +55,14 @@ class ArenaViewModel: ObservableObject {
     var isCurrentImageReady: Bool {
         guard let question = currentQuestion else { return false }
         return imageCache[question.id] != nil
+    }
+
+    init() {
+        self.gamificationService = GamificationService.shared
+    }
+
+    init(gamificationService: GamificationServicing) {
+        self.gamificationService = gamificationService
     }
 
     func fetchUserCredits() async {
@@ -185,8 +194,7 @@ class ArenaViewModel: ObservableObject {
             }
 
             do {
-                try await client.rpc("increment_credits", params: ["amount": pointsEarned])
-                    .execute()
+                try await gamificationService.awardCredits(pointsEarned)
             } catch {
                 totalCredits -= pointsEarned
                 sessionScore -= pointsEarned

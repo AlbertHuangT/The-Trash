@@ -7,6 +7,14 @@
 
 import SwiftUI
 
+private enum VerifyFlowPhase: Equatable {
+    case cameraClosed
+    case preview
+    case reviewingResult
+    case collectingFeedback
+    case submittingFeedback
+}
+
 struct VerifyView: View {
     @EnvironmentObject var viewModel: TrashViewModel
     @EnvironmentObject var authVM: AuthViewModel
@@ -15,38 +23,63 @@ struct VerifyView: View {
 
     // UI State
     @State private var cardOffset: CGSize = .zero
-    @State private var showingFeedbackForm = false
-    @State private var isCameraActive = false
+    @State private var flowPhase: VerifyFlowPhase = .cameraClosed
     @State private var isTorchOn = false
     @State private var pulseAnimation = false
     // showAccountSheet is managed by ContentView via environment
 
     // Form Data
     @State private var feedbackItemName = ""
-    @State private var isSubmittingFeedback = false
     @State private var swipeSuccessTrigger = false
     @State private var swipeWarningTrigger = false
 
     var showFeedbackForm: Bool {
-        if case .collectingFeedback = viewModel.appState, showingFeedbackForm { return true }
-        return false
+        flowPhase == .collectingFeedback || flowPhase == .submittingFeedback
     }
 
     var isPreviewState: Bool {
-        cameraManager.capturedImage == nil && viewModel.appState == .idle
+        cameraManager.capturedImage == nil && flowPhase == .preview && viewModel.appState == .idle
     }
 
     private var isEcoCameraCaptureMode: Bool {
         isCameraActive && isPreviewState && !showFeedbackForm
     }
 
+    private var isCameraActive: Bool {
+        flowPhase != .cameraClosed
+    }
+
+    private var isSubmittingFeedback: Bool {
+        flowPhase == .submittingFeedback
+    }
+
+    private var isClassifierPreparing: Bool {
+        viewModel.classifierPreparationState == .preparing
+    }
+
+    private var isClassifierFailed: Bool {
+        if case .failed = viewModel.classifierPreparationState {
+            return true
+        }
+        return false
+    }
+
+    private var classifierStatusText: String? {
+        switch viewModel.classifierPreparationState {
+        case .idle:
+            return nil
+        case .preparing:
+            return "Preparing AI..."
+        case .ready:
+            return "AI Ready"
+        case .failed(let message):
+            return message
+        }
+    }
+
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
-
             VStack(spacing: 0) {
-                aiStatusIndicator
-
                 cameraArea
 
                 interactionArea
@@ -62,6 +95,7 @@ struct VerifyView: View {
                 analyzingOverlay
             }
         }
+        .trashScreenBackground()
         .navigationTitle("Verify")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -70,17 +104,38 @@ struct VerifyView: View {
             }
         }
         .onAppear {
+            Task {
+                await viewModel.prepareClassifier()
+            }
+
             if isCameraActive && cameraManager.capturedImage == nil {
                 cameraManager.start()
             }
         }
         .onDisappear {
+            flowPhase = .cameraClosed
             isTorchOn = false
             cameraManager.stop()
         }
         .onReceive(cameraManager.$capturedImage) { img in
             if let img = img, viewModel.appState == .idle {
                 viewModel.analyzeImage(image: img)
+            }
+        }
+        .onChange(of: viewModel.appState) { state in
+            switch state {
+            case .finished:
+                if flowPhase == .preview {
+                    flowPhase = .reviewingResult
+                }
+            case .collectingFeedback:
+                flowPhase = .collectingFeedback
+            case .error:
+                if flowPhase == .submittingFeedback {
+                    flowPhase = .reviewingResult
+                }
+            case .idle, .analyzing:
+                break
             }
         }
         .onReceive(cameraManager.$isTorchOn) { isOn in
@@ -90,83 +145,13 @@ struct VerifyView: View {
         .compatibleSensoryFeedback(.warning, trigger: swipeWarningTrigger)
     }
 
-    private var aiStatusIndicator: some View {
-        HStack {
-            Spacer()
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(
-                        RealClassifierService.shared.isReady ? theme.accents.green : Color.orange
-                    )
-                    .frame(width: 8, height: 8)
-                    .scaleEffect(pulseAnimation ? 1.2 : 1.0)
-                    .shadow(
-                        color: RealClassifierService.shared.isReady
-                            ? theme.accents.green.opacity(0.6) : Color.orange.opacity(0.6),
-                        radius: 4, x: 0, y: 0
-                    )
-                    .animation(
-                        theme.animations.pulse,
-                        value: pulseAnimation)
-                Text(RealClassifierService.shared.isReady ? "Ready" : "Loading")
-                    .font(.caption2)
-                    .foregroundColor(theme.palette.textSecondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .trashCard(cornerRadius: 16)
-            .onAppear { pulseAnimation = true }
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-    }
-
     private var cameraArea: some View {
         GeometryReader { geo in
             ecoCameraArea(size: geo.size)
         }
         .frame(maxHeight: min(340, UIScreen.main.bounds.height * 0.4))
         .padding(.horizontal, theme.spacing.md)
-        .padding(.top, theme.spacing.sm)
-    }
-
-    @ViewBuilder
-    private func legacyCameraArea(size: CGSize) -> some View {
-        ZStack {
-            Color.clear
-                .trashCard(cornerRadius: 28)
-
-            if let image = cameraManager.capturedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: size.width - 16, height: size.height - 16)
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
-                    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                    .transition(.scale.combined(with: .opacity))
-            } else if isCameraActive {
-                CameraPreview(cameraManager: cameraManager)
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
-                    .padding(8)
-                    .overlay(
-                        ScanLineOverlay()
-                            .padding(8)
-                    )
-            } else {
-                VStack(spacing: 20) {
-                    paperIconCircle
-
-                    VStack(spacing: 6) {
-                        Text("Identify Trash")
-                            .font(theme.typography.headline)
-                            .foregroundColor(theme.palette.textPrimary)
-                        Text("Point your camera at any item")
-                            .font(theme.typography.caption)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
-                }
-            }
-        }
+        .padding(.top, theme.spacing.md)
     }
 
     private func ecoCameraArea(size: CGSize) -> some View {
@@ -176,12 +161,12 @@ struct VerifyView: View {
 
         return ZStack {
             RoundedRectangle(cornerRadius: outerRadius, style: .continuous)
-                .fill(theme.palette.card)
+                .fill(theme.surfaceBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: outerRadius, style: .continuous)
                         .stroke(theme.palette.divider, lineWidth: 1)
                 )
-                .shadow(color: theme.shadows.dark.opacity(0.3), radius: 6, x: 0, y: 3)
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
 
             RoundedRectangle(cornerRadius: innerRadius, style: .continuous)
                 .fill(Color.black.opacity(0.22))
@@ -210,6 +195,12 @@ struct VerifyView: View {
                         Text("Point at an item to scan")
                             .font(theme.typography.caption)
                             .foregroundColor(theme.palette.textSecondary)
+
+                        if let classifierStatusText {
+                            Text(classifierStatusText)
+                                .font(theme.typography.caption)
+                                .foregroundColor(isClassifierFailed ? theme.semanticDanger : theme.accents.blue)
+                        }
                     }
                     .padding(20)
                 }
@@ -223,10 +214,16 @@ struct VerifyView: View {
                 .shadow(color: Color.black.opacity(0.28), radius: 2, x: 0, y: 1)
 
             if isCameraActive {
-                cameraOverlayControls
-                    .padding(.horizontal, inset + 8)
-                    .padding(.top, inset + 8)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                VStack(spacing: 12) {
+                    cameraOverlayControls
+
+                    if let classifierStatusText {
+                        classifierStatusPill(text: classifierStatusText)
+                    }
+                }
+                .padding(.horizontal, inset + 8)
+                .padding(.top, inset + 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
     }
@@ -234,7 +231,7 @@ struct VerifyView: View {
     // MARK: - 🎨 Interaction Area
     private var interactionArea: some View {
         ZStack {
-            if case .finished(let result) = viewModel.appState, !showingFeedbackForm {
+            if case .finished(let result) = viewModel.appState, !showFeedbackForm {
                 EnhancedSwipeableCard(result: result, offset: $cardOffset) { direction in
                     handleSwipe(direction: direction, result: result)
                 }
@@ -248,6 +245,7 @@ struct VerifyView: View {
             if case .error(let message) = viewModel.appState {
                 ErrorCard(message: message) {
                     finishFlowAndReset(closeCamera: false)
+                    flowPhase = .preview
                     cameraManager.start()
                 }
                 .transition(.scale.combined(with: .opacity))
@@ -307,7 +305,7 @@ struct VerifyView: View {
             }
         }
         .padding(.bottom, 8)
-        .disabled(viewModel.appState == .analyzing || isSubmittingFeedback)
+        .disabled(viewModel.appState == .analyzing || isSubmittingFeedback || (isPreviewState && isClassifierPreparing))
     }
 
     // MARK: - 🎨 Analyzing Overlay
@@ -347,7 +345,15 @@ struct VerifyView: View {
                     .foregroundColor(theme.palette.textSecondary)
             }
             .padding(40)
-            .trashCard(cornerRadius: 30)
+            .background(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+            )
         }
         .transition(.opacity)
     }
@@ -384,12 +390,14 @@ struct VerifyView: View {
 
     private var buttonIcon: String {
         if showFeedbackForm { return "paperplane.fill" }
+        if isClassifierPreparing && isPreviewState { return "sparkles" }
         if isCameraActive && !isPreviewState { return "arrow.clockwise" }
         return isCameraActive ? "camera.shutter.button.fill" : "camera.fill"
     }
 
     private var buttonText: String {
         if showFeedbackForm { return "Submit Correction" }
+        if isClassifierPreparing && isPreviewState { return "Preparing AI..." }
         if isCameraActive && !isPreviewState { return "Retake Photo" }
         return isCameraActive ? "Capture & Identify" : "Open Camera"
     }
@@ -414,7 +422,7 @@ struct VerifyView: View {
             viewModel.prepareForIncorrectFeedback(wrongResult: result)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    self.showingFeedbackForm = true
+                    self.flowPhase = .collectingFeedback
                     self.cardOffset = .zero
                 }
             }
@@ -425,11 +433,15 @@ struct VerifyView: View {
         if showFeedbackForm {
             submitFeedback()
         } else if !isCameraActive {
+            Task {
+                await viewModel.prepareClassifier()
+            }
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                isCameraActive = true
+                flowPhase = .preview
             }
             cameraManager.start()
         } else if isPreviewState {
+            guard !isClassifierPreparing else { return }
             cameraManager.takePhoto()
         } else {
             finishFlowAndReset(closeCamera: false)
@@ -442,19 +454,18 @@ struct VerifyView: View {
         guard case .collectingFeedback(let originalResult) = viewModel.appState,
             let currentImage = cameraManager.capturedImage
         else { return }
-        isSubmittingFeedback = true
+        flowPhase = .submittingFeedback
         Task {
             await viewModel.submitCorrection(
                 image: currentImage,
                 originalResult: originalResult,
                 correctedName: feedbackItemName
             )
-            isSubmittingFeedback = false
             if viewModel.appState == .idle {
                 finishFlowAndReset(closeCamera: true)
             } else if case .error = viewModel.appState {
                 withAnimation {
-                    showingFeedbackForm = false
+                    flowPhase = .reviewingResult
                     cardOffset = .zero
                 }
             }
@@ -463,12 +474,9 @@ struct VerifyView: View {
 
     private func finishFlowAndReset(closeCamera: Bool = true) {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            showingFeedbackForm = false
+            flowPhase = closeCamera ? .cameraClosed : .preview
             cardOffset = .zero
             feedbackItemName = ""
-            if closeCamera {
-                isCameraActive = false
-            }
         }
 
         if closeCamera {
@@ -487,12 +495,32 @@ extension VerifyView {
     private var paperIconCircle: some View {
         ZStack {
             Circle()
+                .fill(theme.surfaceBackground)
                 .frame(width: 100, height: 100)
-                .trashCard(cornerRadius: 50)
+                .overlay(
+                    Circle()
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
 
             TrashIcon(systemName: "camera.viewfinder")
                 .font(.system(size: 40, weight: .light))
                 .foregroundColor(theme.palette.textSecondary)
         }
+    }
+
+    private func classifierStatusPill(text: String) -> some View {
+        Text(text)
+            .font(theme.typography.caption)
+            .foregroundColor(isClassifierFailed ? theme.semanticDanger : theme.palette.textPrimary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                Capsule()
+                    .fill(theme.surfaceBackground.opacity(0.94))
+                    .overlay(
+                        Capsule()
+                            .stroke(theme.palette.divider.opacity(0.9), lineWidth: 1)
+                    )
+            )
     }
 }

@@ -19,9 +19,6 @@ struct SpeedSortView: View {
 
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
-                .ignoresSafeArea()
-
             VStack(spacing: 0) {
                 if viewModel.sessionCompleted {
                     speedSortSummary
@@ -85,7 +82,7 @@ struct SpeedSortView: View {
                     .foregroundColor(theme.accents.blue)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .neumorphicConcave(cornerRadius: 20)
+                    .background(statusPillBackground)
                 )
             )
 
@@ -149,10 +146,12 @@ struct SpeedSortView: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 6, x: 4, y: 4)
-                .shadow(color: theme.shadows.light, radius: 6, x: -3, y: -3)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
         )
         .padding(.horizontal)
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -171,6 +170,15 @@ struct SpeedSortView: View {
                 mainContent
             }
         }
+    }
+
+    private var statusPillBackground: some View {
+        Capsule(style: .continuous)
+            .fill(theme.surfaceBackground)
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+            )
     }
 
     // MARK: - Summary

@@ -14,7 +14,7 @@ struct AchievementsListView: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 16) {
             TrashSegmentedControl(
                 options: [
                     TrashSegmentOption(value: 0, title: "Official", icon: "shield.fill"),
@@ -26,16 +26,21 @@ struct AchievementsListView: View {
             .padding(.top, 12)
 
             if service.isLoading {
-                Spacer()
+                Spacer(minLength: 0)
                 ProgressView()
-                Spacer()
+                Spacer(minLength: 0)
             } else if filteredAchievements.isEmpty {
-                Spacer()
                 emptyStateView
-                Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        Text(selectedTab == 0 ? "Official Achievements" : "Community Achievements")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(theme.palette.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+
                         ForEach(filteredAchievements) { achievement in
                             AchievementCard(achievement: achievement) {
                                 Task {
@@ -50,11 +55,10 @@ struct AchievementsListView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 24)
                 }
             }
         }
-        .background(theme.palette.background)
         .optionalNavigationTitle(showsNavigationTitle ? "Achievements" : nil)
         .onAppear {
             Task {
@@ -66,13 +70,13 @@ struct AchievementsListView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        CompatibleContentUnavailableView {
-            Label("No Achievements Yet", systemImage: selectedTab == 0 ? "trophy" : "person.3")
-        } description: {
-            Text(selectedTab == 0
-                 ? "Start scanning trash to earn your first achievement!"
-                 : "Join communities and participate to earn community achievements")
-        }
+        EmptyStateView(
+            icon: selectedTab == 0 ? "trophy.fill" : "person.3.fill",
+            title: "No Achievements Yet",
+            subtitle: selectedTab == 0
+                ? "Start scanning trash to earn your first achievement."
+                : "Join communities and participate to earn community achievements."
+        )
     }
 
     var filteredAchievements: [UserAchievement] {
@@ -123,8 +127,10 @@ struct AchievementCard: View {
                         .foregroundColor(achievement.rarity.color)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(achievement.rarity.color.opacity(0.15))
-                        .cornerRadius(4)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(achievement.rarity.color.opacity(0.15))
+                        )
                 }
 
                 if let desc = achievement.description {
@@ -184,10 +190,12 @@ struct AchievementCard: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.palette.background)
-                                .shadow(color: theme.shadows.dark, radius: 2, x: 1, y: 1)
-                                .shadow(color: theme.shadows.light, radius: 2, x: -1, y: -1)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(theme.surfaceBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                                )
                         )
                 }
             }
@@ -195,9 +203,11 @@ struct AchievementCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 6, x: 4, y: 4)
-                .shadow(color: theme.shadows.light, radius: 6, x: -3, y: -3)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)

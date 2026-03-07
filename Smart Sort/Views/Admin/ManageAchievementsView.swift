@@ -17,18 +17,25 @@ struct ManageAchievementsView: View {
     var body: some View {
         VStack(spacing: 0) {
             if service.isLoading && service.communityAchievements.isEmpty {
-                Spacer()
+                Spacer(minLength: 0)
                 ProgressView()
-                Spacer()
+                Spacer(minLength: 0)
             } else if service.communityAchievements.isEmpty {
-                CompatibleContentUnavailableView {
-                    Label("No achievements created yet", systemImage: "trophy")
-                } description: {
-                    Text("Create achievements to reward your community members")
-                }
+                EmptyStateView(
+                    icon: "trophy.fill",
+                    title: "No Achievements Yet",
+                    subtitle: "Create achievements to reward your community members."
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        Text("Community Achievements")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(theme.palette.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+
                         ForEach(service.communityAchievements) { achievement in
                             NavigationLink(destination: GrantAchievementToMemberView(
                                 achievement: achievement,
@@ -44,7 +51,6 @@ struct ManageAchievementsView: View {
                 }
             }
         }
-        .background(theme.palette.background)
         .navigationTitle("Manage Achievements")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -95,8 +101,10 @@ struct ManageAchievementsView: View {
                     .foregroundColor(achievement.rarity.color)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(achievement.rarity.color.opacity(0.15))
-                    .cornerRadius(4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(achievement.rarity.color.opacity(0.15))
+                    )
             }
 
             Spacer()
@@ -108,9 +116,11 @@ struct ManageAchievementsView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(theme.palette.background)
-                .shadow(color: theme.shadows.dark, radius: 5, x: 3, y: 3)
-                .shadow(color: theme.shadows.light, radius: 5, x: -3, y: -3)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
         )
     }
 }

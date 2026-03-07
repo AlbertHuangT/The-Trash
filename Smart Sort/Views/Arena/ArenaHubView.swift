@@ -11,7 +11,7 @@ import SwiftUI
 
 struct ArenaHubView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @ObservedObject var arenaRouter = ArenaRouter.shared
+    @EnvironmentObject private var appRouter: AppRouter
     // showAccountSheet managed by ContentView via environment
     @State private var navigationPath = NavigationPath()
     @State private var showChallengeList = false
@@ -27,14 +27,22 @@ struct ArenaHubView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
-                ThemeBackgroundView()
-
+            Group {
                 if authViewModel.isAnonymous {
                     EnhancedAnonymousRestrictionView()
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 28) {
+                        VStack(alignment: .leading, spacing: 24) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Pick a mode")
+                                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                                    .foregroundColor(TrashTheme().palette.textPrimary)
+                                Text("Quick rounds, daily goals, and duels all live here.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+
                             LazyVGrid(
                                 columns: [GridItem(.flexible()), GridItem(.flexible())],
                                 spacing: 20
@@ -53,10 +61,12 @@ struct ArenaHubView: View {
 
                             Spacer(minLength: 40)
                         }
-                        .padding(.top, 12)
+                        .padding(.top, 16)
+                        .padding(.bottom, 28)
                     }
                 }
             }
+            .trashScreenBackground()
             .navigationTitle("Arena")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -74,7 +84,7 @@ struct ArenaHubView: View {
                                     .font(.caption2.bold())
                                     .foregroundStyle(.white)
                                     .padding(4)
-                                    .background(Color.red)
+                                    .background(Color.red, in: Capsule())
                                     .clipShape(Circle())
                                     .offset(x: 8, y: -8)
                             }
@@ -108,10 +118,10 @@ struct ArenaHubView: View {
             }
         }
         .sheet(isPresented: $showAcceptView) {
-            if let challengeId = arenaRouter.pendingChallengeId {
+            if let challengeId = appRouter.pendingChallengeId {
                 ChallengeAcceptView(challengeId: challengeId) {
                     showAcceptView = false
-                    arenaRouter.clearPending()
+                    appRouter.clearPendingChallenge()
                 }
             }
         }
@@ -126,7 +136,7 @@ struct ArenaHubView: View {
         .onDisappear {
             pollTimer?.cancel()
         }
-        .onChange(of: arenaRouter.pendingChallengeId) { newValue in
+        .onChange(of: appRouter.pendingChallengeId) { newValue in
             if newValue != nil {
                 showAcceptView = true
             }
@@ -222,8 +232,16 @@ struct GameModeCard: View {
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
             )
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(gradient, lineWidth: 1.5).opacity(0.35))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(gradient, lineWidth: 1.25)
+                    .opacity(0.28)
+            )
         }
         .buttonStyle(GameModeCardButtonStyle())
         .accessibilityLabel("\(mode.title): \(mode.subtitle)")

@@ -15,10 +15,14 @@ struct StatCard: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            ZStack {
-                Color.clear
-                    .frame(width: 44, height: 44)
-                    .trashCard(cornerRadius: 12)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                        .frame(width: 44, height: 44)
 
                 TrashIcon(systemName: icon)
                     .font(.system(size: 20, weight: .bold))
@@ -37,7 +41,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .trashCard(cornerRadius: 18)
+        .surfaceCard(cornerRadius: 18)
     }
 }
 
@@ -54,9 +58,13 @@ struct SettingsRow: View {
         TrashTapArea(action: action) {
             HStack(spacing: 16) {
                 ZStack {
-                    Color.clear
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
                         .frame(width: 36, height: 36)
-                        .trashCard(cornerRadius: 10)
 
                     TrashIcon(systemName: icon)
                         .font(.system(size: 16, weight: .bold))
@@ -85,7 +93,7 @@ struct SettingsRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .trashCard(cornerRadius: 14)
+            .surfaceCard(cornerRadius: 14)
         }
     }
 }
@@ -117,6 +125,6 @@ struct InfoCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .trashCard(cornerRadius: 18)
+        .surfaceCard(cornerRadius: 18)
     }
 }

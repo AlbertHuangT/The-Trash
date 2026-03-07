@@ -79,7 +79,7 @@ struct LocationPickerSheet: View {
                 )
                 .presentationDetents([.fraction(0.36), .medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(theme.appearance.sheetBackground)
+                .presentationBackground(theme.appBackground)
             }
             .onChange(of: userSettings.locationPermissionStatus) { newStatus in
                 if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
@@ -151,7 +151,14 @@ struct LocationPickerSheet: View {
                     }
                 }
                 .padding(16)
-                .trashCard(cornerRadius: 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                        )
+                )
             }
             .disabled(userSettings.isRequestingLocation)
             .padding(.horizontal, 16)

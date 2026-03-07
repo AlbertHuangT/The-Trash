@@ -9,6 +9,16 @@ import Foundation
 import UIKit
 import Supabase
 
+protocol FeedbackSubmitting: AnyObject {
+    func submitFeedback(
+        image: UIImage,
+        predictedLabel: String,
+        predictedCategory: String,
+        correctedName: String,
+        userId: UUID?
+    ) async throws
+}
+
 // Data structure definition
 struct FeedbackRecord: Encodable {
     let user_id: UUID?
@@ -20,7 +30,7 @@ struct FeedbackRecord: Encodable {
 }
 
 @MainActor
-class FeedbackService {
+class FeedbackService: FeedbackSubmitting {
     static let shared = FeedbackService()
     
     // Get client instance
@@ -88,4 +98,3 @@ class FeedbackService {
         LogManager.shared.log("Database write successful", level: .info, category: "Feedback")
     }
 }
-

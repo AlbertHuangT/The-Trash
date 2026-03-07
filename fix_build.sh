@@ -1,0 +1,8 @@
+sed -i ' -e '52d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Profile/BadgeAchievementsHubView.swift"
+sed -i ' -e '26d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/ChallengeAcceptView.swift"
+sed -i ' -e '25d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/ChallengeInviteSheet.swift"
+sed -i ' -e '23d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/DailyChallengeView.swift"
+sed -i ' -e '20d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/DailyLeaderboardView.swift"
+sed -i ' -e '22d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/SpeedSortView.swift"
+sed -i ' -e '20d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/StreakLeaderboardView.swift"
+sed -i ' -e '23d' "/Users/alberthuang/Documents/Smart Sort/Smart Sort/Views/Arena/StreakModeView.swift"

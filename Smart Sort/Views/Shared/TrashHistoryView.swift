@@ -87,21 +87,28 @@ struct TrashHistoryView: View {
     
     var body: some View {
         ZStack {
-            theme.palette.background.ignoresSafeArea()
             
             if viewModel.isLoading && viewModel.historyItems.isEmpty {
                 ProgressView("Loading history...")
             } else if viewModel.historyItems.isEmpty {
                 emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 16) {
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        Text("Recent Corrections")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(theme.palette.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+
                         ForEach(viewModel.historyItems) { item in
                             HistoryRow(item: item)
                         }
                     }
+                    .padding(.horizontal, 16)
                     .padding(.top, 16)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 24)
                 }
                 .refreshable {
                     await viewModel.fetchHistory()
@@ -117,11 +124,11 @@ struct TrashHistoryView: View {
     
     // 空状态视图
     var emptyState: some View {
-        CompatibleContentUnavailableView {
-            Label("No History Yet", systemImage: "clock.arrow.circlepath")
-        } description: {
-            Text("Items you identify and correct will appear here.")
-        }
+        EmptyStateView(
+            icon: "clock.arrow.circlepath",
+            title: "No History Yet",
+            subtitle: "Items you identify and correct will appear here."
+        )
     }
 }
 
@@ -131,13 +138,12 @@ struct HistoryRow: View {
     private let theme = TrashTheme()
     
     var body: some View {
-        // Neumorphic Card
         HStack(spacing: 12) {
             // 1. 图片缩略图
             AsyncImage(url: item.publicImageUrl) { phase in
                 switch phase {
                 case .empty:
-                    Rectangle().fill(theme.palette.background)
+                    Rectangle().fill(theme.surfaceBackground)
                         .overlay(ProgressView())
                 case .success(let image):
                     image.resizable().scaledToFill()
@@ -153,9 +159,7 @@ struct HistoryRow: View {
             .clipped()
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(theme.palette.background, lineWidth: 2)
-                    .shadow(color: theme.shadows.dark, radius: 3, x: 2, y: 2)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
             )
             
             // 2. 文字信息
@@ -193,9 +197,11 @@ struct HistoryRow: View {
                         .padding(.vertical, 4)
                         .background(
                             Capsule()
-                                .fill(theme.palette.background)
-                                .shadow(color: theme.shadows.light, radius: 2, x: -1, y: -1)
-                                .shadow(color: theme.shadows.dark, radius: 2, x: 1, y: 1)
+                                .fill(theme.surfaceBackground)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                                )
                         )
                 }
                 
@@ -211,10 +217,13 @@ struct HistoryRow: View {
             Spacer()
         }
         .padding(16)
-        .background(theme.palette.background)
-        .cornerRadius(20)
-        .shadow(color: theme.shadows.dark, radius: 8, x: 5, y: 5)
-        .shadow(color: theme.shadows.light, radius: 8, x: -5, y: -5)
-        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
+        )
     }
 }

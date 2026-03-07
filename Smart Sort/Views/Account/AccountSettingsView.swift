@@ -13,7 +13,6 @@ struct AccountSettingsView: View {
     
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
             
             ScrollView {
                 VStack(spacing: 24) {

@@ -50,7 +50,7 @@ class AdminLogsViewModel: ObservableObject {
     @Published var isLoading = false
     
     let communityId: String
-    private let service = CommunityService.shared
+    private let service = AdminService.shared
     
     init(communityId: String) {
         self.communityId = communityId
@@ -69,6 +69,7 @@ class AdminLogsViewModel: ObservableObject {
 
 struct AdminLogRow: View {
     let log: AdminActionLogResponse
+    private let theme = TrashTheme()
     
     var actionColor: Color {
         switch log.actionType {
@@ -105,11 +106,17 @@ struct AdminLogRow: View {
                 
                 HStack {
                     Text("By: \(log.adminUsername)")
-                        .badgeStyle(foreground: .secondary, background: Color(.secondarySystemBackground))
+                        .badgeStyle(
+                            foreground: theme.palette.textSecondary,
+                            background: theme.surfaceBackground
+                        )
 
                     if let target = log.targetUsername {
                         Text("Target: \(target)")
-                            .badgeStyle(foreground: .secondary, background: Color(.secondarySystemBackground))
+                            .badgeStyle(
+                                foreground: theme.palette.textSecondary,
+                                background: theme.surfaceBackground
+                            )
                     }
                 }
                 
@@ -118,6 +125,6 @@ struct AdminLogRow: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }

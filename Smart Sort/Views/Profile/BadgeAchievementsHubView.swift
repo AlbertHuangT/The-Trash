@@ -35,9 +35,6 @@ struct BadgeAchievementsHubView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
 
-            Divider()
-                .background(theme.palette.divider)
-
             Group {
                 switch selectedSegment {
                 case .badges:
@@ -49,11 +46,8 @@ struct BadgeAchievementsHubView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, 4)
         }
-        .background(
-            ThemeBackgroundView()
-                .ignoresSafeArea()
-        )
         .navigationTitle("Badges & Achievements")
         .animation(.easeInOut, value: selectedSegment)
     }

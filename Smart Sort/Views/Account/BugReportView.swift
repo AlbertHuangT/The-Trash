@@ -21,7 +21,6 @@ struct BugReportView: View {
 
     var body: some View {
         ZStack {
-            ThemeBackgroundView()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {

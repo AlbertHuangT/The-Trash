@@ -74,9 +74,12 @@ struct AchievementToastView: View {
                 .padding(theme.spacing.lg)
                 .background(
                     RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
-                        .fill(theme.palette.background)
-                        .shadow(color: theme.shadows.dark, radius: 8, x: 5, y: 5)
-                        .shadow(color: theme.shadows.light, radius: 8, x: -4, y: -4)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)

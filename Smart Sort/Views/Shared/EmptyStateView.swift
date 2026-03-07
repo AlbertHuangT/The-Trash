@@ -14,13 +14,17 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: theme.spacing.lg) {
             ZStack {
-                Color.clear
-                    .trashCard(cornerRadius: theme.spacing.xl)
+                RoundedRectangle(cornerRadius: theme.spacing.xl, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.spacing.xl, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
                     .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
                 
                 TrashIcon(systemName: icon)
                     .font(theme.typography.heroIcon)
-                    .foregroundColor(theme.palette.textSecondary)
+                    .foregroundColor(theme.accents.blue.opacity(0.9))
             }
             Text(title)
                 .font(theme.typography.headline)

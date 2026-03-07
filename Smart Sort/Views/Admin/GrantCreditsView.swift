@@ -137,7 +137,7 @@ struct GrantCreditsView: View {
                 )
                 .presentationDetents([.fraction(0.3), .medium])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(theme.appearance.sheetBackground)
+                .presentationBackground(theme.appBackground)
             }
         }
     }
@@ -178,7 +178,7 @@ class GrantCreditsViewModel: ObservableObject {
     @Published var isLoading = false
 
     let eventId: UUID
-    private let service = CommunityService.shared
+    private let eventService = EventService.shared
 
     init(eventId: UUID) {
         self.eventId = eventId
@@ -187,7 +187,7 @@ class GrantCreditsViewModel: ObservableObject {
     func loadParticipants() async {
         isLoading = true
         do {
-            participants = try await service.getEventParticipants(eventId: eventId)
+            participants = try await eventService.getEventParticipants(eventId: eventId)
         } catch {
             print("❌ Get event participants error: \(error)")
         }
@@ -196,7 +196,7 @@ class GrantCreditsViewModel: ObservableObject {
 
     func grantCredits(userIds: [UUID], amount: Int, reason: String) async -> GrantCreditsResult {
         do {
-            return try await service.grantEventCredits(
+            return try await eventService.grantEventCredits(
                 eventId: eventId,
                 userIds: userIds,
                 creditsPerUser: amount,
