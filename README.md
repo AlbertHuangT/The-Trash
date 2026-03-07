@@ -146,3 +146,7 @@ scripts/check_backend_contracts.sh
 - `member_count` 和 `participant_count` 由数据库触发器独占维护，RPC 函数中不得手动更新
 - 若改动 RPC 名称，必须同步更新对应 Service 调用和迁移
 - 运行 `scripts/check_backend_contracts.sh` 可检测前后端契约漂移
+
+## License
+
+This work is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
