@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Smart Sort.png",
+      "filename" : "smart-sort.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Smart Sort Dark.png",
+      "filename" : "smart-sort-dark.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,7 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "Smart Sort 1.png",
+      "filename" : "smart-sort 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

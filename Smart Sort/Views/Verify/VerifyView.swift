@@ -161,6 +161,10 @@ struct VerifyView: View {
         let outerRadius = theme.corners.large + 6
         let innerRadius = theme.corners.large
         let inset: CGFloat = 18
+        let safeWidth = size.width.isFinite ? size.width : 0
+        let safeHeight = size.height.isFinite ? size.height : 0
+        let contentWidth = max(safeWidth - inset * 2, 0)
+        let contentHeight = max(safeHeight - inset * 2, 0)
 
         return ZStack {
             RoundedRectangle(cornerRadius: outerRadius, style: .continuous)
@@ -208,7 +212,7 @@ struct VerifyView: View {
                     .padding(theme.spacing.lg)
                 }
             }
-            .frame(width: size.width - inset * 2, height: size.height - inset * 2)
+            .frame(width: contentWidth, height: contentHeight)
             .clipShape(RoundedRectangle(cornerRadius: innerRadius, style: .continuous))
 
             RoundedRectangle(cornerRadius: innerRadius, style: .continuous)

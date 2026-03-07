@@ -52,7 +52,7 @@ struct CommunityDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
+                    TrashTextButton(title: "Close", variant: .accent) { dismiss() }
                 }
             }
             .task {

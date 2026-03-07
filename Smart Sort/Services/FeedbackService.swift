@@ -58,11 +58,19 @@ class FeedbackService: FeedbackSubmitting {
         correctedName: String,
         userId: UUID?
     ) async throws {
-        guard let userId else {
+        guard let authUserId = client.auth.currentUser?.id else {
             throw NSError(
                 domain: "FeedbackService",
                 code: -2,
                 userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]
+            )
+        }
+
+        if let userId, userId != authUserId {
+            LogManager.shared.log(
+                "Ignoring mismatched feedback user id \(userId) in favor of current auth user \(authUserId)",
+                level: .warning,
+                category: "Feedback"
             )
         }
 
@@ -71,13 +79,13 @@ class FeedbackService: FeedbackSubmitting {
         let filePath = try await uploadImage(
             image,
             bucket: "feedback_images",
-            pathPrefix: "\(userId.uuidString)/feedback"
+            pathPrefix: "\(authUserId.uuidString.lowercased())/feedback"
         )
 
         LogManager.shared.log("Image uploaded successfully", level: .info, category: "Feedback")
 
         let record = FeedbackRecord(
-            user_id: userId,
+            user_id: authUserId,
             predicted_label: predictedLabel,
             predicted_category: predictedCategory,
             user_correction: correctedName.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -104,7 +112,7 @@ class FeedbackService: FeedbackSubmitting {
         predictedCategory: String,
         userId: UUID?
     ) async throws {
-        guard let userId else {
+        guard let authUserId = client.auth.currentUser?.id else {
             throw NSError(
                 domain: "FeedbackService",
                 code: -3,
@@ -112,14 +120,22 @@ class FeedbackService: FeedbackSubmitting {
             )
         }
 
+        if let userId, userId != authUserId {
+            LogManager.shared.log(
+                "Ignoring mismatched quiz candidate user id \(userId) in favor of current auth user \(authUserId)",
+                level: .warning,
+                category: "Feedback"
+            )
+        }
+
         let filePath = try await uploadImage(
             image,
             bucket: "quiz-candidate-images",
-            pathPrefix: "\(userId.uuidString)/verified"
+            pathPrefix: "\(authUserId.uuidString.lowercased())/verified"
         )
 
         let record = QuizQuestionCandidateRecord(
-            user_id: userId,
+            user_id: authUserId,
             image_path: filePath,
             predicted_label: predictedLabel,
             predicted_category: predictedCategory

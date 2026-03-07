@@ -48,7 +48,11 @@ struct LocationPickerSheet: View {
                             isSelecting = true
                             Task {
                                 await userSettings.selectLocation(location)
-                                isPresented = false
+                                if userSettings.locationSyncError == nil {
+                                    isPresented = false
+                                } else {
+                                    isSelecting = false
+                                }
                             }
                         }
                     }
@@ -92,8 +96,17 @@ struct LocationPickerSheet: View {
                     Task {
                         let nearestCity = findNearestCity(to: location)
                         await userSettings.selectLocation(nearestCity)
-                        isPresented = false
+                        if userSettings.locationSyncError == nil {
+                            isPresented = false
+                        } else {
+                            isSelecting = false
+                        }
                     }
+                }
+            }
+            .onChange(of: userSettings.locationSyncError) { newError in
+                if newError != nil {
+                    isSelecting = false
                 }
             }
         }
@@ -172,6 +185,10 @@ struct LocationPickerSheet: View {
     }
 
     private var locationSubtitle: String {
+        if let error = userSettings.locationSyncError {
+            return error
+        }
+
         switch userSettings.locationPermissionStatus {
         case .notDetermined:
             return "Enable for distance-based event sorting"

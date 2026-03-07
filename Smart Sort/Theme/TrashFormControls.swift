@@ -244,6 +244,9 @@ struct TrashTextButton: View {
                .font(theme.typography.subheadline)
                .fontWeight(.medium)
                .foregroundColor(resolvedColor)
+               .lineLimit(1)
+               .fixedSize(horizontal: true, vertical: false)
+               .layoutPriority(1)
                .frame(minHeight: theme.components.minimumHitTarget)
        }
        .buttonStyle(.plain)

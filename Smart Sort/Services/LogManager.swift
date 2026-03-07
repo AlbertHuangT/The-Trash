@@ -22,6 +22,7 @@ final class LogManager: @unchecked Sendable {
 
     private let fileURL: URL
     private let queue = DispatchQueue(label: "com.smartsort.logmanager", qos: .utility)
+    private let queueKey = DispatchSpecificKey<Void>()
     private let maxFileSize: UInt64 = 2 * 1024 * 1024 // 2 MB
     private let maxAge: TimeInterval = 7 * 24 * 3600   // 7 days
     private let dateFormatter: ISO8601DateFormatter = {
@@ -33,6 +34,7 @@ final class LogManager: @unchecked Sendable {
     private init() {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         self.fileURL = docs.appendingPathComponent("app.log")
+        self.queue.setSpecific(key: queueKey, value: ())
 
         // Remove logs older than 7 days on launch
         queue.async { [weak self] in
@@ -67,13 +69,17 @@ final class LogManager: @unchecked Sendable {
 
     /// Get the log file URL, or nil if the file does not exist
     func getLogFileURL() -> URL? {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
-        return fileURL
+        synchronizedLogAccess {
+            guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+            return fileURL
+        }
     }
 
     /// Read the raw log file data
     func getLogData() -> Data? {
-        return try? Data(contentsOf: fileURL)
+        synchronizedLogAccess {
+            try? Data(contentsOf: fileURL)
+        }
     }
 
     // MARK: - Private
@@ -124,5 +130,12 @@ final class LogManager: @unchecked Sendable {
         if Date().timeIntervalSince(modDate) > maxAge {
             try? fm.removeItem(at: fileURL)
         }
+    }
+
+    private func synchronizedLogAccess<T>(_ operation: () -> T) -> T {
+        if DispatchQueue.getSpecific(key: queueKey) != nil {
+            return operation()
+        }
+        return queue.sync(execute: operation)
     }
 }

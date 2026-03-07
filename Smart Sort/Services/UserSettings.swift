@@ -29,6 +29,7 @@ class UserSettings: ObservableObject {
     private let locationManager = LocationManager()
     private let communityStore = CommunityMembershipStore.shared
     private var cancellables = Set<AnyCancellable>()
+    private var locationRequestTimeoutTask: Task<Void, Never>?
 
     private init() {
         refreshForCurrentUser()
@@ -69,16 +70,25 @@ class UserSettings: ObservableObject {
         locationManager.onAuthorizationChange = { [weak self] status in
             Task { @MainActor in
                 self?.locationPermissionStatus = status
+                if status == .denied || status == .restricted {
+                    self?.cancelLocationRequestTimeout()
+                    self?.isRequestingLocation = false
+                    self?.locationSyncError = "Location access is unavailable. Please choose a city instead."
+                }
             }
         }
         locationManager.onLocationUpdate = { [weak self] location in
             Task { @MainActor in
+                self?.cancelLocationRequestTimeout()
                 self?.preciseLocation = location
+                self?.locationSyncError = nil
                 self?.isRequestingLocation = false
             }
         }
-        locationManager.onLocationError = { [weak self] _ in
+        locationManager.onLocationError = { [weak self] error in
             Task { @MainActor in
+                self?.cancelLocationRequestTimeout()
+                self?.locationSyncError = Self.message(for: error)
                 self?.isRequestingLocation = false
             }
         }
@@ -92,7 +102,21 @@ class UserSettings: ObservableObject {
 
     // Request the current precise location
     func requestCurrentLocation() {
+        guard hasLocationPermission else {
+            isRequestingLocation = false
+            locationSyncError = "Location permission is required before using your current location."
+            return
+        }
+
+        locationSyncError = nil
+        cancelLocationRequestTimeout()
         isRequestingLocation = true
+        locationRequestTimeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            guard let self, self.isRequestingLocation else { return }
+            self.isRequestingLocation = false
+            self.locationSyncError = "Current location timed out. Please try again or pick a city manually."
+        }
         locationManager.requestLocation()
     }
 
@@ -111,8 +135,10 @@ class UserSettings: ObservableObject {
     }
 
     func refreshForCurrentUser() {
+        cancelLocationRequestTimeout()
         selectedLocation = nil
         preciseLocation = nil
+        isRequestingLocation = false
         locationSyncError = nil
         communityStore.refreshForCurrentUser()
         loadSavedData()
@@ -221,5 +247,27 @@ class UserSettings: ObservableObject {
     private func scopedLocationKey() -> String {
         let userNamespace = SupabaseManager.shared.client.auth.currentUser?.id.uuidString ?? "guest"
         return "\(locationKey):\(userNamespace)"
+    }
+
+    private func cancelLocationRequestTimeout() {
+        locationRequestTimeoutTask?.cancel()
+        locationRequestTimeoutTask = nil
+    }
+
+    private static func message(for error: Error) -> String {
+        guard let clError = error as? CLError else {
+            return "Unable to determine your current location right now."
+        }
+
+        switch clError.code {
+        case .denied:
+            return "Location access was denied. Please choose a city instead."
+        case .network:
+            return "A network issue prevented location lookup. Please try again."
+        case .locationUnknown:
+            return "Current location is temporarily unavailable. Please try again."
+        default:
+            return "Unable to determine your current location right now."
+        }
     }
 }
