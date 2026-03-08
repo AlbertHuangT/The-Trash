@@ -62,6 +62,20 @@ class ArenaService {
             .value
     }
 
+    func markDuelReady(challengeId: UUID) async throws -> DuelStateResponse {
+        try await client
+            .rpc("mark_duel_ready", params: ["p_challenge_id": challengeId.uuidString])
+            .execute()
+            .value
+    }
+
+    func getDuelState(challengeId: UUID) async throws -> DuelStateResponse {
+        try await client
+            .rpc("get_duel_state", params: ["p_challenge_id": challengeId.uuidString])
+            .execute()
+            .value
+    }
+
     func getMyChallenges(status: String? = nil) async throws -> [ArenaChallenge] {
         if let status = status {
             let json: [ArenaChallenge] = try await client

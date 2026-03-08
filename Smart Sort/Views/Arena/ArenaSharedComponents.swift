@@ -21,24 +21,23 @@ struct ArenaImagePlaceholder: View {
                 VStack(spacing: theme.spacing.md) {
                     if failed {
                         TrashIcon(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 28, weight: .semibold))
+                            .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(theme.semanticWarning)
                         Text("Image unavailable")
                             .font(.subheadline.weight(.semibold))
                             .foregroundColor(theme.palette.textPrimary)
                         if let onRetry {
-                            TrashButton(baseColor: theme.accents.blue, cornerRadius: 999, action: onRetry) {
-                                HStack(spacing: 8) {
-                                    TrashIcon(systemName: "arrow.clockwise")
-                                    Text("Retry")
-                                }
-                                .font(theme.typography.caption.weight(.bold))
-                                .trashOnAccentForeground()
-                            }
+                            TrashPill(
+                                title: "Retry",
+                                icon: "arrow.clockwise",
+                                color: theme.accents.blue,
+                                isSelected: true,
+                                action: onRetry
+                            )
                         }
                     } else {
                         ProgressView()
-                            .scaleEffect(1.5)
+                            .scaleEffect(1.2)
                             .tint(theme.accents.blue)
                         Text("Loading image...")
                             .font(.subheadline)
@@ -82,7 +81,7 @@ struct SharedQuizCard: View {
                 }
 
                 // Answer buttons area
-                VStack(spacing: theme.spacing.md) {
+                VStack(spacing: theme.layout.elementSpacing) {
                     // Optional timer at top
                     if let timerView = timerView {
                         timerView
@@ -90,15 +89,19 @@ struct SharedQuizCard: View {
 
                     HStack {
                         TrashIcon(systemName: "questionmark.circle.fill")
-                            .font(.title3)
+                            .font(.subheadline.weight(.semibold))
                         Text("What type of trash is this?")
-                            .font(theme.typography.headline)
+                            .font(theme.typography.subheadline)
+                            .lineLimit(2)
                         Spacer()
                     }
                     .trashOnAccentForeground()
-                    .padding(.horizontal, theme.spacing.lg)
+                    .padding(.horizontal, theme.layout.screenInset)
 
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: theme.spacing.sm + 4) {
+                    LazyVGrid(
+                        columns: [GridItem(.flexible()), GridItem(.flexible())],
+                        spacing: theme.layout.elementSpacing
+                    ) {
                         ForEach(categories, id: \.self) { category in
                             CategoryAnswerButton(
                                 category: category,
@@ -108,9 +111,9 @@ struct SharedQuizCard: View {
                         }
                     }
                     .padding(.horizontal, theme.components.contentInset)
-                    .padding(.bottom, theme.spacing.xl)
+                    .padding(.bottom, theme.layout.sectionSpacing)
                 }
-                .padding(.top, theme.spacing.lg)
+                .padding(.top, theme.layout.elementSpacing)
                 .background(
                     LinearGradient(
                         colors: [.clear, .black.opacity(0.85)],
@@ -129,7 +132,7 @@ struct SharedQuizCard: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: theme.corners.large + 4))
-            .shadow(color: Color.black.opacity(0.08), radius: 14, x: 0, y: 8)
+            .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
         }
     }
 
@@ -150,7 +153,7 @@ struct ArenaStatusBar: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack(spacing: theme.spacing.sm + 4) {
+        HStack(spacing: theme.layout.elementSpacing) {
             // Progress pill
             if showProgress, let progressText = progressText {
                 HStack(spacing: 6) {
@@ -160,8 +163,8 @@ struct ArenaStatusBar: View {
                         .font(.subheadline.bold())
                 }
                 .foregroundColor(theme.accents.blue)
-                .padding(.horizontal, 12)
-                .frame(minHeight: theme.components.minimumHitTarget)
+                .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+                .frame(minHeight: 32)
                 .background(statusPillBackground)
             }
 
@@ -174,8 +177,8 @@ struct ArenaStatusBar: View {
                 }
                 .font(.subheadline)
                 .foregroundColor(theme.accents.orange)
-                .padding(.horizontal, 12)
-                .frame(minHeight: theme.components.minimumHitTarget)
+                .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+                .frame(minHeight: 32)
                 .background(statusPillBackground)
                 .scaleEffect(pulseAnimation ? 1.05 : 1.0)
                 .animation(theme.animations.pulse, value: pulseAnimation)
@@ -187,8 +190,8 @@ struct ArenaStatusBar: View {
 
             Spacer()
         }
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.bottom, theme.components.contentInset)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.bottom, theme.layout.elementSpacing)
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: comboCount)
     }
 
@@ -216,89 +219,121 @@ struct GenericSessionSummaryView: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 28) {
-            // Trophy/result icon
-            ZStack {
-                Circle()
-                    .fill(theme.surfaceBackground)
-                    .frame(width: 140, height: 140)
-                    .overlay(
-                        Circle()
-                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
-                    )
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: theme.layout.sectionSpacing) {
+                ZStack {
+                    Circle()
+                        .fill(theme.surfaceBackground)
+                        .frame(width: 112, height: 112)
+                        .overlay(
+                            Circle()
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
 
-                TrashIcon(systemName: isGoodResult ? "trophy.fill" : "flag.checkered")
-                    .font(.system(size: 70))
-                    .foregroundStyle(
-                        isGoodResult ?
-                        LinearGradient(colors: [theme.accents.green, theme.accents.orange], startPoint: .top, endPoint: .bottom) :
-                        LinearGradient(colors: [.gray, theme.palette.textSecondary], startPoint: .top, endPoint: .bottom)
-                    )
-            }
-
-            Text(title)
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .foregroundColor(theme.palette.textPrimary)
-
-            // Stats Cards
-            VStack(spacing: 14) {
-                ForEach(Array(stats.enumerated()), id: \.offset) { _, stat in
-                    EnhancedStatRow(icon: stat.icon, title: stat.title, value: stat.value, color: stat.color)
-                }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(theme.surfaceBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
-                    )
-            )
-            .padding(.horizontal)
-            .opacity(showStats ? 1 : 0)
-            .offset(y: showStats ? 0 : 20)
-
-            HStack(spacing: 16) {
-                // Play Again Button
-                TrashButton(baseColor: theme.accents.blue, cornerRadius: 999, action: onPlayAgain) {
-                    HStack(spacing: 10) {
-                        TrashIcon(systemName: "arrow.clockwise")
-                        Text("Play Again")
-                    }
-                    .font(.headline.bold())
-                    .trashOnAccentForeground()
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 16)
-                }
-
-                if let onLeaderboard = onViewLeaderboard {
-                    TrashTapArea(action: onLeaderboard) {
-                        HStack(spacing: 10) {
-                            TrashIcon(systemName: "chart.bar.fill")
-                            Text("Ranks")
-                        }
-                        .font(.headline.bold())
-                        .foregroundColor(theme.accents.blue)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(theme.surfaceBackground)
-                                .overlay(
-                                    Capsule(style: .continuous)
-                                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    TrashIcon(systemName: icon)
+                        .font(.system(size: 54, weight: .semibold))
+                        .foregroundStyle(
+                            isGoodResult
+                                ? LinearGradient(
+                                    colors: [theme.accents.green, theme.accents.orange],
+                                    startPoint: .top,
+                                    endPoint: .bottom
                                 )
+                                : LinearGradient(
+                                    colors: [.gray, theme.palette.textSecondary],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                        )
+                }
+
+                Text(title)
+                    .font(theme.typography.title.weight(.heavy))
+                    .foregroundColor(theme.palette.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                VStack(spacing: theme.layout.elementSpacing) {
+                    ForEach(Array(stats.enumerated()), id: \.offset) { _, stat in
+                        EnhancedStatRow(
+                            icon: stat.icon,
+                            title: stat.title,
+                            value: stat.value,
+                            color: stat.color
                         )
                     }
                 }
+                .padding(theme.components.cardPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
+                .opacity(showStats ? 1 : 0)
+                .offset(y: showStats ? 0 : 20)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: theme.layout.sheetActionSpacing) {
+                        TrashButton(baseColor: theme.accents.blue, cornerRadius: 999, action: onPlayAgain) {
+                            HStack(spacing: 10) {
+                                TrashIcon(systemName: "arrow.clockwise")
+                                Text("Play Again")
+                            }
+                            .font(theme.typography.subheadline.weight(.bold))
+                            .trashOnAccentForeground()
+                        }
+
+                        if let onLeaderboard = onViewLeaderboard {
+                            leaderboardActionButton(action: onLeaderboard)
+                        }
+                    }
+
+                    VStack(spacing: theme.layout.sheetActionSpacing) {
+                        TrashButton(baseColor: theme.accents.blue, cornerRadius: 999, action: onPlayAgain) {
+                            HStack(spacing: 10) {
+                                TrashIcon(systemName: "arrow.clockwise")
+                                Text("Play Again")
+                            }
+                            .font(theme.typography.subheadline.weight(.bold))
+                            .trashOnAccentForeground()
+                        }
+
+                        if let onLeaderboard = onViewLeaderboard {
+                            leaderboardActionButton(action: onLeaderboard)
+                        }
+                    }
+                }
             }
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.sectionSpacing)
         }
-        .padding()
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2)) {
                 showStats = true
             }
+        }
+    }
+
+    private func leaderboardActionButton(action: @escaping () -> Void) -> some View {
+        TrashTapArea(action: action) {
+            HStack(spacing: 8) {
+                TrashIcon(systemName: "chart.bar.fill")
+                Text("Ranks")
+            }
+            .font(theme.typography.subheadline.weight(.bold))
+            .foregroundColor(theme.accents.blue)
+            .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+            .frame(minHeight: theme.components.buttonHeight)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
+            )
         }
     }
 }
@@ -331,7 +366,7 @@ struct TimerBarView: View {
                 Spacer()
             }
             .foregroundColor(timerTextColor)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, theme.layout.screenInset)
             
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -346,7 +381,7 @@ struct TimerBarView: View {
                 }
             }
             .frame(height: 6)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, theme.layout.screenInset)
         }
     }
     

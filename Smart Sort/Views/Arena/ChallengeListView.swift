@@ -26,65 +26,70 @@ struct ChallengeListView: View {
                     emptyState
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
+                        LazyVStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                             // Pending section
                             if !viewModel.pendingChallenges.isEmpty {
                                 sectionHeader("Pending")
-                                ForEach(viewModel.pendingChallenges) { challenge in
-                                    ChallengeRow(
-                                        challenge: challenge,
-                                        displayStatus: viewModel.effectiveStatus(for: challenge),
-                                        currentUserId: viewModel.currentUserId,
-                                        onAccept: {
-                                            selectedChallenge = challenge
-                                            showDuel = true
-                                        },
-                                        onDecline: {
-                                            Task {
-                                                await viewModel.decline(challengeId: challenge.id)
+                                VStack(spacing: theme.layout.elementSpacing) {
+                                    ForEach(viewModel.pendingChallenges) { challenge in
+                                        ChallengeRow(
+                                            challenge: challenge,
+                                            displayStatus: viewModel.effectiveStatus(for: challenge),
+                                            currentUserId: viewModel.currentUserId,
+                                            onAccept: {
+                                                selectedChallenge = challenge
+                                                showDuel = true
+                                            },
+                                            onDecline: {
+                                                Task {
+                                                    await viewModel.decline(challengeId: challenge.id)
+                                                }
                                             }
-                                        }
-                                    )
+                                        )
+                                    }
                                 }
                             }
 
-                            // In progress section
                             if !viewModel.activeChallenges.isEmpty {
                                 sectionHeader("In Progress")
-                                ForEach(viewModel.activeChallenges) { challenge in
-                                    ChallengeRow(
-                                        challenge: challenge,
-                                        displayStatus: viewModel.effectiveStatus(for: challenge),
-                                        currentUserId: viewModel.currentUserId,
-                                        onAccept: {
-                                            selectedChallenge = challenge
-                                            showDuel = true
-                                        },
-                                        onDecline: nil
-                                    )
+                                VStack(spacing: theme.layout.elementSpacing) {
+                                    ForEach(viewModel.activeChallenges) { challenge in
+                                        ChallengeRow(
+                                            challenge: challenge,
+                                            displayStatus: viewModel.effectiveStatus(for: challenge),
+                                            currentUserId: viewModel.currentUserId,
+                                            onAccept: {
+                                                selectedChallenge = challenge
+                                                showDuel = true
+                                            },
+                                            onDecline: nil
+                                        )
+                                    }
                                 }
                             }
 
-                            // Completed section
                             if !viewModel.completedChallenges.isEmpty {
                                 sectionHeader("History")
-                                ForEach(viewModel.completedChallenges) { challenge in
-                                    ChallengeRow(
-                                        challenge: challenge,
-                                        displayStatus: viewModel.effectiveStatus(for: challenge),
-                                        currentUserId: viewModel.currentUserId,
-                                        onAccept: nil,
-                                        onDecline: nil
-                                    )
+                                VStack(spacing: theme.layout.elementSpacing) {
+                                    ForEach(viewModel.completedChallenges) { challenge in
+                                        ChallengeRow(
+                                            challenge: challenge,
+                                            displayStatus: viewModel.effectiveStatus(for: challenge),
+                                            currentUserId: viewModel.currentUserId,
+                                            onAccept: nil,
+                                            onDecline: nil
+                                        )
+                                    }
                                 }
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .padding(.bottom, 24)
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.top, theme.layout.screenInset)
+                        .padding(.bottom, theme.layout.sectionSpacing)
                     }
                 }
             }
+            .trashScreenBackground()
             .navigationTitle("Challenges")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -109,14 +114,8 @@ struct ChallengeListView: View {
     }
 
     private func sectionHeader(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.footnote.weight(.semibold))
-                .foregroundColor(theme.palette.textSecondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            Spacer()
-        }
+        TrashSectionTitle(title: title)
+            .padding(.bottom, theme.spacing.xs)
     }
 
     private var emptyState: some View {
@@ -176,65 +175,36 @@ struct ChallengeRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             Circle()
-                .fill(statusColor.opacity(0.2))
-                .frame(width: 44, height: 44)
+                .fill(statusColor.opacity(0.16))
+                .frame(
+                    width: theme.components.minimumHitTarget,
+                    height: theme.components.minimumHitTarget
+                )
                 .overlay(
                     TrashIcon(systemName: "person.fill")
                         .foregroundColor(statusColor)
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: theme.spacing.xs) {
                 Text(opponentName)
                     .font(theme.typography.subheadline)
                     .fontWeight(.bold)
                     .foregroundColor(theme.palette.textPrimary)
+                    .lineLimit(1)
+
                 Text(statusText)
                     .font(theme.typography.caption)
                     .foregroundColor(statusColor)
             }
 
-            Spacer()
+            Spacer(minLength: theme.spacing.sm)
 
-            // Score (if completed)
-            if displayStatus == "completed" {
-                let myScore =
-                    isChallenger ? (challenge.challengerScore ?? 0) : (challenge.opponentScore ?? 0)
-                let theirScore =
-                    isChallenger ? (challenge.opponentScore ?? 0) : (challenge.challengerScore ?? 0)
-                Text("\(myScore) - \(theirScore)")
-                    .font(theme.typography.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.palette.textPrimary)
-            }
-
-            // Action buttons
-            if displayStatus == "pending" && !isChallenger {
-                HStack(spacing: 8) {
-                    if let onAccept = onAccept {
-                        TrashButton(
-                            baseColor: theme.accents.green, cornerRadius: theme.corners.medium, action: onAccept
-                        ) {
-                            Text("Accept")
-                                .font(theme.typography.caption)
-                        }
-                    }
-                    if let onDecline = onDecline {
-                        TrashTapArea(action: onDecline) {
-                            TrashIcon(systemName: "xmark")
-                                .font(.caption.weight(.bold))
-                                .foregroundColor(theme.semanticDanger)
-                                .padding(6)
-                                .background(theme.semanticDanger.opacity(0.15))
-                                .clipShape(Circle())
-                        }
-                    }
-                }
-            }
+            trailingContent
         }
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.vertical, 12)
+        .padding(.horizontal, theme.components.cardPadding)
+        .padding(.vertical, theme.layout.elementSpacing)
         .frame(minHeight: theme.components.rowHeight)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
@@ -244,6 +214,53 @@ struct ChallengeRow: View {
                         .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                 )
         )
+    }
+
+    @ViewBuilder
+    private var trailingContent: some View {
+        if displayStatus == "completed" {
+            let myScore =
+                isChallenger ? (challenge.challengerScore ?? 0) : (challenge.opponentScore ?? 0)
+            let theirScore =
+                isChallenger ? (challenge.opponentScore ?? 0) : (challenge.challengerScore ?? 0)
+
+            TrashPill(
+                title: "\(myScore)-\(theirScore)",
+                color: theme.accents.blue,
+                isSelected: false
+            )
+        } else if displayStatus == "pending" && !isChallenger {
+            HStack(spacing: theme.spacing.sm) {
+                if let onAccept = onAccept {
+                    TrashPill(
+                        title: "Accept",
+                        color: theme.accents.green,
+                        isSelected: true,
+                        action: onAccept
+                    )
+                }
+
+                if let onDecline = onDecline {
+                    TrashTapArea(action: onDecline) {
+                        TrashIcon(systemName: "xmark")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(theme.semanticDanger)
+                            .frame(
+                                width: theme.components.minimumHitTarget,
+                                height: theme.components.minimumHitTarget
+                            )
+                            .background(theme.semanticDanger.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                }
+            }
+        } else {
+            TrashPill(
+                title: statusText,
+                color: statusColor,
+                isSelected: false
+            )
+        }
     }
 }
 

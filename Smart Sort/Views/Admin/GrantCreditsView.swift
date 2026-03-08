@@ -30,90 +30,83 @@ struct GrantCreditsView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section("Event Info") {
-                    Text(event.title)
-                        .font(.headline)
-                    HStack {
-                        TrashLabel(
-                            "\(viewModel.participants.count) Participants", icon: "person.2.fill")
-                        Spacer()
-                        if viewModel.isLoading {
-                            ProgressView()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Event Info")
+                        Text(event.title)
+                            .font(theme.typography.headline)
+                            .foregroundColor(theme.palette.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            TrashPill(
+                                title: "\(viewModel.participants.count) Participants",
+                                icon: "person.2.fill",
+                                color: theme.accents.blue,
+                                isSelected: false
+                            )
+                            Spacer()
+                            if viewModel.isLoading {
+                                ProgressView()
+                            }
                         }
                     }
-                }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section("Credits Settings") {
-                    TrashFormStepper(
-                        title: "Amount per user", value: $creditsAmount, range: 1...100)
-                    TrashFormTextField(
-                        title: "Reason", text: $reason, textInputAutocapitalization: .sentences)
-                }
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Credits Settings")
+                        TrashFormStepper(
+                            title: "Amount per user",
+                            value: $creditsAmount,
+                            range: 1...100
+                        )
+                        TrashFormTextField(
+                            title: "Reason",
+                            text: $reason,
+                            textInputAutocapitalization: .sentences
+                        )
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section("Recipients") {
-                    TrashFormToggle(
-                        title: "Select All",
-                        isOn: Binding(
-                            get: { selectAll },
-                            set: { newValue in
-                                selectAll = newValue
-                                if newValue {
-                                    selectedUserIds = Set(viewModel.participants.map { $0.userId })
-                                } else {
-                                    selectedUserIds.removeAll()
-                                }
-                            }
-                        ))
-
-                    if !viewModel.participants.isEmpty {
-                        ForEach(viewModel.participants) { participant in
-                            TrashTapArea(action: { toggleSelection(for: participant.userId) }) {
-                                HStack {
-                                    TrashIcon(
-                                        systemName: selectedUserIds.contains(participant.userId)
-                                            ? "checkmark.circle.fill" : "circle"
-                                    )
-                                    .foregroundColor(
-                                        selectedUserIds.contains(participant.userId)
-                                            ? .blue : .secondary)
-
-                                    VStack(alignment: .leading) {
-                                        Text(participant.username)
-                                            .foregroundColor(.primary)
-                                        Text(
-                                            "Registered: \(participant.registeredAt.formatted(date: .abbreviated, time: .shortened))"
-                                        )
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Recipients")
+                        TrashFormToggle(
+                            title: "Select All",
+                            isOn: Binding(
+                                get: { selectAll },
+                                set: { newValue in
+                                    selectAll = newValue
+                                    if newValue {
+                                        selectedUserIds = Set(viewModel.participants.map { $0.userId })
+                                    } else {
+                                        selectedUserIds.removeAll()
                                     }
                                 }
-                            }
-                        }
-                    } else {
-                        Text("No registered participants yet.")
-                            .foregroundColor(.secondary)
-                    }
-                }
+                            )
+                        )
 
-                Section {
-                    TrashButton(baseColor: theme.accents.blue, action: grantCredits) {
-                        HStack {
-                            if isProcessing {
-                                ProgressView()
-                                    .tint(theme.onAccentForeground)
-                            } else {
-                                Text("Grant \(creditsAmount * selectedUserIds.count) Credits Total")
-                                    .bold()
+                        if !viewModel.participants.isEmpty {
+                            LazyVStack(spacing: theme.layout.elementSpacing) {
+                                ForEach(viewModel.participants) { participant in
+                                    participantRow(participant)
+                                }
                             }
+                        } else {
+                            Text("No registered participants yet.")
+                                .font(theme.typography.caption)
+                                .foregroundColor(theme.palette.textSecondary)
                         }
-                        .frame(maxWidth: .infinity)
-                        .trashOnAccentForeground()
-                        .padding(.vertical, 8)
                     }
-                    .disabled(selectedUserIds.isEmpty || reason.isEmpty || isProcessing)
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Grant Credits")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -123,6 +116,26 @@ struct GrantCreditsView: View {
             }
             .task {
                 await viewModel.loadParticipants()
+            }
+            .safeAreaInset(edge: .bottom) {
+                TrashButton(baseColor: theme.accents.blue, action: grantCredits) {
+                    HStack(spacing: theme.spacing.sm) {
+                        if isProcessing {
+                            ProgressView()
+                                .tint(theme.onAccentForeground)
+                        } else {
+                            Text("Grant \(creditsAmount * selectedUserIds.count) Credits Total")
+                                .font(theme.typography.subheadline.weight(.bold))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .trashOnAccentForeground()
+                }
+                .disabled(selectedUserIds.isEmpty || reason.isEmpty || isProcessing)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
+                .padding(.bottom, theme.layout.elementSpacing)
+                .background(.ultraThinMaterial)
             }
             .sheet(isPresented: $showSuccessAlert) {
                 TrashNoticeSheet(
@@ -135,10 +148,49 @@ struct GrantCreditsView: View {
                         dismiss()
                     }
                 )
-                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appBackground)
             }
+        }
+    }
+
+    private func participantRow(_ participant: EventParticipantResponse) -> some View {
+        TrashTapArea(action: { toggleSelection(for: participant.userId) }) {
+            HStack(spacing: theme.layout.rowContentSpacing) {
+                TrashIcon(
+                    systemName: selectedUserIds.contains(participant.userId)
+                        ? "checkmark.circle.fill" : "circle"
+                )
+                .foregroundColor(
+                    selectedUserIds.contains(participant.userId)
+                        ? theme.accents.blue : theme.palette.textSecondary
+                )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(participant.username)
+                        .font(theme.typography.subheadline)
+                        .foregroundColor(theme.palette.textPrimary)
+                    Text(
+                        "Registered: \(participant.registeredAt.formatted(date: .abbreviated, time: .shortened))"
+                    )
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textSecondary)
+                    .lineLimit(1)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, theme.components.cardPadding)
+            .padding(.vertical, theme.layout.elementSpacing)
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(theme.palette.card.opacity(0.28))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.75), lineWidth: 1)
+                    )
+            )
         }
     }
 

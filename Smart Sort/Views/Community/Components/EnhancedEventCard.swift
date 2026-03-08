@@ -75,8 +75,8 @@ struct EnhancedEventCard: View {
                     Text(distanceText)
                         .font(theme.typography.caption)
                         .foregroundColor(theme.palette.textSecondary)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: theme.components.minimumHitTarget)
+                        .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+                        .frame(minHeight: 32)
                         .background(
                             Capsule()
                                 .fill(theme.surfaceBackground)
@@ -182,8 +182,8 @@ struct EnhancedEventCard: View {
                 .fontWeight(.bold)
                 .foregroundColor(theme.onAccentForeground)
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: theme.components.minimumHitTarget)
+        .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+        .frame(minHeight: 32)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
                 .fill(tagColor)

@@ -33,17 +33,7 @@ struct ArenaHubView: View {
                     EnhancedAnonymousRestrictionView()
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 24) {
-                            VStack(alignment: .leading, spacing: theme.spacing.sm) {
-                                Text("Pick a mode")
-                                    .font(theme.typography.title)
-                                    .foregroundColor(theme.palette.textPrimary)
-                                Text("Quick rounds, daily goals, and duels all live here.")
-                                    .font(theme.typography.subheadline)
-                                    .foregroundColor(theme.palette.textSecondary)
-                            }
-                            .padding(.horizontal, theme.components.contentInset)
-
+                        VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                             LazyVGrid(
                                 columns: [GridItem(.flexible()), GridItem(.flexible())],
                                 spacing: theme.spacing.md
@@ -58,12 +48,12 @@ struct ArenaHubView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, theme.components.contentInset)
+                            .padding(.horizontal, theme.layout.screenInset)
 
                             Spacer(minLength: 40)
                         }
-                        .padding(.top, theme.spacing.md)
-                        .padding(.bottom, theme.spacing.xl)
+                        .padding(.top, theme.layout.elementSpacing)
+                        .padding(.bottom, theme.spacing.xxl)
                     }
                 }
             }
@@ -78,7 +68,13 @@ struct ArenaHubView: View {
                                 showChallengeList = true
                             } label: {
                                 Image(systemName: "tray")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .frame(
+                                        width: theme.layout.toolbarHitTarget,
+                                        height: theme.layout.toolbarHitTarget
+                                    )
                             }
+                            .buttonStyle(.plain)
 
                             if pendingBadgeCount > 0 {
                                 Text("\(pendingBadgeCount)")
@@ -229,8 +225,8 @@ struct GameModeCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 184)
-            .padding(.vertical, theme.spacing.lg)
+            .frame(minHeight: 168)
+            .padding(.vertical, theme.spacing.md)
             .padding(.horizontal, theme.spacing.xs)
             .background(
                 RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)

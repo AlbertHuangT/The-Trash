@@ -101,8 +101,8 @@ struct TrashPill: View {
                .foregroundColor(foreground)
                .lineLimit(1)
        }
-       .padding(.horizontal, 14)
-       .frame(minHeight: action == nil ? 32 : theme.components.pillHeight)
+       .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+       .frame(minHeight: action == nil ? theme.components.compactControlHeight : theme.components.pillHeight)
        .background {
            RoundedRectangle(cornerRadius: theme.corners.pill, style: .continuous)
                .fill(background)
@@ -181,9 +181,8 @@ struct TrashInputSurface: ViewModifier {
 
    func body(content: Content) -> some View {
        content
+           .padding(.horizontal, theme.layout.inputHorizontalInset)
            .frame(minHeight: theme.components.inputHeight)
-           .padding(.horizontal, 14)
-           .padding(.vertical, 12)
            .background {
                background
            }
@@ -193,7 +192,7 @@ struct TrashInputSurface: ViewModifier {
            }
    }
 
-   private var radius: CGFloat { cornerRadius ?? theme.corners.medium }
+   private var radius: CGFloat { cornerRadius ?? theme.layout.standardCardCornerRadius }
 
    @ViewBuilder
    private var background: some View {
@@ -245,9 +244,12 @@ struct TrashTextButton: View {
                .fontWeight(.medium)
                .foregroundColor(resolvedColor)
                .lineLimit(1)
-               .fixedSize(horizontal: true, vertical: false)
-               .layoutPriority(1)
-               .frame(minHeight: theme.components.minimumHitTarget)
+               .padding(.horizontal, theme.layout.inlineButtonHorizontalInset)
+               .frame(
+                   minWidth: theme.components.minimumHitTarget,
+                   minHeight: theme.components.minimumHitTarget,
+                   alignment: .center
+               )
        }
        .buttonStyle(.plain)
    }
@@ -319,11 +321,10 @@ struct TrashIconInputField: View {
                    .focused($isFocused)
            }
        }
-       .padding(16)
-       .frame(minHeight: theme.components.inputHeight)
-       .trashInputStyle(cornerRadius: theme.corners.medium)
+       .padding(.vertical, theme.spacing.xs)
+       .trashInputStyle(cornerRadius: theme.layout.standardCardCornerRadius)
        .overlay(
-           RoundedRectangle(cornerRadius: theme.corners.medium)
+           RoundedRectangle(cornerRadius: theme.layout.standardCardCornerRadius)
                .stroke(isFocused ? theme.accents.blue.opacity(0.5) : Color.clear, lineWidth: 2)
        )
        .animation(.easeInOut(duration: 0.2), value: isFocused)
@@ -500,7 +501,7 @@ struct TrashNoticeSheet: View {
 
    var body: some View {
        ZStack {
-           VStack(spacing: theme.spacing.md) {
+           VStack(spacing: theme.layout.sheetActionSpacing) {
                Text(title)
                    .font(theme.typography.title)
                    .foregroundColor(theme.palette.textPrimary)
@@ -526,16 +527,7 @@ struct TrashNoticeSheet: View {
                 }
             }
            .padding(theme.components.sheetPadding)
-           .background(
-               RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
-                   .fill(theme.surfaceBackground)
-                   .overlay(
-                       RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
-                           .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                   )
-                   .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
-           )
-           .padding(.horizontal, theme.spacing.lg)
+           .trashSheetSurface()
        }
    }
 }
@@ -571,7 +563,7 @@ struct TrashConfirmSheet: View {
 
    var body: some View {
        ZStack {
-           VStack(spacing: theme.spacing.md) {
+           VStack(spacing: theme.layout.sheetActionSpacing) {
                Text(title)
                    .font(theme.typography.title)
                    .foregroundColor(theme.palette.textPrimary)
@@ -596,16 +588,7 @@ struct TrashConfirmSheet: View {
                }
            }
            .padding(theme.components.sheetPadding)
-           .background(
-               RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
-                   .fill(theme.surfaceBackground)
-                   .overlay(
-                       RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
-                           .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                   )
-                   .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
-           )
-           .padding(.horizontal, theme.spacing.lg)
+           .trashSheetSurface()
        }
    }
 }
@@ -622,7 +605,7 @@ struct TrashTextInputSheet: View {
 
    var body: some View {
        ZStack {
-           VStack(spacing: theme.spacing.md) {
+           VStack(spacing: theme.layout.sheetActionSpacing) {
                Text(title)
                    .font(theme.typography.title)
                    .foregroundColor(theme.palette.textPrimary)
@@ -659,16 +642,31 @@ struct TrashTextInputSheet: View {
                }
            }
            .padding(theme.components.sheetPadding)
+           .trashSheetSurface()
+       }
+   }
+}
+
+private struct TrashSheetSurfaceModifier: ViewModifier {
+   private let theme = TrashTheme()
+
+   func body(content: Content) -> some View {
+       content
            .background(
-               RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+               RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius, style: .continuous)
                    .fill(theme.surfaceBackground)
                    .overlay(
-                       RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                       RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius, style: .continuous)
                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                    )
                    .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
            )
-           .padding(.horizontal, theme.spacing.lg)
-       }
+           .padding(.horizontal, theme.layout.sheetEdgeInset)
+   }
+}
+
+extension View {
+   func trashSheetSurface() -> some View {
+       modifier(TrashSheetSurfaceModifier())
    }
 }

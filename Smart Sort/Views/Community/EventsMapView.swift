@@ -58,29 +58,16 @@ struct EventsMapView: View {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        TrashTapArea(action: {
+                        TrashIconButton(icon: "location.fill") {
                             if let location = userSettings.selectedLocation {
                                 withAnimation {
                                     region.center = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
                                     region.span = MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
                                 }
                             }
-                        }) {
-                            TrashIcon(systemName: "location.fill")
-                                .frame(
-                                    width: theme.components.iconButtonSize,
-                                    height: theme.components.iconButtonSize
-                                )
-                                .background(theme.surfaceBackground)
-                                .overlay(
-                                    Circle()
-                                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                                )
-                                .clipShape(Circle())
-                                .shadow(color: theme.shadows.dark.opacity(0.7), radius: 6, x: 0, y: 2)
                         }
                     }
-                    .padding(theme.components.contentInset)
+                    .padding(theme.layout.screenInset)
                 }
                 Spacer()
             }
@@ -93,15 +80,10 @@ struct EventsMapView: View {
                         .frame(width: 40, height: 6)
                         .padding(.top, 8)
 
-                    EnhancedEventCard(
-                        event: event,
-                        userLocation: userSettings.selectedLocation,
-                        preciseLocation: userSettings.preciseLocation,
-                        onTap: {}
-                    )
+                    selectedEventSummary(event)
                     .allowsHitTesting(false)
-                    .padding(.horizontal, theme.components.contentInset)
-                    .padding(.bottom, theme.spacing.lg)
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.bottom, theme.layout.sectionSpacing)
                 }
                 .contentShape(Rectangle())
                 .offset(y: max(0, dragOffset.height))
@@ -153,23 +135,79 @@ struct EventsMapView: View {
         }
     }
 
-        private func eventMarker(_ event: CommunityEvent) -> some View {
-            ZStack {
-                Circle()
-                    .fill(theme.surfaceBackground)
-                    .frame(
-                        width: theme.components.minimumHitTarget,
-                        height: theme.components.minimumHitTarget
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                    )
+    private func eventMarker(_ event: CommunityEvent) -> some View {
+        ZStack {
+            Circle()
+                .fill(theme.surfaceBackground)
+                .frame(
+                    width: theme.components.minimumHitTarget,
+                    height: theme.components.minimumHitTarget
+                )
+                .overlay(
+                    Circle()
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
 
-                TrashIcon(systemName: event.imageSystemName)
-                    .foregroundColor(event.category.color)
-                    .font(.system(size: 17, weight: .semibold))
+            TrashIcon(systemName: event.imageSystemName)
+                .foregroundColor(event.category.color)
+                .font(.system(size: 17, weight: .semibold))
+        }
+        .scaleEffect(selectedEvent?.id == event.id ? 1.08 : 1.0)
+        .shadow(
+            color: selectedEvent?.id == event.id ? event.category.color.opacity(0.22) : .clear,
+            radius: 8
+        )
+        .animation(.spring(), value: selectedEvent == event)
+    }
+
+    private func selectedEventSummary(_ event: CommunityEvent) -> some View {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+            HStack(alignment: .top, spacing: theme.layout.rowContentSpacing) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .fill(theme.palette.card)
+                        .frame(width: 48, height: 48)
+
+                    TrashIcon(systemName: event.imageSystemName)
+                        .foregroundColor(event.category.color)
+                        .font(.system(size: 18, weight: .semibold))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(theme.typography.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.palette.textPrimary)
+                        .lineLimit(2)
+
+                    Text(event.location)
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: theme.spacing.sm)
+
+                TrashPill(
+                    title: event.category.rawValue.capitalized,
+                    color: event.category.color,
+                    isSelected: false
+                )
             }
-            .scaleEffect(selectedEvent?.id == event.id ? 1.2 : 1.0)
-            .animation(.spring(), value: selectedEvent == event)
-        }}
+
+            Text(event.description)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
+                .lineLimit(2)
+        }
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
+    }
+}

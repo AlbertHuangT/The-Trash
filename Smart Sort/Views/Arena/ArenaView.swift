@@ -18,6 +18,10 @@ struct ArenaView: View {
     // showAccountSheet managed by ContentView via environment
 
     let categories = ["Recyclable", "Compostable", "Landfill", "Hazardous"]
+    
+    private var quizCardHeight: CGFloat {
+        min(500, UIScreen.main.bounds.height * 0.56)
+    }
 
     var body: some View {
         ZStack {
@@ -30,6 +34,7 @@ struct ArenaView: View {
                 }
             }
         }
+        .trashScreenBackground()
         .navigationTitle("Classic Arena")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -57,34 +62,27 @@ struct ArenaView: View {
 
     var mainArenaContent: some View {
         ZStack {
-            VStack(spacing: 0) {
-                // Status bar
+            VStack(spacing: theme.layout.sectionSpacing) {
                 statusBar
 
-                // Error banner
                 if viewModel.showError, viewModel.errorMessage != nil {
                     errorBanner
                 }
 
-                Spacer()
-
-                // Main content
                 if viewModel.sessionCompleted {
                     EnhancedSessionSummaryView(viewModel: viewModel)
                 } else {
+                    Spacer(minLength: 0)
                     enhancedQuizCardArea
+                    Spacer(minLength: theme.layout.sectionSpacing)
                 }
-
-                Spacer()
             }
 
-            // Combo Animation Overlay
             if viewModel.showComboAnimation {
                 EnhancedComboOverlay(comboCount: viewModel.comboCount)
                     .transition(.scale.combined(with: .opacity))
             }
 
-            // Combo Break Animation
             if viewModel.showComboBreak {
                 EnhancedComboBreakOverlay()
                     .transition(.opacity)
@@ -104,16 +102,18 @@ struct ArenaView: View {
 
     // Error banner
     var errorBanner: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             TrashIcon(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(theme.semanticWarning)
             Text(viewModel.errorMessage ?? "")
-                .font(.subheadline)
+                .font(theme.typography.subheadline)
                 .foregroundColor(theme.palette.textPrimary)
-            Spacer()
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: theme.spacing.sm)
             TrashIconButton(icon: "xmark", action: { viewModel.showError = false })
         }
-        .padding(16)
+        .padding(theme.components.cardPadding)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(theme.surfaceBackground)
@@ -122,7 +122,7 @@ struct ArenaView: View {
                         .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                 )
         )
-        .padding(.horizontal)
+        .padding(.horizontal, theme.layout.screenInset)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
@@ -155,8 +155,8 @@ struct ArenaView: View {
                 .id(question.id)
             }
         }
-        .frame(height: min(540, UIScreen.main.bounds.height * 0.62))
-        .padding(.horizontal, theme.components.contentInset)
+        .frame(height: quizCardHeight)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 }
 
@@ -178,7 +178,7 @@ struct EnhancedLoadingView: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             ProgressView()
                 .controlSize(.large)
                 .tint(theme.accents.blue)
@@ -196,7 +196,7 @@ struct EnhancedEmptyStateView: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             EmptyStateView(
                 icon: "trophy.circle.fill",
                 title: "All Caught Up",
@@ -208,7 +208,9 @@ struct EnhancedEmptyStateView: View {
                     TrashIcon(systemName: "arrow.clockwise")
                     Text("Refresh Quiz")
                 }
+                .font(theme.typography.subheadline.weight(.bold))
             }
+            .padding(.horizontal, theme.layout.screenInset)
         }
     }
 }
@@ -275,14 +277,17 @@ struct CategoryAnswerButton: View {
             haptics: true,
             action: onTap
         ) {
-            HStack(spacing: 8) {
+            HStack(spacing: theme.spacing.sm) {
                 TrashIcon(systemName: categoryIcon)
                     .font(.system(size: 17, weight: .semibold))
                 Text(category)
                     .font(theme.typography.subheadline.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: theme.components.buttonHeight)
+            .padding(.horizontal, theme.layout.compactControlHorizontalInset)
             .background(
                 RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                     .fill(theme.palette.card.opacity(isDisabled ? 0.5 : 0.95))
@@ -315,19 +320,20 @@ struct EnhancedCorrectFeedback: View {
                 endPoint: .bottomTrailing
             )
 
-            VStack(spacing: theme.spacing.sm + 4) {
+            VStack(spacing: theme.layout.elementSpacing) {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 64))
+                    .font(.system(size: 48))
                     .compatibleBounceEffect(value: animate)
                 Text("Correct!")
-                    .font(theme.typography.title.weight(.heavy))
+                    .font(theme.typography.headline.weight(.heavy))
                 Text(pointsText)
-                    .font(theme.typography.headline)
+                    .font(theme.typography.subheadline.weight(.bold))
                     .opacity(0.8)
             }
             .trashOnAccentForeground()
             .onAppear { animate = true }
         }
+        .padding(theme.components.cardPadding)
         .clipShape(RoundedRectangle(cornerRadius: theme.corners.large + 4))
         .transition(.opacity)
     }
@@ -347,19 +353,20 @@ struct EnhancedWrongFeedback: View {
                 endPoint: .bottomTrailing
             )
 
-            VStack(spacing: theme.spacing.sm + 4) {
+            VStack(spacing: theme.layout.elementSpacing) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 64))
+                    .font(.system(size: 48))
                     .compatibleWiggleEffect(value: animate)
                 Text("Wrong!")
-                    .font(theme.typography.title.weight(.heavy))
+                    .font(theme.typography.headline.weight(.heavy))
                 Text("Correct: \(correctAnswer)")
-                    .font(theme.typography.headline)
+                    .font(theme.typography.subheadline.weight(.bold))
                     .opacity(0.9)
             }
             .trashOnAccentForeground()
             .onAppear { animate = true }
         }
+        .padding(theme.components.cardPadding)
         .clipShape(RoundedRectangle(cornerRadius: theme.corners.large + 4))
         .transition(.opacity)
     }
@@ -372,9 +379,9 @@ struct EnhancedComboOverlay: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: theme.spacing.sm + 4) {
+        VStack(spacing: theme.layout.elementSpacing) {
             Image(systemName: "flame.fill")
-                .font(.system(size: 64, weight: .bold))
+                .font(.system(size: 42, weight: .bold))
                 .compatibleVariableColorEffect(isActive: true)
                 .foregroundStyle(
                     LinearGradient(
@@ -384,9 +391,9 @@ struct EnhancedComboOverlay: View {
                     )
                 )
                 .scaleEffect(scale)
-                .shadow(color: theme.accents.orange.opacity(0.45), radius: 10)
+                .shadow(color: theme.accents.orange.opacity(0.35), radius: 8)
             Text("\(comboCount)x COMBO!")
-                .font(.system(size: 36, weight: .black, design: .rounded))
+                .font(theme.typography.headline.weight(.heavy))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [theme.accents.orange, theme.semanticDanger, theme.semanticHighlight],
@@ -395,19 +402,19 @@ struct EnhancedComboOverlay: View {
                     )
                 )
         }
-        .padding(theme.spacing.xxl + 10)
+        .padding(theme.components.cardPadding)
         .background(
-            RoundedRectangle(cornerRadius: theme.corners.large + 12, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                 .fill(theme.surfaceBackground.opacity(0.97))
                 .overlay(
-                    RoundedRectangle(cornerRadius: theme.corners.large + 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                         .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                 )
         )
-        .shadow(color: theme.accents.orange.opacity(0.35), radius: 24)
+        .shadow(color: theme.accents.orange.opacity(0.25), radius: 16)
         .onAppear {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                scale = 1.2
+                scale = 1.12
             }
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6).delay(0.15)) {
                 scale = 1.0
@@ -422,16 +429,16 @@ struct EnhancedComboBreakOverlay: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: theme.spacing.sm + 4) {
+        VStack(spacing: theme.layout.elementSpacing) {
             Image(systemName: "heart.slash.fill")
-                .font(.system(size: 52, weight: .bold))
+                .font(.system(size: 36, weight: .bold))
                 .foregroundColor(theme.semanticDanger)
                 .compatibleBounceEffect(value: opacity)
             Text("Combo Lost!")
-                .font(.title.bold())
+                .font(theme.typography.subheadline.weight(.bold))
                 .foregroundColor(theme.semanticDanger)
         }
-        .padding(theme.spacing.xxl)
+        .padding(theme.components.cardPadding)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                 .fill(theme.surfaceBackground.opacity(0.97))
@@ -485,22 +492,22 @@ struct EnhancedStatRow: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack(spacing: theme.spacing.md) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             TrashIcon(systemName: icon)
                 .font(theme.typography.subheadline)
                 .trashOnAccentForeground()
-                .frame(width: theme.spacing.xl, height: theme.spacing.xl)
+                .frame(width: 24, height: 24)
                 .background(color)
                 .cornerRadius(theme.corners.small)
 
             Text(title)
-                .font(theme.typography.body)
+                .font(theme.typography.subheadline)
                 .foregroundColor(theme.palette.textSecondary)
 
             Spacer()
 
             Text(value)
-                .font(theme.typography.headline)
+                .font(theme.typography.subheadline)
                 .fontWeight(.bold)
                 .foregroundColor(theme.palette.textPrimary)
         }

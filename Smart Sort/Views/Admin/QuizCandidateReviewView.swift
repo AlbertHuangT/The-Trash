@@ -27,8 +27,8 @@ struct QuizCandidateReviewView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: theme.layout.elementSpacing) {
                         ForEach(viewModel.candidates) { candidate in
                             candidateRow(candidate)
                                 .onTapGesture {
@@ -36,10 +36,13 @@ struct QuizCandidateReviewView: View {
                                 }
                         }
                     }
-                    .padding(16)
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.elementSpacing)
+                    .padding(.bottom, theme.spacing.xxl)
                 }
             }
         }
+        .trashScreenBackground()
         .navigationTitle("Quiz Review")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -67,45 +70,51 @@ struct QuizCandidateReviewView: View {
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.top, theme.layout.elementSpacing)
+        .padding(.bottom, theme.spacing.sm)
         .onChange(of: viewModel.selectedFilter) { _ in
             Task { await viewModel.loadCandidates(force: true) }
         }
     }
 
     private func candidateRow(_ candidate: QuizQuestionCandidateResponse) -> some View {
-        HStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+        HStack(spacing: theme.layout.rowContentSpacing) {
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(statusColor(for: candidate.status).opacity(0.15))
-                .frame(width: 56, height: 56)
+                .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
                 .overlay(
                     TrashIcon(systemName: iconName(for: candidate.status))
-                        .font(.title3)
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(statusColor(for: candidate.status))
                 )
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: theme.spacing.xs) {
                 Text(candidate.predictedLabel)
-                    .font(.headline)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
                     .foregroundColor(theme.palette.textPrimary)
+                    .lineLimit(1)
 
                 Text(candidate.predictedCategory)
-                    .font(.subheadline.weight(.semibold))
+                    .font(theme.typography.caption.weight(.semibold))
                     .foregroundColor(theme.accents.blue)
+                    .lineLimit(1)
 
                 Text("By \(candidate.username) • \(relativeTime(candidate.createdAt))")
-                    .font(.caption)
+                    .font(theme.typography.caption)
                     .foregroundColor(theme.palette.textSecondary)
+                    .lineLimit(2)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 6) {
-                Text(candidate.status.capitalized)
-                    .font(.caption.bold())
-                    .foregroundColor(statusColor(for: candidate.status))
+            VStack(alignment: .trailing, spacing: theme.spacing.xs) {
+                TrashPill(
+                    title: candidate.status.capitalized,
+                    color: statusColor(for: candidate.status),
+                    isSelected: false
+                )
 
                 if candidate.publishedQuestionId != nil {
                     Text("Published")
@@ -114,12 +123,13 @@ struct QuizCandidateReviewView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(theme.components.cardPadding)
+        .frame(minHeight: theme.components.rowHeight)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                 )
         )
@@ -225,14 +235,23 @@ private struct QuizCandidateDetailView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                     imageSection
                     metadataSection
                     editorSection
-                    actionSection
                 }
-                .padding(16)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
+            }
+            .trashScreenBackground()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                actionSection
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.elementSpacing)
+                    .padding(.bottom, theme.layout.elementSpacing)
+                    .background(.ultraThinMaterial)
             }
             .navigationTitle("Candidate")
             .navigationBarTitleDisplayMode(.inline)
@@ -253,7 +272,7 @@ private struct QuizCandidateDetailView: View {
     }
 
     private var imageSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             Text("Preview")
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(theme.palette.textSecondary)
@@ -261,7 +280,7 @@ private struct QuizCandidateDetailView: View {
                 .tracking(0.8)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                     .fill(theme.surfaceBackground)
 
                 if let previewURL = viewModel.previewURL {
@@ -285,12 +304,12 @@ private struct QuizCandidateDetailView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 280)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous))
         }
     }
 
     private var metadataSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             Text("Candidate Info")
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(theme.palette.textSecondary)
@@ -310,12 +329,12 @@ private struct QuizCandidateDetailView: View {
                 detailLine("Published Question", publishedQuestionId.uuidString)
             }
         }
-        .padding(16)
+        .padding(theme.components.cardPadding)
         .background(cardBackground)
     }
 
     private var editorSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             Text("Review")
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(theme.palette.textSecondary)
@@ -341,15 +360,15 @@ private struct QuizCandidateDetailView: View {
                 textInputAutocapitalization: .sentences
             )
         }
-        .padding(16)
+        .padding(theme.components.cardPadding)
         .background(cardBackground)
     }
 
     private var actionSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: theme.layout.elementSpacing) {
             TrashButton(
                 baseColor: theme.accents.green,
-                cornerRadius: 14,
+                cornerRadius: theme.corners.medium,
                 action: {
                     Task { await approveCandidate() }
                 }
@@ -362,17 +381,16 @@ private struct QuizCandidateDetailView: View {
                         TrashIcon(systemName: "checkmark.circle.fill")
                     }
                     Text("Approve And Publish")
-                        .font(.headline.bold())
+                        .font(theme.typography.button)
                 }
                 .trashOnAccentForeground()
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
             }
             .disabled(viewModel.isProcessing || candidate.status != "pending")
 
             TrashButton(
                 baseColor: theme.semanticDanger,
-                cornerRadius: 14,
+                cornerRadius: theme.corners.medium,
                 action: {
                     Task { await rejectCandidate() }
                 }
@@ -380,21 +398,20 @@ private struct QuizCandidateDetailView: View {
                 HStack(spacing: 10) {
                     TrashIcon(systemName: "xmark.circle.fill")
                     Text("Reject")
-                        .font(.headline.bold())
+                        .font(theme.typography.button)
                 }
                 .trashOnAccentForeground()
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
             }
             .disabled(viewModel.isProcessing || candidate.status != "pending")
         }
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
+        RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
             .fill(theme.surfaceBackground)
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                     .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
             )
     }

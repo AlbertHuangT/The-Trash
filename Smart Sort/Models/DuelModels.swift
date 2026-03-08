@@ -128,15 +128,21 @@ struct DuelAnswerResponse: Codable {
 // MARK: - Complete Challenge Response
 
 struct CompleteChallengeResponse: Codable {
+    let status: String
     let challengeId: UUID
-    let challengerScore: Int
-    let opponentScore: Int
+    let challengerScore: Int?
+    let opponentScore: Int?
     let winnerId: UUID?
     let challengerPoints: Int?
     let opponentPoints: Int?
     let alreadyCompleted: Bool
+    let message: String?
+    let challengerAnswers: Int?
+    let opponentAnswers: Int?
+    let requiredAnswers: Int?
 
     enum CodingKeys: String, CodingKey {
+        case status
         case challengeId = "challenge_id"
         case challengerScore = "challenger_score"
         case opponentScore = "opponent_score"
@@ -144,6 +150,42 @@ struct CompleteChallengeResponse: Codable {
         case challengerPoints = "challenger_points"
         case opponentPoints = "opponent_points"
         case alreadyCompleted = "already_completed"
+        case message
+        case challengerAnswers = "challenger_answers"
+        case opponentAnswers = "opponent_answers"
+        case requiredAnswers = "required_answers"
+    }
+}
+
+struct DuelStateResponse: Codable {
+    let challengeId: UUID
+    let status: String
+    let challengerReady: Bool
+    let opponentReady: Bool
+    let bothReady: Bool
+    let challengerFinished: Bool
+    let opponentFinished: Bool
+    let challengerProgress: Int
+    let opponentProgress: Int
+    let challengerCorrect: Int
+    let opponentCorrect: Int
+    let startedAt: String?
+    let completedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case challengeId = "challenge_id"
+        case status
+        case challengerReady = "challenger_ready"
+        case opponentReady = "opponent_ready"
+        case bothReady = "both_ready"
+        case challengerFinished = "challenger_finished"
+        case opponentFinished = "opponent_finished"
+        case challengerProgress = "challenger_progress"
+        case opponentProgress = "opponent_progress"
+        case challengerCorrect = "challenger_correct"
+        case opponentCorrect = "opponent_correct"
+        case startedAt = "started_at"
+        case completedAt = "completed_at"
     }
 }
 
@@ -189,17 +231,5 @@ struct DuelAnswerSubmitted: Codable, Sendable {
         case userId = "user_id"
         case questionIndex = "question_index"
         case isCorrect = "is_correct"
-    }
-}
-
-struct DuelPlayerFinished: Codable, Sendable {
-    let userId: String
-    let totalCorrect: Int
-    let totalScore: Int
-
-    enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case totalCorrect = "total_correct"
-        case totalScore = "total_score"
     }
 }

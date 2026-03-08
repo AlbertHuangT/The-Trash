@@ -11,12 +11,12 @@ struct LeaderboardRow: View {
     let rank: Int
     let username: String
     let credits: Int
+    let achievementIcon: String?
     let isMe: Bool
     private let theme = TrashTheme()
 
     var body: some View {
         ecoRow
-            .padding(.vertical, theme.spacing.sm)
     }
 
     @ViewBuilder
@@ -44,15 +44,22 @@ struct LeaderboardRow: View {
     }
 
     private var ecoRow: some View {
-        HStack(spacing: theme.spacing.lg) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             rankViewHelper(rank: rank)
-                .frame(width: 40)
+                .frame(width: theme.components.minimumHitTarget)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(username)
-                    .font(theme.typography.subheadline)
-                    .fontWeight(isMe ? .bold : .semibold)
-                    .foregroundColor(theme.palette.textPrimary.opacity(0.95))
+                HStack(spacing: theme.spacing.xs) {
+                    Text(username)
+                        .font(theme.typography.subheadline)
+                        .fontWeight(isMe ? .bold : .semibold)
+                        .foregroundColor(theme.palette.textPrimary.opacity(0.95))
+                        .lineLimit(1)
+
+                    if let achievementIcon {
+                        badgeIcon(achievementIcon)
+                    }
+                }
                 if isMe {
                     Text("You")
                         .font(theme.typography.caption)
@@ -63,22 +70,26 @@ struct LeaderboardRow: View {
             Spacer()
 
             Text("\(credits)")
-                .font(theme.typography.body)
+                .font(theme.typography.subheadline)
                 .monospacedDigit()
                 .fontWeight(.bold)
                 .foregroundColor(theme.palette.textPrimary.opacity(0.95))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.horizontal, theme.components.cardPadding)
+        .padding(.vertical, theme.layout.elementSpacing)
+        .frame(minHeight: theme.components.rowHeight)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(theme.palette.card)
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(isMe ? theme.accents.blue.opacity(0.45) : theme.palette.divider, lineWidth: isMe ? 1.8 : 1)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(
+                            isMe ? theme.accents.blue.opacity(0.45) : theme.palette.divider,
+                            lineWidth: isMe ? 1.8 : 1
+                        )
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous))
         .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
     }
 }
@@ -89,21 +100,26 @@ struct MyRankBar: View {
     let rank: Int
     let username: String
     let credits: Int
+    let achievementIcon: String?
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Your Rank")
                     .font(theme.typography.caption)
                     .foregroundColor(theme.palette.textSecondary)
                 HStack(spacing: 6) {
                     Text("#\(rank)")
-                        .font(theme.typography.headline)
+                        .font(theme.typography.subheadline)
                         .fontWeight(.bold)
                     Text(username)
                         .font(theme.typography.caption)
                         .fontWeight(.semibold)
+                        .lineLimit(1)
+                    if let achievementIcon {
+                        badgeIcon(achievementIcon)
+                    }
                 }
                 .foregroundColor(theme.palette.textPrimary)
             }
@@ -115,23 +131,49 @@ struct MyRankBar: View {
                     .font(theme.typography.caption)
                     .foregroundColor(theme.palette.textSecondary)
                 Text("\(credits)")
-                    .font(theme.typography.headline)
+                    .font(theme.typography.subheadline)
                     .fontWeight(.bold)
+                    .monospacedDigit()
                     .foregroundColor(theme.palette.textPrimary)
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, theme.components.cardPadding)
+        .padding(.vertical, theme.layout.elementSpacing)
+        .frame(minHeight: theme.components.rowHeight)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(theme.palette.card)
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .stroke(theme.palette.divider, lineWidth: 1)
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous))
         .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
-        .padding(.horizontal, theme.spacing.lg)
+        .padding(.horizontal, theme.layout.screenInset)
+    }
+}
+
+private extension LeaderboardRow {
+    @ViewBuilder
+    func badgeIcon(_ systemName: String) -> some View {
+        TrashIcon(systemName: systemName)
+            .font(.system(size: 12, weight: .semibold))
+            .frame(width: theme.components.compactControlHeight, height: theme.components.compactControlHeight)
+        .foregroundColor(theme.accents.orange)
+        .background(theme.accents.orange.opacity(0.12))
+        .clipShape(Circle())
+    }
+}
+
+private extension MyRankBar {
+    @ViewBuilder
+    func badgeIcon(_ systemName: String) -> some View {
+        TrashIcon(systemName: systemName)
+            .font(.system(size: 12, weight: .semibold))
+            .frame(width: theme.components.compactControlHeight, height: theme.components.compactControlHeight)
+        .foregroundColor(theme.accents.orange)
+        .background(theme.accents.orange.opacity(0.12))
+        .clipShape(Circle())
     }
 }

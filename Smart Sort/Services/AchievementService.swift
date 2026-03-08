@@ -175,56 +175,6 @@ class AchievementService: ObservableObject {
         }
     }
 
-    /// Check multiple triggers in parallel
-    func checkMultipleTriggers(_ triggers: [String]) async {
-        // Fire all RPC calls concurrently, collect granted results
-        let grantedResults: [AchievementGrantResult] = await withTaskGroup(of: AchievementGrantResult?.self) { group in
-            for trigger in triggers {
-                group.addTask { [client] in
-                    do {
-                        let result: AchievementGrantResult = try await client
-                            .rpc("check_and_grant_achievement", params: ["p_trigger_key": trigger])
-                            .execute()
-                            .value
-                        return result.granted ? result : nil
-                    } catch {
-                        print("Error checking achievement \(trigger): \(error)")
-                        return nil
-                    }
-                }
-            }
-
-            var results: [AchievementGrantResult] = []
-            for await result in group {
-                if let result = result {
-                    results.append(result)
-                }
-            }
-            return results
-        }
-
-        // Process granted achievements on MainActor
-        if let lastGrant = grantedResults.last {
-            for grant in grantedResults {
-                print("🏆 Achievement unlocked: \(grant.name ?? "Unknown")")
-            }
-            self.lastGrantedAchievement = lastGrant
-            await fetchMyAchievements()
-        }
-    }
-
-    // MARK: - Increment scan count
-
-    func incrementTotalScans() async {
-        do {
-            try await client
-                .rpc("increment_total_scans")
-                .execute()
-        } catch {
-            print("Error incrementing total scans: \(error)")
-        }
-    }
-
     // MARK: - Community Members for Grant UI
 
     func fetchCommunityMembersForGrant(communityId: String, achievementId: UUID) async {

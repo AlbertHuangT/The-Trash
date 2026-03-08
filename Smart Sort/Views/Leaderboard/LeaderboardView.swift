@@ -50,9 +50,12 @@ struct LeaderboardView: View {
                     VStack {
                         Spacer()
                         MyRankBar(
-                            rank: myRank, username: me.username ?? "You", credits: me.credits ?? 0
+                            rank: myRank,
+                            username: me.username ?? "You",
+                            credits: me.credits ?? 0,
+                            achievementIcon: currentUserVM.equippedAchievementIcon
                         )
-                        .padding(.bottom, 0)
+                        .padding(.bottom, theme.layout.elementSpacing)
                     }
                 }
             }
@@ -95,8 +98,8 @@ struct LeaderboardView: View {
             },
             selection: $selectedType
         )
-        .padding(.horizontal, theme.spacing.lg)
-        .padding(.vertical, theme.spacing.md)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.vertical, theme.layout.elementSpacing)
     }
 
     // MARK: - Friends Leaderboard Content
@@ -116,7 +119,7 @@ struct LeaderboardView: View {
                         noFriendsState
                             .frame(maxWidth: .infinity)
                     } else {
-                        LazyVStack(spacing: 16) {
+                        LazyVStack(spacing: theme.layout.elementSpacing) {
                             let allUsers = mergeCurrentUser(friends: friendService.friends)
 
                             ForEach(Array(allUsers.enumerated()), id: \.element.id) { index, user in
@@ -124,14 +127,16 @@ struct LeaderboardView: View {
                                     rank: index + 1,
                                     username: user.username,
                                     credits: user.credits,
+                                    achievementIcon: isMe(user.id)
+                                        ? currentUserVM.equippedAchievementIcon : nil,
                                     isMe: isMe(user.id)
                                 )
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, theme.layout.screenInset)
                             }
 
                             Color.clear.frame(height: 100)
                         }
-                        .padding(.top, 16)
+                        .padding(.top, theme.layout.elementSpacing)
                     }
                 }
                 .refreshable {
@@ -182,14 +187,14 @@ struct LeaderboardView: View {
                     }
                 }
             }
-            .padding(.horizontal, theme.spacing.lg)
-            .padding(.vertical, theme.spacing.lg)
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.elementSpacing)
         }
     }
 
     private var communityListView: some View {
         ScrollView {
-            LazyVStack(spacing: 16) {
+            LazyVStack(spacing: theme.layout.elementSpacing) {
                 if let community = selectedCommunity {
                     // Header
                     HStack {
@@ -205,15 +210,17 @@ struct LeaderboardView: View {
                             rank: index + 1,
                             username: user.username,
                             credits: user.credits,
+                            achievementIcon: user.achievementIcon
+                                ?? (isMe(user.id) ? currentUserVM.equippedAchievementIcon : nil),
                             isMe: isMe(user.id)
                         )
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, theme.layout.screenInset)
                     }
 
                     Color.clear.frame(height: 50)
                 }
             }
-            .padding(.top, 10)
+            .padding(.top, theme.layout.elementSpacing)
         }
         .refreshable {
             if let community = selectedCommunity {

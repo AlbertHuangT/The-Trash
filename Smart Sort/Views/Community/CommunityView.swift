@@ -9,6 +9,7 @@ struct CommunityView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject private var appRouter: AppRouter
     @State private var selectedTab: CommunityTab = .events
+    private let theme = TrashTheme()
 
     enum CommunityTab: String, CaseIterable {
         case events = "Events"
@@ -34,8 +35,8 @@ struct CommunityView: View {
                 },
                 selection: $selectedTab
             )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.elementSpacing)
 
             Group {
                 if selectedTab == .events {
@@ -47,6 +48,7 @@ struct CommunityView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .animation(.easeInOut(duration: 0.2), value: selectedTab)
         }
+        .trashScreenBackground()
         .navigationTitle("Community")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -60,7 +62,13 @@ struct CommunityView: View {
                         }
                     } label: {
                         Image(systemName: "plus")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(
+                                width: theme.layout.toolbarHitTarget,
+                                height: theme.layout.toolbarHitTarget
+                            )
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel(
                         selectedTab == .events ? "Create Event" : "Create Community"
                     )

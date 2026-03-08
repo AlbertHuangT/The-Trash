@@ -14,7 +14,7 @@ struct StatCard: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: theme.layout.elementSpacing) {
                 ZStack {
                     RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
                         .fill(theme.surfaceBackground)
@@ -43,7 +43,7 @@ struct StatCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(.vertical, theme.components.cardPadding)
         .surfaceCard(cornerRadius: theme.corners.large)
     }
 }
@@ -59,7 +59,7 @@ struct SettingsRow: View {
 
     var body: some View {
         TrashTapArea(action: action) {
-            HStack(spacing: 16) {
+            HStack(spacing: theme.layout.rowContentSpacing) {
                 ZStack {
                     RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
                         .fill(theme.surfaceBackground)
@@ -97,8 +97,8 @@ struct SettingsRow: View {
                         .foregroundColor(theme.palette.textSecondary.opacity(0.5))
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, theme.components.cardPadding)
+            .padding(.vertical, theme.spacing.sm)
             .frame(minHeight: theme.components.rowHeight)
             .surfaceCard(cornerRadius: theme.corners.medium)
         }
@@ -111,9 +111,11 @@ struct SectionHeader: View {
 
     var body: some View {
         TrashSectionTitle(title: title)
-            .padding(.leading, 8)
-            .padding(.top, 4)
+            .padding(.leading, theme.spacing.sm)
+            .padding(.top, theme.spacing.xs)
     }
+
+    private let theme = TrashTheme()
 }
 
 // MARK: - Info Card
@@ -122,7 +124,7 @@ struct InfoCard: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: theme.layout.elementSpacing) {
             TrashIcon(systemName: "info.circle.fill")
                 .foregroundColor(theme.accents.blue)
             Text(content)
@@ -131,7 +133,7 @@ struct InfoCard: View {
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
+        .padding(theme.components.cardPadding)
         .surfaceCard(cornerRadius: theme.corners.large)
     }
 }

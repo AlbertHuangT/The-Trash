@@ -47,6 +47,7 @@ The project combines:
 - Uses the camera to identify an item locally
 - Runs blur and face checks before feedback upload
 - Supports correction flows that feed a quiz-candidate pipeline
+- Verify rewards require a linked email or phone
 
 ### Arena
 
@@ -54,6 +55,7 @@ The project combines:
 - Solo modes use server-verified sessions and server-side answer validation
 - Duel uses backend validation plus realtime synchronization
 - Quiz images are served from Supabase Storage
+- Arena rewards are only credited to linked accounts
 
 ### Community
 
@@ -165,10 +167,13 @@ supabase db push --linked --include-all --yes
 ## Current Backend Notes
 
 - Arena solo modes are server-verified
+- Arena and Verify rewards require a linked account
 - Duel stale challenges are expired consistently across gameplay RPCs
+- Duel ready/finished state is persisted server-side for reconnect recovery
 - Recoverable Arena quiz images were migrated off third-party dead links into Supabase Storage
 - Correctly confirmed Verify photos can enter `quiz_question_candidates`
 - Face-containing photos are never uploaded as feedback
+- Feedback images are now private and served via signed URLs
 - `app_admins` can review and publish quiz candidates through the in-app `Quiz Review` flow
 
 ## Design System Notes

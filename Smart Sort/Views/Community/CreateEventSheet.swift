@@ -22,24 +22,36 @@ struct CreateEventSheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section("Event Details") {
-                    TrashFormTextField(title: "Event Title", text: $title, textInputAutocapitalization: .words)
-                    TrashFormTextField(title: "Description", text: $description, textInputAutocapitalization: .sentences)
-                    TrashFormDatePicker(title: "Date & Time", selection: $eventDate)
-                    TrashFormTextField(title: "Location", text: $location, textInputAutocapitalization: .words)
-                }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Event Details")
+                        TrashFormTextField(title: "Event Title", text: $title, textInputAutocapitalization: .words)
+                        TrashFormTextField(title: "Description", text: $description, textInputAutocapitalization: .sentences)
+                        TrashFormDatePicker(title: "Date & Time", selection: $eventDate)
+                        TrashFormTextField(title: "Location", text: $location, textInputAutocapitalization: .words)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section("Settings") {
-                    TrashFormPicker(
-                        title: "Category",
-                        selection: $category,
-                        options: categories.map { TrashPickerOption(value: $0, title: $0.capitalized, icon: nil) }
-                    )
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Settings")
+                        TrashFormPicker(
+                            title: "Category",
+                            selection: $category,
+                            options: categories.map { TrashPickerOption(value: $0, title: $0.capitalized, icon: nil) }
+                        )
 
-                    TrashFormStepper(title: "Max Participants", value: $maxParticipants, range: 10...500, step: 10)
+                        TrashFormStepper(title: "Max Participants", value: $maxParticipants, range: 10...500, step: 10)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Create Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -48,12 +60,21 @@ struct CreateEventSheet: View {
                         isPresented = false
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    TrashTextButton(title: "Create", variant: .accent) {
-                        showNotImplementedAlert = true
-                    }
-                    .disabled(title.isEmpty || location.isEmpty)
+            }
+            .safeAreaInset(edge: .bottom) {
+                TrashButton(baseColor: theme.accents.blue, action: {
+                    showNotImplementedAlert = true
+                }) {
+                    Text("Create")
+                        .font(theme.typography.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .trashOnAccentForeground()
                 }
+                .disabled(title.isEmpty || location.isEmpty)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
+                .padding(.bottom, theme.layout.elementSpacing)
+                .background(.ultraThinMaterial)
             }
             .sheet(isPresented: $showNotImplementedAlert) {
                 TrashNoticeSheet(
@@ -64,7 +85,7 @@ struct CreateEventSheet: View {
                         isPresented = false
                     }
                 )
-                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appBackground)
             }

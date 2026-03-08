@@ -87,7 +87,9 @@ Behavior notes:
 - Blurry photos are rejected before classification.
 - Photos containing faces can still be classified locally.
 - Face-containing photos are blocked from feedback upload on the client.
+- Verify rewards are server-issued and require a linked account.
 - Correctly confirmed photos can be uploaded into `quiz_question_candidates` for later review.
+- Feedback images are stored privately and accessed with signed URLs.
 - App-level reviewers in `app_admins` can approve or reject candidates in the in-app `Quiz Review` flow; approved items are copied into `quiz-images` and inserted into `quiz_questions`.
 - The first `app_admins` entry is intentionally bootstrapped by migration via `scripts/manage_app_admin_migration.sh`, not by an in-app self-serve path.
 
@@ -108,6 +110,8 @@ Behavior notes:
 
 Behavior notes:
 - Quiz images now come from Supabase Storage `quiz-images` for the recovered active seed set.
+- Arena credits are only granted to linked accounts; guest play still keeps game scores but does not mutate profile credits.
+- Duel ready/finished state is persisted in `arena_challenges`, so reconnects can recover without trusting transient broadcasts.
 - Stale `accepted` / `in_progress` duels expire after 30 minutes of inactivity in both inbox fetch and gameplay RPCs.
 
 ## 5. RPC Function Registry

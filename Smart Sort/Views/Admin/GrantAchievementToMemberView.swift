@@ -28,25 +28,12 @@ struct GrantAchievementToMemberView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Achievement header
             achievementHeader
 
-            // Search bar
             TrashSearchField(placeholder: "Search members...", text: $searchText)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(theme.surfaceBackground)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
-                        )
-                )
-                .padding(.horizontal, 16)
-            .padding(.top, 12)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
 
-            // Member list
             if service.isLoading {
                 Spacer()
                 ProgressView()
@@ -63,17 +50,18 @@ struct GrantAchievementToMemberView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 10) {
+                    LazyVStack(spacing: theme.layout.elementSpacing) {
                         ForEach(filteredMembers) { member in
                             memberRow(member)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.elementSpacing)
+                    .padding(.bottom, theme.layout.sectionSpacing)
                 }
             }
         }
+        .trashScreenBackground()
         .navigationTitle("Grant Achievement")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -88,7 +76,7 @@ struct GrantAchievementToMemberView: View {
                 message: "\(achievement.name) has been granted to \(grantedUsername).",
                 onClose: { showSuccessAlert = false }
             )
-            .presentationDetents([.fraction(0.3), .medium])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .presentationBackground(theme.appBackground)
         }
@@ -97,7 +85,7 @@ struct GrantAchievementToMemberView: View {
     // MARK: - Achievement Header
 
     private var achievementHeader: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             ZStack {
                 Circle()
                     .fill(
@@ -134,24 +122,23 @@ struct GrantAchievementToMemberView: View {
 
             Spacer()
         }
-        .padding(16)
+        .padding(theme.components.cardPadding)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                 )
         )
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.top, theme.layout.screenInset)
     }
 
     // MARK: - Member Row
 
     private func memberRow(_ member: CommunityMemberForGrant) -> some View {
-        HStack(spacing: 14) {
-            // Avatar
+        HStack(spacing: theme.layout.rowContentSpacing) {
             ZStack {
                 Circle()
                     .fill(theme.surfaceBackground)
@@ -166,32 +153,22 @@ struct GrantAchievementToMemberView: View {
                     .foregroundColor(theme.accents.blue)
             }
 
-            Text(member.username)
-                .font(.subheadline)
+                Text(member.username)
+                .font(theme.typography.subheadline)
                 .foregroundColor(theme.palette.textPrimary)
+                .lineLimit(1)
 
             Spacer()
 
             if member.alreadyHas {
-                HStack(spacing: 4) {
-                    TrashIcon(systemName: "checkmark.circle.fill")
-                        .font(.caption)
-                    Text("Granted")
-                        .font(.caption.bold())
-                }
-                .foregroundColor(theme.accents.green)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(theme.surfaceBackground)
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
-                        )
+                TrashPill(
+                    title: "Granted",
+                    icon: "checkmark.circle.fill",
+                    color: theme.accents.green,
+                    isSelected: false
                 )
             } else {
-                TrashButton(baseColor: theme.accents.blue, cornerRadius: 8, action: {
+                TrashPill(title: "Grant", icon: "plus.circle.fill", color: theme.accents.blue, isSelected: true, action: {
                     grantingUserId = member.userId
                     Task {
                         let success = await service.grantAchievement(
@@ -210,31 +187,16 @@ struct GrantAchievementToMemberView: View {
                         }
                         grantingUserId = nil
                     }
-                }) {
-                    HStack(spacing: 4) {
-                        if grantingUserId == member.userId {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        } else {
-                            TrashIcon(systemName: "plus.circle.fill")
-                                .font(.caption)
-                        }
-                        Text("Grant")
-                            .font(.caption.bold())
-                    }
-                    .trashOnAccentForeground()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                }
+                })
                 .disabled(grantingUserId != nil)
             }
         }
-        .padding(12)
+        .padding(theme.components.cardPadding)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                 )
         )

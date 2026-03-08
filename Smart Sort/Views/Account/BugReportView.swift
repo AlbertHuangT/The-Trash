@@ -20,22 +20,21 @@ struct BugReportView: View {
     @State private var errorMessage = ""
 
     var body: some View {
-        ZStack {
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                VStack(alignment: .leading, spacing: theme.spacing.sm) {
                     // Header
                     Text("Report a Bug")
-                        .font(.title2.bold())
+                        .font(theme.typography.headline)
                         .foregroundColor(theme.palette.textPrimary)
-                        .padding(.top, 8)
 
                     Text("Describe the issue you encountered. We'll look into it as soon as possible.")
                         .font(theme.typography.subheadline)
                         .foregroundColor(theme.palette.textSecondary)
+                }
 
-                    // Title field
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                    VStack(alignment: .leading, spacing: theme.spacing.sm) {
                         Text("Title")
                             .font(theme.typography.subheadline)
                             .fontWeight(.medium)
@@ -47,9 +46,10 @@ struct BugReportView: View {
                             textInputAutocapitalization: .sentences
                         )
                     }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                    // Description field
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: theme.spacing.sm) {
                         Text("Description")
                             .font(theme.typography.subheadline)
                             .fontWeight(.medium)
@@ -57,13 +57,15 @@ struct BugReportView: View {
 
                         TrashFormTextEditor(text: $description, minHeight: 120)
                     }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                    // Attach logs toggle
                     TrashFormToggle(title: "Attach App Logs", isOn: $attachLog)
-                        .padding(.vertical, 4)
+                        .padding(theme.components.cardPadding)
+                        .surfaceCard(cornerRadius: theme.corners.large)
 
                     if attachLog {
-                        HStack(spacing: 8) {
+                        HStack(spacing: theme.spacing.sm) {
                             TrashIcon(systemName: "doc.text")
                                 .font(.caption)
                                 .foregroundColor(theme.palette.textSecondary)
@@ -71,9 +73,10 @@ struct BugReportView: View {
                                 .font(.caption)
                                 .foregroundColor(theme.palette.textSecondary)
                         }
+                        .padding(theme.components.cardPadding)
+                        .surfaceCard(cornerRadius: theme.corners.large)
                     }
 
-                    // Submit button
                     if isSubmitting {
                         HStack {
                             Spacer()
@@ -81,20 +84,20 @@ struct BugReportView: View {
                                 .foregroundColor(theme.palette.textSecondary)
                             Spacer()
                         }
-                        .padding(.vertical, 12)
+                        .padding(.vertical, theme.spacing.sm)
                     } else {
                         TrashButton(baseColor: theme.accents.blue, action: submit) {
                             Text("Submit Feedback")
                                 .fontWeight(.semibold)
-                                .trashOnAccentForeground()
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
                         }
                     }
                 }
-                .padding(16)
             }
-        }
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.top, theme.layout.screenInset)
+            .padding(.bottom, theme.spacing.xxl)
+            }
+        .trashScreenBackground()
         .navigationTitle("Feedback")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Thank You!", isPresented: $showSuccess) {

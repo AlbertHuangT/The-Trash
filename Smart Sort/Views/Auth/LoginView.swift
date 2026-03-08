@@ -15,22 +15,24 @@ struct LoginView: View {
     @State private var isSignUp = false
     @State private var localPhoneNumber = ""
     @State private var otpCode = ""
+    @State private var showCheckEmailAlert = false
+    @State private var isAwaitingPhoneOTP = false
 
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: theme.spacing.lg) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                     heroSection
                     authCard
                     guestButton
                 }
-                .padding(.horizontal, theme.spacing.lg)
+                .padding(.horizontal, theme.layout.screenInset)
                 .padding(.top, theme.spacing.xl)
-                .padding(.bottom, theme.spacing.xl)
+                .padding(.bottom, theme.spacing.xxl)
             }
             .trashScreenBackground()
             .navigationBarHidden(true)
-            .alert("Check your email", isPresented: $authVM.showCheckEmailAlert) {
+            .alert("Check your email", isPresented: $showCheckEmailAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text("We sent a verification link to your email address.")
@@ -46,11 +48,17 @@ struct LoginView: View {
 
     private var heroSection: some View {
         VStack(alignment: .leading, spacing: theme.spacing.sm) {
+            Text("Welcome Back")
+                .font(theme.typography.caption)
+                .foregroundColor(theme.accents.blue)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
             Text("Sort smarter.")
                 .font(theme.typography.title)
                 .foregroundColor(theme.palette.textPrimary)
 
-            Text("Use the camera, earn credits, and join community challenges with a cleaner, faster sign in flow.")
+            Text("Use the camera, explore Arena, and link an account to unlock long-term rewards and leaderboard progress.")
                 .font(theme.typography.body)
                 .foregroundColor(theme.palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -67,9 +75,7 @@ struct LoginView: View {
             .pickerStyle(.segmented)
 
             if let error = authVM.errorMessage {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                authErrorBanner(error)
             }
 
             if loginMethod == 0 {
@@ -79,14 +85,7 @@ struct LoginView: View {
             }
         }
         .padding(theme.components.sheetPadding)
-        .background(
-            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
-                .fill(theme.surfaceBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
-                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
-                )
-        )
+        .surfaceCard(cornerRadius: theme.corners.large)
     }
 
     private var emailSection: some View {
@@ -108,6 +107,9 @@ struct LoginView: View {
                 Task {
                     if isSignUp {
                         await authVM.signUp(email: email, password: password)
+                        if authVM.errorMessage == nil {
+                            showCheckEmailAlert = true
+                        }
                     } else {
                         await authVM.signIn(email: email, password: password)
                     }
@@ -134,14 +136,14 @@ struct LoginView: View {
 
     private var phoneSection: some View {
         VStack(alignment: .leading, spacing: theme.spacing.sm) {
-            Text(authVM.showOTPInput ? "Verify Phone" : "Phone Login")
+            Text(isAwaitingPhoneOTP ? "Verify Phone" : "Phone Login")
                 .font(theme.typography.headline)
                 .foregroundColor(theme.palette.textPrimary)
 
-            if authVM.showOTPInput {
+            if isAwaitingPhoneOTP {
                 Text(fullPhoneNumber)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(theme.typography.subheadline)
+                    .foregroundColor(theme.palette.textSecondary)
 
                 TextField("6-digit code", text: $otpCode)
                     .keyboardType(.numberPad)
@@ -152,6 +154,7 @@ struct LoginView: View {
                         await authVM.verifyOTP(phone: fullPhoneNumber, token: otpCode)
                         if authVM.session != nil {
                             otpCode = ""
+                            isAwaitingPhoneOTP = false
                         }
                     }
                 }) {
@@ -166,7 +169,7 @@ struct LoginView: View {
                 .disabled(authVM.isLoading || otpCode.isEmpty)
 
                 Button("Use a different number", role: .cancel) {
-                    authVM.showOTPInput = false
+                    isAwaitingPhoneOTP = false
                     authVM.errorMessage = nil
                     otpCode = ""
                 }
@@ -174,11 +177,11 @@ struct LoginView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(theme.accents.blue)
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: theme.layout.elementSpacing) {
                     Text("+1")
                         .font(theme.typography.button)
                         .foregroundColor(theme.palette.textPrimary)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, theme.layout.inputHorizontalInset)
                         .frame(minHeight: theme.components.inputHeight)
                         .background(
                             RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
@@ -195,7 +198,12 @@ struct LoginView: View {
                 }
 
                 TrashButton(baseColor: theme.accents.green, action: {
-                    Task { await authVM.sendOTP(phone: fullPhoneNumber) }
+                    Task {
+                        await authVM.sendOTP(phone: fullPhoneNumber)
+                        if authVM.errorMessage == nil {
+                            isAwaitingPhoneOTP = true
+                        }
+                    }
                 }) {
                     Group {
                         if authVM.isLoading {
@@ -217,8 +225,13 @@ struct LoginView: View {
     private var guestButton: some View {
         VStack(alignment: .leading, spacing: theme.spacing.sm) {
             Text("Just looking around?")
-                .font(.subheadline.weight(.semibold))
+                .font(theme.typography.subheadline)
                 .foregroundColor(theme.palette.textPrimary)
+
+            Text("Guest mode lets you browse and play, but linked accounts are required for Verify rewards and account recovery.")
+                .font(.footnote)
+                .foregroundColor(theme.palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             TrashButton(baseColor: theme.accents.blue, action: {
                 Task { await authVM.signInAnonymously() }
@@ -227,6 +240,8 @@ struct LoginView: View {
             }
             .disabled(authVM.isLoading)
         }
+        .padding(theme.components.cardPadding)
+        .surfaceCard(cornerRadius: theme.corners.large)
     }
 
     private var fullPhoneNumber: String {
@@ -235,5 +250,26 @@ struct LoginView: View {
             return "+1"
         }
         return "+1\(digits)"
+    }
+
+    private func authErrorBanner(_ message: String) -> some View {
+        HStack(spacing: theme.spacing.sm) {
+            TrashIcon(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(theme.semanticDanger)
+
+            Text(message)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.semanticDanger.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(theme.semanticDanger.opacity(0.24), lineWidth: 1)
+                )
+        )
     }
 }

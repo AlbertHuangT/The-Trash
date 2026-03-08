@@ -26,8 +26,6 @@ class AuthViewModel: ObservableObject {
     
     // UI State
     @Published var deepLinkStatus: AuthDeepLinkStatus = .idle
-    @Published var showCheckEmailAlert = false
-    @Published var showOTPInput = false
     
     private let client = SupabaseManager.shared.client
     
@@ -92,7 +90,6 @@ class AuthViewModel: ObservableObject {
         errorMessage = nil
         do {
             _ = try await client.auth.signUp(email: email, password: password)
-            showCheckEmailAlert = true
         } catch {
             errorMessage = "Signup failed: \(error.localizedDescription)"
         }
@@ -106,7 +103,6 @@ class AuthViewModel: ObservableObject {
         errorMessage = nil
         do {
             try await client.auth.signInWithOTP(phone: phone)
-            showOTPInput = true
         } catch {
             errorMessage = "Send OTP failed: \(error.localizedDescription)"
         }
@@ -122,7 +118,6 @@ class AuthViewModel: ObservableObject {
                 token: token,
                 type: .sms
             )
-            showOTPInput = false
         } catch {
             errorMessage = "Invalid Code: \(error.localizedDescription)"
         }
@@ -137,7 +132,6 @@ class AuthViewModel: ObservableObject {
         do {
             let attributes = UserAttributes(phone: phone)
             try await client.auth.update(user: attributes)
-            showOTPInput = true
         } catch {
             errorMessage = "Bind Phone Failed: \(error.localizedDescription)"
         }
@@ -153,7 +147,6 @@ class AuthViewModel: ObservableObject {
                 token: token,
                 type: .phoneChange
             )
-            showOTPInput = false
             try await client.auth.refreshSession()
         } catch {
             errorMessage = "Verification Failed: \(error.localizedDescription)"
@@ -167,7 +160,6 @@ class AuthViewModel: ObservableObject {
         do {
             let attributes = UserAttributes(email: email)
             try await client.auth.update(user: attributes)
-            showCheckEmailAlert = true
         } catch {
             errorMessage = "Bind Email Failed: \(error.localizedDescription)"
         }
@@ -192,7 +184,6 @@ class AuthViewModel: ObservableObject {
         do {
             let attributes = UserAttributes(email: email, password: password)
             try await client.auth.update(user: attributes)
-            showCheckEmailAlert = true
             do {
                 _ = try await client.auth.refreshSession()
             } catch {

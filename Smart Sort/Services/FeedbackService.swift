@@ -58,13 +58,11 @@ class FeedbackService: FeedbackSubmitting {
         correctedName: String,
         userId: UUID?
     ) async throws {
-        guard let authUserId = client.auth.currentUser?.id else {
-            throw NSError(
-                domain: "FeedbackService",
-                code: -2,
-                userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]
-            )
-        }
+        let authUserId = try requireLinkedIdentity(
+            errorDomain: "FeedbackService",
+            errorCode: -2,
+            message: "Link an email or phone before submitting feedback."
+        )
 
         if let userId, userId != authUserId {
             LogManager.shared.log(
@@ -112,13 +110,11 @@ class FeedbackService: FeedbackSubmitting {
         predictedCategory: String,
         userId: UUID?
     ) async throws {
-        guard let authUserId = client.auth.currentUser?.id else {
-            throw NSError(
-                domain: "FeedbackService",
-                code: -3,
-                userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]
-            )
-        }
+        let authUserId = try requireLinkedIdentity(
+            errorDomain: "FeedbackService",
+            errorCode: -3,
+            message: "Link an email or phone before submitting quiz candidates."
+        )
 
         if let userId, userId != authUserId {
             LogManager.shared.log(
@@ -150,6 +146,30 @@ class FeedbackService: FeedbackSubmitting {
             await cleanupUploadedObject(bucket: "quiz-candidate-images", path: filePath)
             throw error
         }
+    }
+
+    private func requireLinkedIdentity(
+        errorDomain: String,
+        errorCode: Int,
+        message: String
+    ) throws -> UUID {
+        guard let user = client.auth.currentUser else {
+            throw NSError(
+                domain: errorDomain,
+                code: errorCode,
+                userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]
+            )
+        }
+
+        let hasLinkedIdentity = !(user.email?.isEmpty ?? true) || !(user.phone?.isEmpty ?? true)
+        guard hasLinkedIdentity else {
+            throw NSError(
+                domain: errorDomain,
+                code: errorCode,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+        return user.id
     }
 
     private func uploadImage(

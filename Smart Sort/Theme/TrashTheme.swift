@@ -60,9 +60,13 @@ struct ThemeAnimations {
 }
 
 struct ThemeCornerRadius {
+    /// Compact controls, badges, and input chips.
     let small: CGFloat
+    /// Standard card, row, and input radius.
     let medium: CGFloat
+    /// Large surfaces like hero cards and sheets.
     let large: CGFloat
+    /// Fully rounded pill surfaces.
     let pill: CGFloat
 }
 
@@ -81,12 +85,41 @@ struct ThemeComponentMetrics {
     let segmentedControlHeight: CGFloat
     /// Interactive pill height.
     let pillHeight: CGFloat
+    /// Compact inline control height for badges and status chips.
+    let compactControlHeight: CGFloat
     /// Default card body padding.
     let cardPadding: CGFloat
     /// Default sheet/dialog content padding.
     let sheetPadding: CGFloat
     /// Default horizontal content inset.
     let contentInset: CGFloat
+}
+
+struct ThemeLayoutGuides {
+    /// Default horizontal inset for full-screen page content.
+    let screenInset: CGFloat
+    /// Standard vertical gap between major sections on a page.
+    let sectionSpacing: CGFloat
+    /// Standard gap inside stacked cards and rows.
+    let elementSpacing: CGFloat
+    /// Standard horizontal gap between icons and labels in interactive rows.
+    let rowContentSpacing: CGFloat
+    /// Horizontal padding inside text-only inline actions.
+    let inlineButtonHorizontalInset: CGFloat
+    /// Horizontal padding inside pills and compact controls.
+    let compactControlHorizontalInset: CGFloat
+    /// Horizontal padding inside text inputs and search fields.
+    let inputHorizontalInset: CGFloat
+    /// Outer horizontal inset for sheet cards.
+    let sheetEdgeInset: CGFloat
+    /// Standard spacing between stacked sheet actions.
+    let sheetActionSpacing: CGFloat
+    /// Minimum hit target for toolbar affordances.
+    let toolbarHitTarget: CGFloat
+    /// Standard radius for rows and compact surfaced cards.
+    let standardCardCornerRadius: CGFloat
+    /// Standard radius for prominent surfaces like sheets and hero cards.
+    let prominentCardCornerRadius: CGFloat
 }
 
 struct ThemeGradients {
@@ -119,6 +152,7 @@ struct TrashTheme {
     let spacing: ThemeSpacing
     let corners: ThemeCornerRadius
     let components: ThemeComponentMetrics
+    let layout: ThemeLayoutGuides
     let gradients: ThemeGradients
     let appearance: ThemeAppearance
     let animations: ThemeAnimations
@@ -158,18 +192,34 @@ struct TrashTheme {
 
         // 8pt grid-aligned spacing system
         spacing = ThemeSpacing(xs: 4, sm: 8, md: 16, lg: 20, xl: 28, xxl: 40)
-        corners = ThemeCornerRadius(small: 10, medium: 16, large: 24, pill: 22)
+        // Apple-aligned sizing baseline: 44pt hit targets, moderate radii, compact rows.
+        corners = ThemeCornerRadius(small: 12, medium: 16, large: 20, pill: 22)
         components = ThemeComponentMetrics(
             minimumHitTarget: 44,
             iconButtonSize: 44,
-            buttonHeight: 50,
+            buttonHeight: 52,
             inputHeight: 50,
-            rowHeight: 56,
+            rowHeight: 52,
             segmentedControlHeight: 44,
             pillHeight: 44,
+            compactControlHeight: 32,
             cardPadding: 16,
             sheetPadding: 24,
             contentInset: 16
+        )
+        layout = ThemeLayoutGuides(
+            screenInset: 16,
+            sectionSpacing: 20,
+            elementSpacing: 12,
+            rowContentSpacing: 14,
+            inlineButtonHorizontalInset: 8,
+            compactControlHorizontalInset: 12,
+            inputHorizontalInset: 14,
+            sheetEdgeInset: 20,
+            sheetActionSpacing: 12,
+            toolbarHitTarget: 44,
+            standardCardCornerRadius: 16,
+            prominentCardCornerRadius: 20
         )
 
         // Standardized animation presets for consistency across the app
@@ -358,6 +408,14 @@ struct TrashTheme {
 
     var cardBackground: Color {
         Color(red: 0.965, green: 0.944, blue: 0.897)
+    }
+
+    var cameraViewportBackground: Color {
+        Color(red: 0.987, green: 0.983, blue: 0.972)
+    }
+
+    var cameraViewportBorder: Color {
+        Color(red: 0.83, green: 0.82, blue: 0.79)
     }
 }
 

@@ -42,50 +42,61 @@ struct ReportView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                // AI Result Section
-                Section(header: Text("AI Prediction Result")) {
-                    reportRows
-                }
-
-                // Human Feedback Section
-                Section(header: Text("Human Feedback")) {
-                    TrashFormPicker(
-                        title: "Actual Category",
-                        selection: $selectedBin,
-                        options: bins.map { TrashPickerOption(value: $0, title: $0, icon: nil) }
-                    )
-
-                    TrashFormTextField(
-                        title: "Correct Item Name (optional)",
-                        text: $itemName,
-                        textInputAutocapitalization: .never
-                    )
-                }
-
-                // Submit Button
-                Section {
-                    if isSubmitting {
-                        HStack {
-                            Spacer()
-                            ProgressView("Submitting...")
-                            Spacer()
-                        }
-                    } else {
-                        TrashButton(baseColor: theme.accents.blue, action: submit) {
-                            Text("Submit Feedback")
-                                .fontWeight(.semibold)
-                                .trashOnAccentForeground()
-                                .frame(maxWidth: .infinity)
-                        }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "AI Prediction Result")
+                        reportRows
                     }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
+
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Human Feedback")
+                        TrashFormPicker(
+                            title: "Actual Category",
+                            selection: $selectedBin,
+                            options: bins.map { TrashPickerOption(value: $0, title: $0, icon: nil) }
+                        )
+
+                        TrashFormTextField(
+                            title: "Correct Item Name (optional)",
+                            text: $itemName,
+                            textInputAutocapitalization: .never
+                        )
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Report Error")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     TrashTextButton(title: "Cancel", variant: .accent) { dismiss() }
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                TrashButton(baseColor: theme.accents.blue, action: submit) {
+                    if isSubmitting {
+                        ProgressView()
+                            .tint(theme.onAccentForeground)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Submit Feedback")
+                            .font(theme.typography.subheadline.weight(.bold))
+                            .trashOnAccentForeground()
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .disabled(isSubmitting)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
+                .padding(.bottom, theme.layout.elementSpacing)
+                .background(.ultraThinMaterial)
             }
             .sheet(isPresented: $showSuccess) {
                 TrashNoticeSheet(
@@ -96,7 +107,7 @@ struct ReportView: View {
                         dismiss()
                     }
                 )
-                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appearance.sheetBackground)
             }
@@ -107,7 +118,7 @@ struct ReportView: View {
                     buttonColor: theme.semanticDanger,
                     onClose: { showError = false }
                 )
-                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appearance.sheetBackground)
             }

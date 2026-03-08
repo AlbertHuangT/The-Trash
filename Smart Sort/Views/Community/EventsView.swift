@@ -14,12 +14,15 @@ struct EventsView: View {
     @State private var showCreateEventSheet = false
     @State private var showLocationPicker = false  // Added for location picker
     @State private var isMapView = false
+    @State private var showSecondaryControls = false
 
     var body: some View {
         VStack(spacing: 0) {
             controlBar
 
-            categoryFilter
+            if showSecondaryControls {
+                secondaryControls
+            }
 
             if !viewModel.hasLocation {
                 noLocationView
@@ -50,9 +53,9 @@ struct EventsView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, theme.components.contentInset)
-                        .padding(.top, theme.spacing.sm + 4)
-                        .padding(.bottom, theme.spacing.lg)
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.top, theme.layout.elementSpacing)
+                        .padding(.bottom, theme.layout.sectionSpacing)
                     }
                     .refreshable {
                         await viewModel.loadEvents()
@@ -76,7 +79,7 @@ struct EventsView: View {
         }
         .sheet(isPresented: $showSortMenu) {
             SortOptionSheet(selection: $viewModel.sortOption, isPresented: $showSortMenu)
-                .presentationDetents([.fraction(0.42), .medium])
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
         .task {
@@ -130,63 +133,91 @@ struct EventsView: View {
 
     // MARK: - Control Bar
     private var controlBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: theme.spacing.sm + 4) {
-                // Location display
-                if let location = userSettings.selectedLocation {
-                    TrashPill(
-                        title: location.city,
-                        icon: "location.fill",
-                        color: theme.accents.blue
-                    ) {
-                        showLocationPicker = true
-                    }
-                } else {
-                    TrashPill(
-                        title: "Select Location",
-                        icon: "location.slash",
-                        color: theme.palette.textSecondary
-                    ) {
-                        showLocationPicker = true
-                    }
-                }
+        HStack(spacing: theme.layout.elementSpacing) {
+            Button {
+                showLocationPicker = true
+            } label: {
+                HStack(spacing: theme.spacing.xs + 2) {
+                    TrashIcon(
+                        systemName: userSettings.selectedLocation == nil
+                            ? "location.slash" : "location.fill"
+                    )
+                    .foregroundColor(theme.accents.blue)
 
-                // Map/List Toggle
-                TrashIconButton(
-                    icon: isMapView ? "map.fill" : "list.bullet",
-                    isActive: true,
-                    activeColor: theme.accents.blue
-                ) {
-                    withAnimation {
-                        isMapView.toggle()
-                    }
-                }
+                    Text(userSettings.selectedLocation?.displayName ?? "Select Location")
+                        .font(theme.typography.subheadline)
+                        .foregroundColor(theme.palette.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
 
-                // Joined communities only toggle
-                TrashPill(
-                    title: viewModel.showOnlyJoinedCommunities ? "Joined" : "All",
-                    icon: viewModel.showOnlyJoinedCommunities ? "person.3.fill" : "globe",
-                    color: theme.accents.green,
-                    isSelected: viewModel.showOnlyJoinedCommunities
-                ) {
-                    viewModel.showOnlyJoinedCommunities.toggle()
+                    TrashIcon(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(theme.palette.textSecondary.opacity(0.8))
                 }
-
-                // Sort button
-                TrashPill(
-                    title: viewModel.sortOption.rawValue,
-                    icon: "arrow.up.arrow.down",
-                    color: theme.accents.blue,
-                    isSelected: viewModel.sortOption != .distance
-                ) {
-                    showSortMenu = true
-                }
+                .frame(maxWidth: .infinity, minHeight: theme.components.minimumHitTarget, alignment: .leading)
             }
-            .padding(.horizontal, theme.components.contentInset)
+            .buttonStyle(.plain)
+
+            Button {
+                withAnimation(theme.animations.standard) {
+                    showSecondaryControls.toggle()
+                }
+            } label: {
+                HStack(spacing: theme.spacing.xs) {
+                    TrashIcon(systemName: "slider.horizontal.3")
+                    Text(showSecondaryControls ? "Hide" : "Filters")
+                }
+                .font(theme.typography.caption.weight(.semibold))
+                .foregroundColor(theme.accents.blue)
+                .frame(minWidth: theme.components.minimumHitTarget, minHeight: theme.components.minimumHitTarget)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.vertical, theme.spacing.sm + 2)
-        .background(Color.clear)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.top, theme.layout.elementSpacing)
+        .padding(.bottom, theme.spacing.xs)
         .animation(.none, value: viewModel.sortOption)  // Disable layout animation for the control bar
+    }
+
+    private var secondaryControls: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.xs) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: theme.spacing.sm) {
+                    TrashIconButton(
+                        icon: isMapView ? "map.fill" : "list.bullet",
+                        isActive: true,
+                        activeColor: theme.accents.blue
+                    ) {
+                        withAnimation {
+                            isMapView.toggle()
+                        }
+                    }
+
+                    TrashPill(
+                        title: viewModel.showOnlyJoinedCommunities ? "Joined" : "All",
+                        icon: viewModel.showOnlyJoinedCommunities ? "person.3.fill" : "globe",
+                        color: theme.accents.green,
+                        isSelected: viewModel.showOnlyJoinedCommunities
+                    ) {
+                        viewModel.showOnlyJoinedCommunities.toggle()
+                    }
+
+                    TrashPill(
+                        title: viewModel.sortOption.rawValue,
+                        icon: "arrow.up.arrow.down",
+                        color: theme.accents.blue,
+                        isSelected: viewModel.sortOption != .distance
+                    ) {
+                        showSortMenu = true
+                    }
+                }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.spacing.sm)
+            }
+
+            categoryFilter
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - Category Filter
@@ -216,8 +247,9 @@ struct EventsView: View {
                         .id(category.rawValue)
                     }
                 }
-                .padding(.horizontal, theme.components.contentInset)
-                .padding(.vertical, theme.spacing.sm + 2)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.spacing.xs)
+                .padding(.bottom, theme.layout.elementSpacing)
             }
             .background(Color.clear)
             // Auto-scroll to the selected category
@@ -256,6 +288,7 @@ struct EventsView: View {
                 .fontWeight(.bold)
                 .trashOnAccentForeground()
             }
+            .padding(.horizontal, theme.layout.screenInset)
 
             Spacer()
         }
@@ -305,7 +338,7 @@ struct EventDetailSheet: View {
     }
 
     private var distanceText: String {
-        let dist = event.distance(from: userLocation, preciseLocation: userSettings.preciseLocation)
+        let dist = currentEvent.distance(from: userLocation, preciseLocation: userSettings.preciseLocation)
         if dist <= 0 { return "Location unknown" }
         if dist < 1 {
             return String(format: "%.0f meters away", dist * 1000)
@@ -334,10 +367,10 @@ struct EventDetailSheet: View {
                                 )
 
                             VStack(spacing: theme.spacing.sm + 4) {
-                                TrashIcon(systemName: event.imageSystemName)
+                                TrashIcon(systemName: currentEvent.imageSystemName)
                                     .font(.system(size: 50))
-                                    .foregroundColor(event.category.color)
-                                Text(event.category.rawValue)
+                                    .foregroundColor(currentEvent.category.color)
+                                Text(currentEvent.category.rawValue)
                                     .font(theme.typography.headline)
                                     .foregroundColor(theme.palette.textSecondary)
                             }
@@ -347,14 +380,14 @@ struct EventDetailSheet: View {
 
                         // Title & Organizer
                         VStack(alignment: .leading, spacing: theme.spacing.xs + 2) {
-                            Text(event.title)
+                            Text(currentEvent.title)
                                 .font(theme.typography.title)
                                 .foregroundColor(theme.palette.textPrimary)
 
                             HStack {
                                 TrashIcon(systemName: "building.2.fill")
                                     .foregroundColor(theme.palette.textSecondary)
-                                Text(event.organizer)
+                                Text(currentEvent.organizer)
                                     .foregroundColor(theme.palette.textSecondary)
                             }
                             .font(theme.typography.subheadline)
@@ -365,14 +398,14 @@ struct EventDetailSheet: View {
                         VStack(spacing: theme.spacing.sm + 4) {
                             InfoRow(
                                 icon: "calendar", title: "Date & Time",
-                                value: dateFormatter.string(from: event.date))
+                                value: dateFormatter.string(from: currentEvent.date))
                             InfoRow(
-                                icon: "mappin.circle.fill", title: "Location", value: event.location
+                                icon: "mappin.circle.fill", title: "Location", value: currentEvent.location
                             )
                             InfoRow(icon: "location.fill", title: "Distance", value: distanceText)
                             InfoRow(
                                 icon: "person.2.fill", title: "Participants",
-                                value: "\(event.participantCount) / \(event.maxParticipants)")
+                                value: "\(currentEvent.participantCount) / \(currentEvent.maxParticipants)")
                         }
                         .padding(.horizontal, theme.components.contentInset)
 
@@ -381,7 +414,7 @@ struct EventDetailSheet: View {
                             Text("About")
                                 .font(theme.typography.headline)
                                 .foregroundColor(theme.palette.textPrimary)
-                            Text(event.description)
+                            Text(currentEvent.description)
                                 .font(theme.typography.body)
                                 .foregroundColor(theme.palette.textSecondary)
                         }
@@ -405,11 +438,11 @@ struct EventDetailSheet: View {
                         baseColor: currentEvent.isRegistered
                             ? theme.accents.green
                             : (currentEvent.participantCount >= currentEvent.maxParticipants
-                                ? theme.palette.textSecondary : event.category.color),
+                                ? theme.palette.textSecondary : currentEvent.category.color),
                         cornerRadius: theme.corners.medium,
                         action: {
                             Task {
-                                await viewModel.toggleRegistration(for: event)
+                                await viewModel.toggleRegistration(for: currentEvent)
                             }
                         }
                     ) {

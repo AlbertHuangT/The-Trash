@@ -43,71 +43,21 @@ struct CreateCommunitySheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section {
-                    if userSettings.selectedLocation != nil {
-                        HStack(spacing: 12) {
-                            TrashIcon(systemName: "mappin.circle.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(theme.semanticInfo)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(selectedCity)
-                                    .font(theme.typography.headline)
-                                Text(selectedState)
-                                    .font(theme.typography.caption)
-                                    .foregroundColor(theme.palette.textSecondary)
-                            }
-                            Spacer()
-                            TrashIcon(systemName: "checkmark.circle.fill")
-                                .foregroundColor(theme.semanticSuccess)
-                        }
-                    } else {
-                        HStack {
-                            TrashIcon(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(theme.semanticWarning)
-                            Text("Please select a location first")
-                                .foregroundColor(theme.palette.textSecondary)
-                        }
-                    }
-                } header: {
-                    Text("Location")
-                } footer: {
-                    Text("Your community will be created in this city")
-                }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    locationCard
+                    detailsCard
+                    infoCard
 
-                Section("Community Details") {
-                    TrashFormTextField(
-                        title: "Community Name",
-                        text: $name,
-                        textInputAutocapitalization: .words
-                    )
-                    TrashFormTextEditor(text: $description, minHeight: 80)
-                }
-
-                Section {
-                    HStack(spacing: 12) {
-                        TrashIcon(systemName: "info.circle.fill")
-                            .foregroundColor(theme.accents.blue)
-                        Text(
-                            "You can create up to 3 communities. You will automatically become the admin of this community."
-                        )
-                        .font(theme.typography.caption)
-                        .foregroundColor(theme.palette.textSecondary)
+                    if let error = errorMessage {
+                        messageCard(error, color: theme.semanticDanger, icon: "exclamationmark.triangle.fill")
                     }
                 }
-
-                if let error = errorMessage {
-                    Section {
-                        HStack {
-                            TrashIcon(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(theme.semanticDanger)
-                            Text(error)
-                                .font(theme.typography.subheadline)
-                                .foregroundColor(theme.semanticDanger)
-                        }
-                    }
-                }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Create Community")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -118,9 +68,14 @@ struct CreateCommunitySheet: View {
                     .disabled(isLoading)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    TrashTextButton(title: "Create", variant: .accent, action: createCommunity)
-                        .overlay { if isLoading { ProgressView() } }
-                        .disabled(!canCreate || isLoading)
+                    Group {
+                        if isLoading {
+                            ProgressView()
+                        } else {
+                            TrashTextButton(title: "Create", variant: .accent, action: createCommunity)
+                                .disabled(!canCreate)
+                        }
+                    }
                 }
             }
             .sheet(isPresented: $showSuccessAlert) {
@@ -132,11 +87,99 @@ struct CreateCommunitySheet: View {
                         isPresented = false
                     }
                 )
-                .presentationDetents([.fraction(0.32), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appBackground)
             }
         }
+    }
+
+    private var locationCard: some View {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+            TrashSectionTitle(title: "Location")
+
+            if userSettings.selectedLocation != nil {
+                HStack(spacing: theme.layout.rowContentSpacing) {
+                    TrashIcon(systemName: "mappin.circle.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(theme.semanticInfo)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(selectedCity)
+                            .font(theme.typography.headline)
+                        Text(selectedState)
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.palette.textSecondary)
+                    }
+                    Spacer()
+                    TrashIcon(systemName: "checkmark.circle.fill")
+                        .foregroundColor(theme.semanticSuccess)
+                }
+            } else {
+                messageCard("Please select a location first", color: theme.semanticWarning, icon: "exclamationmark.triangle.fill")
+            }
+
+            Text("Your community will be created in this city")
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
+        }
+        .padding(theme.components.cardPadding)
+        .surfaceCard(cornerRadius: theme.corners.large)
+    }
+
+    private var detailsCard: some View {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+            TrashSectionTitle(title: "Community Details")
+            TrashFormTextField(
+                title: "Community Name",
+                text: $name,
+                textInputAutocapitalization: .words
+            )
+            TrashFormTextEditor(text: $description, minHeight: 80)
+        }
+        .padding(theme.components.cardPadding)
+        .surfaceCard(cornerRadius: theme.corners.large)
+    }
+
+    private var infoCard: some View {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+            HStack(spacing: theme.spacing.sm) {
+                TrashIcon(systemName: "info.circle.fill")
+                    .foregroundColor(theme.accents.blue)
+                Text("Community Limits")
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(theme.palette.textPrimary)
+            }
+
+            Text(
+                "You can create up to 3 communities. You will automatically become the admin of this community."
+            )
+            .font(theme.typography.caption)
+            .foregroundColor(theme.palette.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(theme.components.cardPadding)
+        .surfaceCard(cornerRadius: theme.corners.large)
+    }
+
+    private func messageCard(_ message: String, color: Color, icon: String) -> some View {
+        HStack(spacing: theme.spacing.sm) {
+            TrashIcon(systemName: icon)
+                .foregroundColor(color)
+            Text(message)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(color.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(color.opacity(0.22), lineWidth: 1)
+                )
+        )
     }
 
     private func createCommunity() {

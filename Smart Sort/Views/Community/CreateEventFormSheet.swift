@@ -5,6 +5,7 @@
 //  Created by OpenAI Codex on 3/6/26.
 //
 
+import CoreLocation
 import SwiftUI
 
 struct CreateEventFormSheet: View {
@@ -44,18 +45,21 @@ struct CreateEventFormSheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section {
-                    TrashSegmentedControl(
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Event Host")
+
+                        TrashSegmentedControl(
                         options: [
                             TrashSegmentOption(
                                 value: true,
-                                title: "Personal Event",
+                                title: "Personal",
                                 icon: "person.crop.circle"
                             ),
                             TrashSegmentOption(
                                 value: false,
-                                title: "Community Event",
+                                title: "Community",
                                 icon: "person.3.fill"
                             ),
                         ],
@@ -64,13 +68,11 @@ struct CreateEventFormSheet: View {
 
                     if !isPersonalEvent {
                         if userSettings.adminCommunities.isEmpty {
-                        HStack {
-                            TrashIcon(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(theme.semanticWarning)
-                            Text("You need to be a community admin to create community events")
-                                    .font(theme.typography.caption)
-                                    .foregroundColor(theme.palette.textSecondary)
-                            }
+                            messageCard(
+                                "You need to be a community admin to create community events",
+                                color: theme.semanticWarning,
+                                icon: "exclamationmark.triangle.fill"
+                            )
                         } else {
                             TrashOptionalFormPicker(
                                 title: "Select Community",
@@ -82,78 +84,90 @@ struct CreateEventFormSheet: View {
                             )
                         }
                     }
-                } header: {
-                    Text("Event Host")
-                } footer: {
                     Text(
                         isPersonalEvent
                             ? "You will be shown as the organizer"
                             : "Only community admins can create community events"
                     )
-                }
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textSecondary)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section("Event Details") {
-                    TrashFormTextField(
-                        title: "Event Title",
-                        text: $title,
-                        textInputAutocapitalization: .words
-                    )
-                    TrashFormTextEditor(text: $description, minHeight: 80)
-                    TrashFormDatePicker(title: "Date & Time", selection: $eventDate, range: Date()...)
-                    TrashFormTextField(
-                        title: "Location",
-                        text: $location,
-                        textInputAutocapitalization: .words
-                    )
-                }
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Event Details")
+                        TrashFormTextField(
+                            title: "Event Title",
+                            text: $title,
+                            textInputAutocapitalization: .words
+                        )
+                        TrashFormTextEditor(text: $description, minHeight: 80)
+                        TrashFormDatePicker(title: "Date & Time", selection: $eventDate, range: Date()...)
+                        TrashFormTextField(
+                            title: "Location",
+                            text: $location,
+                            textInputAutocapitalization: .words
+                        )
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section("Settings") {
-                    TrashFormPicker(
-                        title: "Category",
-                        selection: $category,
-                        options: categories.map { category in
-                            TrashPickerOption(
-                                value: category,
-                                title: category.capitalized,
-                                icon: iconForCategory(category)
-                            )
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Settings")
+                        TrashFormPicker(
+                            title: "Category",
+                            selection: $category,
+                            options: categories.map { category in
+                                TrashPickerOption(
+                                    value: category,
+                                    title: category.capitalized,
+                                    icon: iconForCategory(category)
+                                )
+                            }
+                        )
+
+                        TrashFormStepper(
+                            title: "Max Participants",
+                            value: $maxParticipants,
+                            range: 5...500,
+                            step: 5
+                        )
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
+
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        HStack(spacing: theme.spacing.sm) {
+                            TrashIcon(systemName: "info.circle.fill")
+                                .foregroundColor(theme.accents.blue)
+                            Text("Weekly Allowance")
+                                .font(theme.typography.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(theme.palette.textPrimary)
+                            Spacer()
+                            if isCheckingAllowance {
+                                ProgressView()
+                            }
                         }
-                    )
 
-                    TrashFormStepper(
-                        title: "Max Participants",
-                        value: $maxParticipants,
-                        range: 5...500,
-                        step: 5
-                    )
-                }
-
-                Section {
-                    HStack(spacing: 12) {
-                        TrashIcon(systemName: "info.circle.fill")
-                            .foregroundColor(theme.accents.blue)
                         Text(creationLimitMessage)
                             .font(theme.typography.caption)
                             .foregroundColor(theme.palette.textSecondary)
-                        Spacer()
-                        if isCheckingAllowance {
-                            ProgressView()
-                        }
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                if let errorMessage {
-                    Section {
-                        HStack {
-                            TrashIcon(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(theme.semanticDanger)
-                            Text(errorMessage)
-                                .foregroundColor(theme.semanticDanger)
-                                .font(theme.typography.subheadline)
-                        }
+                    if let errorMessage {
+                        messageCard(errorMessage, color: theme.semanticDanger, icon: "exclamationmark.triangle.fill")
                     }
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Create Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -164,13 +178,14 @@ struct CreateEventFormSheet: View {
                     .disabled(isLoading)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    TrashTextButton(title: "Create", variant: .accent, action: createEvent)
-                        .overlay {
-                            if isLoading {
-                                ProgressView()
-                            }
+                    Group {
+                        if isLoading {
+                            ProgressView()
+                        } else {
+                            TrashTextButton(title: "Create", variant: .accent, action: createEvent)
+                                .disabled(!canSubmit)
                         }
-                        .disabled(!canSubmit)
+                    }
                 }
             }
             .sheet(isPresented: $showSuccessAlert) {
@@ -183,7 +198,7 @@ struct CreateEventFormSheet: View {
                         onCreated()
                     }
                 )
-                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appBackground)
             }
@@ -194,6 +209,26 @@ struct CreateEventFormSheet: View {
                 await loadCreationAllowance()
             }
         }
+    }
+
+    private func messageCard(_ message: String, color: Color, icon: String) -> some View {
+        HStack(spacing: theme.spacing.sm) {
+            TrashIcon(systemName: icon)
+                .foregroundColor(color)
+            Text(message)
+                .foregroundColor(theme.palette.textPrimary)
+                .font(theme.typography.caption)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(color.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(color.opacity(0.22), lineWidth: 1)
+                )
+        )
     }
 
     private func createEvent() {
@@ -208,14 +243,18 @@ struct CreateEventFormSheet: View {
 
         Task {
             do {
+                let coordinates = try await resolveEventCoordinates(
+                    location: location.trimmingCharacters(in: .whitespacesAndNewlines),
+                    userLocation: userLocation
+                )
                 let result = try await EventService.shared.createEvent(
                     title: title.trimmingCharacters(in: .whitespaces),
                     description: description,
                     category: category,
                     eventDate: eventDate,
                     location: location.trimmingCharacters(in: .whitespaces),
-                    latitude: userLocation.latitude,
-                    longitude: userLocation.longitude,
+                    latitude: coordinates.latitude,
+                    longitude: coordinates.longitude,
                     maxParticipants: maxParticipants,
                     communityId: isPersonalEvent ? nil : selectedCommunityId,
                     iconName: iconForCategory(category)
@@ -232,6 +271,34 @@ struct CreateEventFormSheet: View {
                 errorMessage = "Failed to create event: \(error.localizedDescription)"
             }
         }
+    }
+
+    private func resolveEventCoordinates(
+        location: String,
+        userLocation: UserLocation
+    ) async throws -> CLLocationCoordinate2D {
+        let geocoder = CLGeocoder()
+        let candidateQueries = [
+            location,
+            "\(location), \(userLocation.city), \(userLocation.state)",
+        ]
+
+        for query in candidateQueries {
+            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            let placemarks = try? await geocoder.geocodeAddressString(query)
+            if let coordinate = placemarks?.first?.location?.coordinate {
+                return coordinate
+            }
+        }
+
+        throw NSError(
+            domain: "CreateEventFormSheet",
+            code: -1,
+            userInfo: [
+                NSLocalizedDescriptionKey:
+                    "Couldn't find that event location. Please enter a more specific address."
+            ]
+        )
     }
 
     private func loadCreationAllowance() async {

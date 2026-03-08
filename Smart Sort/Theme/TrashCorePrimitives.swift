@@ -1,5 +1,31 @@
 import SwiftUI
 
+private struct TrashPrimaryButtonStyle: ButtonStyle {
+    let theme: TrashTheme
+    let baseColor: Color?
+    let cornerRadius: CGFloat?
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(theme.onAccentForeground)
+            .background(
+                RoundedRectangle(
+                    cornerRadius: cornerRadius ?? theme.layout.standardCardCornerRadius,
+                    style: .continuous
+                )
+                .fill(baseColor ?? theme.accents.green)
+                .shadow(
+                    color: Color.black.opacity(configuration.isPressed ? 0.08 : 0.18),
+                    radius: configuration.isPressed ? 1 : 4,
+                    x: 0,
+                    y: configuration.isPressed ? 0 : 3
+                )
+            )
+            .offset(y: configuration.isPressed ? 2 : 0)
+            .animation(theme.animations.quick, value: configuration.isPressed)
+    }
+}
+
 struct TrashCard<Content: View>: View {
     let cornerRadius: CGFloat?
     let content: Content
@@ -14,10 +40,10 @@ struct TrashCard<Content: View>: View {
         content
             .padding(theme.components.cardPadding)
             .background(
-                RoundedRectangle(cornerRadius: cornerRadius ?? theme.corners.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius ?? theme.layout.standardCardCornerRadius, style: .continuous)
                     .fill(theme.surfaceBackground)
                     .overlay(
-                        RoundedRectangle(cornerRadius: cornerRadius ?? theme.corners.medium, style: .continuous)
+                        RoundedRectangle(cornerRadius: cornerRadius ?? theme.layout.standardCardCornerRadius, style: .continuous)
                             .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                     )
                     .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
@@ -54,15 +80,16 @@ struct TrashButton<Content: View>: View {
             content
                 .font(theme.typography.button)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: theme.components.buttonHeight)
-                .padding(.horizontal, theme.spacing.sm)
+                .frame(minHeight: theme.components.buttonHeight, alignment: .center)
+                .padding(.horizontal, theme.layout.compactControlHorizontalInset)
         }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(
-            .roundedRectangle(radius: cornerRadius ?? theme.corners.medium)
+        .buttonStyle(
+            TrashPrimaryButtonStyle(
+                theme: theme,
+                baseColor: baseColor,
+                cornerRadius: cornerRadius
+            )
         )
-        .controlSize(.large)
-        .tint(baseColor ?? theme.accents.green)
         .compatibleSensoryFeedback(.impactSolid(intensity: 0.6), trigger: hapticTrigger)
     }
 }

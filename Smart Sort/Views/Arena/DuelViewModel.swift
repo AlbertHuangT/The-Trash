@@ -47,6 +47,14 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
     @Published var opponentId: UUID?
     @Published var challengerName: String?
     @Published var opponentName: String?
+    @Published private(set) var duelState: DuelStateResponse?
+    @Published private(set) var myReady = false
+    @Published private(set) var opponentReady = false
+    @Published private(set) var bothReady = false
+    @Published private(set) var myFinished = false
+    @Published private(set) var opponentFinished = false
+    @Published private(set) var opponentProgress = 0
+    @Published private(set) var opponentCorrect = 0
 
     // Results
     @Published var result: CompleteChallengeResponse?
@@ -55,6 +63,10 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
     private let arenaService = ArenaService.shared
     private let client = SupabaseManager.shared.client
     private var answerStartTime: Date?
+    private var duelStatePollingTask: Task<Void, Never>?
+    private var isLoadingQuestions = false
+    private var hasMarkedReady = false
+    private var isCompletingChallenge = false
     var imageLoadHandles: [UUID: ArenaImageLoadHandle] = [:]
     let imageLogPrefix = "Duel"
 
@@ -90,6 +102,9 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
 
     func createChallenge(opponentId: UUID) async {
         phase = .loading
+        hasMarkedReady = false
+        myFinished = false
+        opponentFinished = false
         do {
             let response = try await arenaService.createChallenge(opponentId: opponentId)
             self.challengeId = response.challengeId
@@ -106,30 +121,19 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
                 )
             }
 
-            // When opponent accepts and sends player_ready, fetch questions and get ready
-            observeOpponentReadyThenLoad()
-
+            beginStateMonitoring()
             phase = .lobby
         } catch {
             phase = .error("Failed to create challenge: \(error.localizedDescription)")
         }
     }
 
-    /// Challenger waits for opponent to accept and send ready, then fetches questions
-    private func observeOpponentReadyThenLoad() {
-        _opponentReadyCancellable = realtimeManager.$opponentReady
-            .filter { $0 }
-            .first()
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    await self?.loadQuestionsAndSendReady()
-                }
-            }
-    }
-
-    /// Challenger fetches questions after opponent accepts, preloads images, and sends ready
-    private func loadQuestionsAndSendReady() async {
+    private func loadQuestionsAndMarkReady() async {
         guard let cid = challengeId else { return }
+        guard !isLoadingQuestions else { return }
+        isLoadingQuestions = true
+        defer { isLoadingQuestions = false }
+
         do {
             let response = try await arenaService.getChallengeQuestions(challengeId: cid)
             self.questions = response.questions
@@ -137,8 +141,7 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
             self.opponentId = response.opponentId
 
             _ = await primeArenaImages(for: response.questions)
-            await realtimeManager.sendReady()
-            observeBothReady()
+            await markReady()
         } catch {
             phase = .error("Failed to load questions: \(error.localizedDescription)")
         }
@@ -149,6 +152,9 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
     func acceptChallenge(challengeId: UUID) async {
         phase = .loading
         self.challengeId = challengeId
+        hasMarkedReady = false
+        myFinished = false
+        opponentFinished = false
 
         do {
             let response = try await arenaService.acceptChallenge(challengeId: challengeId)
@@ -168,10 +174,8 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
             }
 
             _ = await primeArenaImages(for: response.questions)
-            await realtimeManager.sendReady()
-
-            // Watch for both ready
-            observeBothReady()
+            await markReady()
+            beginStateMonitoring()
 
             phase = .lobby
         } catch {
@@ -184,6 +188,9 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
     func joinAsChallenger(challengeId: UUID) async {
         phase = .loading
         self.challengeId = challengeId
+        hasMarkedReady = false
+        myFinished = false
+        opponentFinished = false
 
         do {
             let response = try await arenaService.getChallengeQuestions(challengeId: challengeId)
@@ -202,9 +209,8 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
             }
 
             _ = await primeArenaImages(for: response.questions)
-            await realtimeManager.sendReady()
-
-            observeBothReady()
+            await markReady()
+            beginStateMonitoring()
 
             phase = .lobby
         } catch {
@@ -212,29 +218,94 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
         }
     }
 
-    private func observeBothReady() {
-        // Watch for both ready to trigger countdown
-        let cancellable = realtimeManager.$bothReady
-            .filter { $0 }
-            .first()
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.startCountdown()
-                }
+    private var countdownTask: Task<Void, Never>?
+
+    private func beginStateMonitoring() {
+        duelStatePollingTask?.cancel()
+        duelStatePollingTask = Task { [weak self] in
+            while let self, !Task.isCancelled {
+                await self.refreshDuelState()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
-        // Keep reference alive
-        _bothReadyCancellable = cancellable
+        }
     }
 
-    private var _bothReadyCancellable: AnyCancellable?
-    private var _opponentReadyCancellable: AnyCancellable?
-    private var _opponentFinishedCancellable: AnyCancellable?
-    private var countdownTask: Task<Void, Never>?
-    private var finalizeRetryTask: Task<Void, Never>?
+    private func refreshDuelState() async {
+        guard let cid = challengeId else { return }
+
+        do {
+            let state = try await arenaService.getDuelState(challengeId: cid)
+            await applyDuelState(state)
+        } catch {
+            if case .results = phase {
+                return
+            }
+            if case .error = phase {
+                return
+            }
+            phase = .error("Failed to sync duel state: \(error.localizedDescription)")
+        }
+    }
+
+    private func applyDuelState(_ state: DuelStateResponse) async {
+        duelState = state
+        myReady = isChallenger ? state.challengerReady : state.opponentReady
+        opponentReady = isChallenger ? state.opponentReady : state.challengerReady
+        bothReady = state.bothReady
+        myFinished = isChallenger ? state.challengerFinished : state.opponentFinished
+        opponentFinished = isChallenger ? state.opponentFinished : state.challengerFinished
+        opponentProgress = isChallenger ? state.opponentProgress : state.challengerProgress
+        opponentCorrect = isChallenger ? state.opponentCorrect : state.challengerCorrect
+
+        if let stateStartedAt = state.startedAt, !stateStartedAt.isEmpty, case .lobby = phase, bothReady {
+            startCountdown()
+        }
+
+        if state.status == "accepted" || state.status == "in_progress" {
+            if isChallenger && questions.isEmpty {
+                await loadQuestionsAndMarkReady()
+                return
+            }
+
+            if !questions.isEmpty && !hasMarkedReady {
+                await markReady()
+                return
+            }
+        }
+
+        if state.status == "completed" {
+            await completeChallengeIfNeeded()
+            return
+        }
+
+        if state.status == "expired" {
+            phase = .error("Challenge has expired.")
+            return
+        }
+
+        if case .waitingResult = phase, myFinished {
+            await completeChallengeIfNeeded()
+        }
+    }
+
+    private func markReady() async {
+        guard let cid = challengeId else { return }
+        guard !hasMarkedReady else { return }
+
+        do {
+            let state = try await arenaService.markDuelReady(challengeId: cid)
+            hasMarkedReady = true
+            await realtimeManager.sendReady()
+            await applyDuelState(state)
+        } catch {
+            phase = .error("Failed to mark duel ready: \(error.localizedDescription)")
+        }
+    }
 
     // MARK: - Countdown
 
     private func startCountdown() {
+        guard case .lobby = phase else { return }
         countdownTask?.cancel()
         phase = .countdown
         countdownValue = 3
@@ -301,8 +372,7 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
             answerStartTime = Date()
 
             if currentQuestionIndex + 1 >= questions.count {
-                // Done answering
-                await realtimeManager.sendFinished(totalCorrect: correctCount, totalScore: myScore)
+                myFinished = true
                 await beginResultFinalization()
             } else {
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -319,63 +389,33 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
 
     private func beginResultFinalization() async {
         phase = .waitingResult
-
-        if realtimeManager.opponentFinished {
-            await completeChallengeWithRetry()
-            return
-        }
-
-        _opponentFinishedCancellable?.cancel()
-        _opponentFinishedCancellable = realtimeManager.$opponentFinished
-            .removeDuplicates()
-            .filter { $0 }
-            .first()
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    await self?.completeChallengeWithRetry()
-                }
-            }
-
-        finalizeRetryTask?.cancel()
-        finalizeRetryTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 20_000_000_000)
-            guard let self else { return }
-            guard case .waitingResult = self.phase else { return }
-            await self.completeChallengeWithRetry(
-                maxAttempts: 45, retryDelayNanoseconds: 1_000_000_000)
-        }
+        await completeChallengeIfNeeded()
     }
 
-    private func completeChallengeWithRetry(
-        maxAttempts: Int = 30, retryDelayNanoseconds: UInt64 = 1_200_000_000
-    ) async {
+    private func completeChallengeIfNeeded() async {
         guard let cid = challengeId else { return }
+        guard !isCompletingChallenge else { return }
+        isCompletingChallenge = true
+        defer { isCompletingChallenge = false }
 
-        for attempt in 0..<maxAttempts {
-            do {
-                let response = try await arenaService.completeChallenge(challengeId: cid)
+        do {
+            let response = try await arenaService.completeChallenge(challengeId: cid)
+            switch response.status {
+            case "completed":
                 self.result = response
                 phase = .results
-                return
-            } catch {
-                let isRetryable = isCompletionPendingError(error)
-                let hasMoreAttempts = attempt < (maxAttempts - 1)
-
-                if isRetryable && hasMoreAttempts {
-                    try? await Task.sleep(nanoseconds: retryDelayNanoseconds)
-                    continue
-                }
-
-                phase = .error("Failed to complete challenge: \(error.localizedDescription)")
-                return
+            case "waiting_for_opponent":
+                phase = .waitingResult
+            case "expired":
+                phase = .error(response.message ?? "Challenge has expired.")
+            case "inactive":
+                phase = .error(response.message ?? "Challenge is no longer active.")
+            default:
+                phase = .waitingResult
             }
+        } catch {
+            phase = .error("Failed to complete challenge: \(error.localizedDescription)")
         }
-    }
-
-    private func isCompletionPendingError(_ error: Error) -> Bool {
-        let message = error.localizedDescription.lowercased()
-        return message.contains("not complete yet") || message.contains("not ready for completion")
-            || message.contains("challenge is not active")
     }
 
     // MARK: - Cleanup
@@ -383,10 +423,7 @@ class DuelViewModel: ObservableObject, ArenaImageManaging {
     func cleanup() async {
         cancelArenaImageLoads()
         countdownTask?.cancel()
-        finalizeRetryTask?.cancel()
-        _bothReadyCancellable?.cancel()
-        _opponentReadyCancellable?.cancel()
-        _opponentFinishedCancellable?.cancel()
+        duelStatePollingTask?.cancel()
         await realtimeManager.disconnect()
     }
 

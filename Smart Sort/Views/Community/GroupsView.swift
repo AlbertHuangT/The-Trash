@@ -30,6 +30,7 @@ struct GroupsView: View {
     @State private var showLocationPicker = false
     @State private var showCreateEventSheet = false
     @State private var showCreateCommunitySheet = false
+    @State private var showSecondaryControls = false
     private let theme = TrashTheme()
 
     var body: some View {
@@ -39,6 +40,10 @@ struct GroupsView: View {
             } else {
                 controlBar
 
+                if showSecondaryControls {
+                    secondaryControls
+                }
+
                 switch selectedSection {
                 case .nearby:
                     nearbyCommunitiesContent
@@ -47,6 +52,7 @@ struct GroupsView: View {
                 }
             }
         }
+        .trashScreenBackground()
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerSheet(isPresented: $showLocationPicker)
         }
@@ -70,57 +76,61 @@ struct GroupsView: View {
 
     // MARK: - Control Bar
     private var controlBar: some View {
-        HStack {
-            // Location Button
-            TrashButton(
-                baseColor: theme.accents.blue.opacity(0.15),
-                cornerRadius: theme.corners.medium,
-                action: { showLocationPicker = true }
-            ) {
-                HStack(spacing: 6) {
+        HStack(spacing: theme.layout.elementSpacing) {
+            Button {
+                showLocationPicker = true
+            } label: {
+                HStack(spacing: theme.spacing.xs + 2) {
                     TrashIcon(
                         systemName: userSettings.selectedLocation == nil
                             ? "location.slash" : "location.fill"
                     )
-                    .font(.caption)
-                    Text(userSettings.selectedLocation?.city ?? "Select Location")
+                    .foregroundColor(theme.accents.blue)
+
+                    Text(userSettings.selectedLocation?.displayName ?? "Select your city")
                         .font(theme.typography.subheadline)
-                        .fontWeight(.bold)
+                        .foregroundColor(theme.palette.textPrimary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
                         .truncationMode(.tail)
+
+                    TrashIcon(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(theme.palette.textSecondary.opacity(0.8))
                 }
+                .frame(maxWidth: .infinity, minHeight: theme.components.minimumHitTarget, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                withAnimation(theme.animations.standard) {
+                    showSecondaryControls.toggle()
+                }
+            } label: {
+                HStack(spacing: theme.spacing.xs) {
+                    TrashIcon(systemName: "slider.horizontal.3")
+                    Text(showSecondaryControls ? "Hide" : "Filters")
+                }
+                .font(theme.typography.caption.weight(.semibold))
                 .foregroundColor(theme.accents.blue)
+                .frame(minWidth: theme.components.minimumHitTarget, minHeight: theme.components.minimumHitTarget)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer()
-
-            // Toggle chip (Nearby / Joined)
-            TrashButton(
-                baseColor: selectedSection == .joined ? theme.accents.green : nil,
-                cornerRadius: theme.corners.medium,
-                action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedSection = (selectedSection == .nearby) ? .joined : .nearby
-                    }
-                }
-            ) {
-                HStack(spacing: 4) {
-                    TrashIcon(systemName: selectedSection == .joined ? "person.3.fill" : "globe")
-                        .font(.caption)
-                    Text(selectedSection == .joined ? "Joined" : "Nearby")
-                        .font(.caption.bold())
-                }
-                .foregroundColor(
-                    selectedSection == .joined
-                        ? theme.onAccentForeground : theme.palette.textSecondary
-                )
-            }
-            .fixedSize()
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.vertical, theme.spacing.sm)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.top, theme.layout.elementSpacing)
+        .padding(.bottom, theme.spacing.xs)
+    }
+
+    private var secondaryControls: some View {
+        TrashSegmentedControl(
+            options: CommunityTabSection.allCases.map {
+                TrashSegmentOption(value: $0, title: $0.rawValue, icon: $0.icon)
+            },
+            selection: $selectedSection
+        )
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.bottom, theme.layout.elementSpacing)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - Nearby Communities Content
@@ -146,9 +156,9 @@ struct GroupsView: View {
     }
 
     private var noLocationView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             Spacer()
-            paperBadge(icon: "location.slash.fill", size: 120, iconColor: theme.accents.blue)
+            paperBadge(icon: "location.slash.fill", size: 104, iconColor: theme.accents.blue)
             Text("No Location Set")
                 .font(theme.typography.headline)
                 .foregroundColor(theme.palette.textPrimary)
@@ -169,10 +179,10 @@ struct GroupsView: View {
     }
 
     private var emptyNearbyView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             Spacer()
             paperBadge(
-                icon: "building.2.crop.circle", size: 110, iconColor: theme.palette.textSecondary)
+                icon: "building.2.crop.circle", size: 96, iconColor: theme.palette.textSecondary)
             Text("No Communities Yet").font(theme.typography.headline)
             Spacer()
         }
@@ -186,8 +196,8 @@ struct GroupsView: View {
                         community: community, onCreateEvent: { showCreateEventSheet = true })
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.elementSpacing)
         }
         .refreshable {
             if let location = userSettings.selectedLocation {
@@ -211,9 +221,9 @@ struct GroupsView: View {
     }
 
     private var emptyJoinedView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             Spacer()
-            paperBadge(icon: "person.3.fill", size: 110, iconColor: theme.palette.textSecondary)
+            paperBadge(icon: "person.3.fill", size: 96, iconColor: theme.palette.textSecondary)
             Text("No Communities Joined").font(theme.typography.headline)
             TrashButton(baseColor: theme.accents.blue, action: { selectedSection = .nearby }) {
                 Text("Browse Nearby")
@@ -230,8 +240,8 @@ struct GroupsView: View {
                         community: community, onCreateEvent: { showCreateEventSheet = true })
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.elementSpacing)
         }
         .refreshable {
             await userSettings.loadMyCommunities()
@@ -242,7 +252,7 @@ struct GroupsView: View {
     private var anonymousRestrictionView: some View {
         VStack(spacing: 24) {
             Spacer()
-            paperBadge(icon: "lock.shield.fill", size: 120, iconColor: theme.accents.blue)
+            paperBadge(icon: "lock.shield.fill", size: 104, iconColor: theme.accents.blue)
             Text("Access Restricted").font(theme.typography.headline)
             Text("Please link your account to join communities.").multilineTextAlignment(.center)
                 .padding(.horizontal, 32).foregroundColor(theme.palette.textSecondary)

@@ -29,31 +29,29 @@ struct AccountView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        if let error = profileVM.errorMessage {
-                            errorBanner(error)
-                        }
-
-                        profileHeroCard
-
-                        if authVM.isAnonymous {
-                            guestUpgradeCard
-                        } else {
-                            statusOverviewSection
-                            accountDestinationsSection
-                        }
-
-                        supportSection
-                        signOutSection
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    if let error = profileVM.errorMessage {
+                        errorBanner(error)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 28)
+
+                    profileHeroCard
+
+                    if authVM.isAnonymous {
+                        guestUpgradeCard
+                    } else {
+                        statusOverviewSection
+                        accountDestinationsSection
+                    }
+
+                    supportSection
+                    signOutSection
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .overlay {
@@ -108,7 +106,7 @@ struct AccountView: View {
                         showEditNameAlert = false
                     }
                 )
-                .presentationDetents([.fraction(0.34), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appearance.sheetBackground)
             }
@@ -117,7 +115,7 @@ struct AccountView: View {
     }
 
     private var profileHeroCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
             HStack(alignment: .top, spacing: 16) {
                 Circle()
                     .fill(theme.cardBackground)
@@ -149,25 +147,15 @@ struct AccountView: View {
                 Spacer(minLength: 0)
 
                 if !authVM.isAnonymous {
-                    Button {
+                    TrashIconButton(icon: "pencil") {
                         newNameInput = profileVM.username
                         showEditNameAlert = true
-                    } label: {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(theme.palette.textPrimary)
-                            .frame(
-                                width: theme.components.minimumHitTarget,
-                                height: theme.components.minimumHitTarget
-                            )
-                            .background(theme.surfaceBackground, in: Circle())
                     }
-                    .buttonStyle(.plain)
                     .accessibilityLabel("Edit Username")
                 }
             }
 
-            Text(authVM.isAnonymous ? "Link an account to keep your credits and community progress across devices." : "Your profile, progress, and account tools live here.")
+            Text(authVM.isAnonymous ? "Link an account to start earning Verify rewards and keep your community progress across devices." : "Your profile, progress, and account tools live here.")
                 .font(.footnote)
                 .foregroundColor(theme.palette.textSecondary)
         }
@@ -176,10 +164,10 @@ struct AccountView: View {
     }
 
     private var statusOverviewSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             sectionTitle("Overview")
 
-            HStack(spacing: 12) {
+            HStack(spacing: theme.layout.elementSpacing) {
                 summaryCard(
                     title: "Credits",
                     value: "\(profileVM.credits)",
@@ -202,11 +190,11 @@ struct AccountView: View {
     }
 
     private var guestUpgradeCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             sectionTitle("Save Your Progress")
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: theme.spacing.sm + 2) {
+                HStack(spacing: theme.layout.elementSpacing) {
                     Image(systemName: "link.circle.fill")
                         .font(.title2)
                         .foregroundColor(theme.accents.blue)
@@ -214,7 +202,7 @@ struct AccountView: View {
                         Text("Link an account")
                             .font(.headline)
                             .foregroundColor(theme.palette.textPrimary)
-                        Text("Protect your credits and pick up where you left off.")
+                        Text("Link an account before you start earning Verify rewards, and pick up where you left off.")
                             .font(.footnote)
                             .foregroundColor(theme.palette.textSecondary)
                     }
@@ -233,7 +221,7 @@ struct AccountView: View {
     }
 
     private var accountDestinationsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             sectionTitle("Progress")
 
             VStack(spacing: 0) {
@@ -270,7 +258,7 @@ struct AccountView: View {
     }
 
     private var supportSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             sectionTitle("Tools & Support")
 
             VStack(spacing: 0) {
@@ -309,7 +297,7 @@ struct AccountView: View {
     }
 
     private var signOutSection: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: theme.layout.elementSpacing) {
             TrashButton(baseColor: theme.semanticDanger, action: {
                 Task { await authVM.signOut() }
             }) {
@@ -322,14 +310,14 @@ struct AccountView: View {
             }
 
             Text("Smart Sort • Version 1.0.0")
-                .font(.caption)
+                .font(theme.typography.caption)
                 .foregroundColor(theme.palette.textSecondary)
         }
-        .padding(.top, 6)
+        .padding(.top, theme.spacing.xs + 2)
     }
 
     private func errorBanner(_ error: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: theme.spacing.sm + 2) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.orange)
             Text(error)
@@ -345,7 +333,7 @@ struct AccountView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(12)
+        .padding(theme.components.cardPadding)
         .background(sectionBackground)
     }
 
@@ -356,7 +344,7 @@ struct AccountView: View {
         icon: String,
         color: Color
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(color)
@@ -396,7 +384,7 @@ struct AccountView: View {
         destination: Destination
     ) -> some View {
         NavigationLink(destination: destination) {
-            HStack(spacing: 14) {
+            HStack(spacing: theme.layout.rowContentSpacing) {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(color)
@@ -421,8 +409,8 @@ struct AccountView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundColor(theme.palette.textSecondary.opacity(0.55))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, theme.components.cardPadding)
+            .padding(.vertical, theme.spacing.sm)
             .frame(minHeight: theme.components.rowHeight)
         }
         .buttonStyle(.plain)
@@ -438,15 +426,7 @@ struct AccountView: View {
     }
 
     private func labelPill(title: String, color: Color) -> some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundColor(color)
-            .padding(.horizontal, 14)
-            .frame(minHeight: theme.components.pillHeight)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(color.opacity(0.12))
-            )
+        TrashPill(title: title, color: color, isSelected: false)
     }
 
     private var sectionBackground: some View {

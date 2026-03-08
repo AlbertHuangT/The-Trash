@@ -19,11 +19,15 @@ struct CommunityResponse: Codable, Identifiable, Hashable {
     let latitude: Double?
     let longitude: Double?
     let isMember: Bool?
+    let membershipStatus: MembershipStatus?
+    let isAdmin: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, name, city, state, description, latitude, longitude
         case memberCount = "member_count"
         case isMember = "is_member"
+        case membershipStatus = "membership_status"
+        case isAdmin = "is_admin"
     }
 }
 
@@ -594,8 +598,8 @@ struct Community: Identifiable, Hashable, Codable {
         self.memberCount = response.memberCount
         self.latitude = response.latitude ?? 0
         self.longitude = response.longitude ?? 0
-        self.isMember = response.isMember ?? false
-        self.isAdmin = false
+        self.isMember = response.membershipStatus == .member || response.membershipStatus == .admin || response.isMember == true
+        self.isAdmin = response.membershipStatus == .admin || response.isAdmin == true
     }
 
     init(id: String, name: String, city: String, state: String, description: String, memberCount: Int, latitude: Double, longitude: Double, isMember: Bool = false, isAdmin: Bool = false) {
@@ -618,4 +622,5 @@ enum MembershipStatus: String, Codable {
     case none = "none"
     case pending = "pending"
     case member = "member"
+    case admin = "admin"
 }

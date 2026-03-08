@@ -32,6 +32,7 @@ class TrashViewModel: ObservableObject {
     @Published var appState: AppState = .idle
     @Published private(set) var classifierPreparationState: ClassifierPreparationState = .idle
     @Published private(set) var currentPhotoModeration = PhotoModerationResult()
+    @Published private(set) var currentScanID: UUID?
     
     private let classifier: TrashClassifierService
     private let client = SupabaseManager.shared.client
@@ -91,15 +92,22 @@ class TrashViewModel: ObservableObject {
             return
         }
 
-        if !classifier.isReady {
-            Task {
-                await prepareClassifier()
-            }
-        }
-        
         self.appState = .analyzing
+        self.currentScanID = UUID()
 
         Task {
+            if !self.classifier.isReady {
+                await self.prepareClassifier()
+            }
+
+            guard self.classifier.isReady else {
+                let message =
+                    self.classifier.initializationError
+                    ?? "AI is still preparing. Please try again in a moment."
+                self.appState = .error(message)
+                return
+            }
+
             let moderation = await photoModerationService.evaluate(image)
             self.currentPhotoModeration = moderation
 
@@ -152,7 +160,7 @@ class TrashViewModel: ObservableObject {
             }
         }
 
-        grantPoints(amount: 10)
+        awardVerifyReward(kind: .confirmed)
         self.reset()
     }
     
@@ -198,7 +206,7 @@ class TrashViewModel: ObservableObject {
                 userId: client.auth.currentUser?.id
             )
             LogManager.shared.log("Report uploaded successfully", level: .info, category: "Feedback")
-            grantPoints(amount: 20)
+            awardVerifyReward(kind: .correction)
             // Reset after a successful submission
             self.reset()
         } catch {
@@ -215,21 +223,26 @@ class TrashViewModel: ObservableObject {
     
     func reset() {
         currentPhotoModeration = PhotoModerationResult()
+        currentScanID = nil
         self.appState = .idle
     }
     
     // MARK: - Gamification
     
-    func grantPoints(amount: Int) {
+    private func awardVerifyReward(kind: VerifyRewardKind) {
         guard let user = client.auth.currentUser else { return }
+        guard let scanID = currentScanID else { return }
         let isAnonymous = (user.email == nil || user.email?.isEmpty == true) &&
                           (user.phone == nil || user.phone?.isEmpty == true)
         guard !isAnonymous else { return }
 
         Task {
             do {
-                try await gamificationService.awardVerifyCredits(amount)
-                LogManager.shared.log("Points granted: \(amount)", level: .info, category: "Gamification")
+                let response = try await gamificationService.awardVerifyReward(scanId: scanID, kind: kind)
+                let logMessage = response.awarded
+                    ? "Verify reward granted: \(response.creditsAwarded)"
+                    : "Verify reward skipped: \(response.reason ?? "unknown")"
+                LogManager.shared.log(logMessage, level: .info, category: "Gamification")
             } catch {
                 LogManager.shared.log("Gamification error: \(error)", level: .error, category: "Gamification")
             }

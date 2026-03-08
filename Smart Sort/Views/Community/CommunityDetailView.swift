@@ -29,14 +29,20 @@ struct CommunityDetailView: View {
         userSettings.isPending(of: community)
     }
 
+    var currentCommunity: Community {
+        userSettings.joinedCommunities.first(where: { $0.id == community.id })
+            ?? userSettings.communitiesInCity.first(where: { $0.id == community.id })
+            ?? community
+    }
+
     var isAdmin: Bool {
-        community.isAdmin
+        userSettings.isAdmin(of: currentCommunity)
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: theme.spacing.md) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: theme.layout.sectionSpacing) {
                     headerSection
                     descriptionSection
                     if isAdmin {
@@ -45,10 +51,11 @@ struct CommunityDetailView: View {
                     statsSection
                     eventsSection
                 }
-                .padding(.top, theme.spacing.sm + 4)
-                .padding(.bottom, theme.spacing.xl)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
-            .navigationTitle(community.name)
+            .trashScreenBackground()
+            .navigationTitle(currentCommunity.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -77,7 +84,7 @@ struct CommunityDetailView: View {
                         "Your request to join has been submitted. An admin will review it shortly.",
                     onClose: { showApprovalAlert = false }
                 )
-                .presentationDetents([.fraction(0.3), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
         }
@@ -88,7 +95,7 @@ struct CommunityDetailView: View {
     // MARK: - Header Section
 
     private var headerSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: theme.layout.elementSpacing) {
             ZStack {
                 Circle()
                     .fill(
@@ -98,33 +105,33 @@ struct CommunityDetailView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 96, height: 96)
+                    .frame(width: 84, height: 84)
 
                 TrashIcon(systemName: "person.3.fill")
-                    .font(.system(size: 40))
+                    .font(.system(size: 34))
                     .trashOnAccentForeground()
             }
             .shadow(color: theme.accents.blue.opacity(0.3), radius: 10, x: 0, y: 5)
 
-            Text(community.name)
+            Text(currentCommunity.name)
                 .font(theme.typography.title)
                 .foregroundColor(theme.palette.textPrimary)
 
             HStack(spacing: 6) {
                 TrashIcon(systemName: "mappin.circle.fill")
                     .foregroundColor(theme.palette.textSecondary)
-                Text(community.fullLocation)
+                Text(currentCommunity.fullLocation)
                     .foregroundColor(theme.palette.textSecondary)
             }
             .font(theme.typography.subheadline)
 
             joinButton
         }
-        .padding(.vertical, theme.spacing.lg + 2)
-        .padding(.horizontal, theme.spacing.lg - 2)
+        .padding(.vertical, theme.components.cardPadding)
+        .padding(.horizontal, theme.components.cardPadding)
         .frame(maxWidth: .infinity)
         .surfaceCard(cornerRadius: theme.corners.large)
-        .padding(.horizontal, theme.components.contentInset)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 
     private var joinButton: some View {
@@ -146,7 +153,7 @@ struct CommunityDetailView: View {
                 }
             }
         ) {
-            HStack {
+            HStack(spacing: theme.spacing.sm) {
                 if userSettings.isLoadingCommunities {
                     ProgressView()
                         .scaleEffect(0.8)
@@ -156,22 +163,22 @@ struct CommunityDetailView: View {
                 }
                 Text(isPending ? "Pending Approval" : (isMember ? "Joined" : "Join Community"))
             }
-            .font(theme.typography.headline)
+            .font(theme.typography.button)
+            .fontWeight(.semibold)
             .foregroundColor(isPending ? theme.semanticWarning : (isMember ? theme.accents.green : theme.onAccentForeground))
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, theme.spacing.xxl)
         .padding(.top, theme.spacing.sm)
     }
 
     // MARK: - Description Section
 
     private var descriptionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             sectionHeader("About")
 
             Text(
-                community.description.isEmpty ? "No description available." : community.description
+                currentCommunity.description.isEmpty ? "No description available." : currentCommunity.description
             )
             .font(theme.typography.body)
             .foregroundColor(theme.palette.textSecondary)
@@ -179,43 +186,38 @@ struct CommunityDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(theme.components.cardPadding)
         .surfaceCard(cornerRadius: theme.corners.medium)
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.top, theme.spacing.md)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 
     // MARK: - Stats Section
 
     private var statsSection: some View {
-        HStack(spacing: 0) {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 92), spacing: theme.layout.elementSpacing)],
+            spacing: theme.layout.elementSpacing
+        ) {
             StatItem(
-                value: "\(community.memberCount)", label: "Members", icon: "person.2.fill",
+                value: "\(currentCommunity.memberCount)", label: "Members", icon: "person.2.fill",
                 color: theme.accents.blue)
-
-            Divider()
-                .frame(height: 40)
 
             StatItem(
                 value: "\(viewModel.upcomingEvents.count)", label: "Upcoming", icon: "calendar",
                 color: theme.accents.green)
 
-            Divider()
-                .frame(height: 40)
-
             StatItem(
                 value: "\(viewModel.pastEvents.count)", label: "Past",
                 icon: "clock.arrow.circlepath", color: theme.accents.orange)
         }
-        .padding(.vertical, theme.spacing.md)
+        .padding(theme.components.cardPadding)
         .frame(maxWidth: .infinity)
         .surfaceCard(cornerRadius: theme.corners.medium)
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.top, theme.spacing.sm + 4)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 
     // MARK: - Events Section
 
     private var eventsSection: some View {
-        VStack(spacing: theme.spacing.md) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             // Upcoming Events
             if !viewModel.upcomingEvents.isEmpty {
                 eventListSection(
@@ -240,15 +242,15 @@ struct CommunityDetailView: View {
                 loadingView
             }
         }
-        .padding(.top, theme.spacing.sm)
+        .padding(.top, theme.spacing.xs)
     }
 
     private func eventListSection(title: String, events: [CommunityEvent], iconColor: Color)
         -> some View
     {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             sectionHeader(title)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, theme.layout.screenInset)
 
             LazyVStack(spacing: theme.spacing.sm + 4) {
                 ForEach(events) { event in
@@ -261,7 +263,7 @@ struct CommunityDetailView: View {
                     }
                 }
             }
-            .padding(.horizontal, theme.components.contentInset)
+            .padding(.horizontal, theme.layout.screenInset)
         }
     }
 
@@ -283,7 +285,7 @@ struct CommunityDetailView: View {
         .padding(.vertical, 40)
         .frame(maxWidth: .infinity)
         .surfaceCard(cornerRadius: theme.corners.medium)
-        .padding(.horizontal, theme.components.contentInset)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 
     private var loadingView: some View {
@@ -313,11 +315,12 @@ struct CommunityDetailView: View {
         ) {
             HStack(spacing: 12) {
                 TrashIcon(systemName: "gearshape.fill")
-                    .font(.title3)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundColor(theme.semanticWarning)
 
                 Text("Admin Dashboard")
-                    .font(theme.typography.headline)
+                    .font(theme.typography.button)
+                    .fontWeight(.semibold)
                     .foregroundColor(theme.palette.textPrimary)
 
                 Spacer()
@@ -327,8 +330,7 @@ struct CommunityDetailView: View {
                     .foregroundColor(theme.palette.textSecondary)
             }
         }
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.top, theme.spacing.sm + 4)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 }
 
@@ -342,21 +344,28 @@ private struct StatItem: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: theme.spacing.sm) {
             HStack(spacing: 4) {
                 TrashIcon(systemName: icon)
                     .font(theme.typography.caption)
                     .foregroundColor(color)
                 Text(value)
-                    .font(theme.typography.headline)
+                    .font(theme.typography.subheadline)
                     .fontWeight(.bold)
                     .foregroundColor(theme.palette.textPrimary)
             }
             Text(label)
                 .font(theme.typography.caption)
                 .foregroundColor(theme.palette.textSecondary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
+        .frame(minHeight: 68)
+        .padding(.vertical, theme.spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.palette.card.opacity(0.32))
+        )
     }
 }
 
@@ -379,39 +388,36 @@ private struct CommunityEventCard: View {
 
     var body: some View {
         TrashTapArea(action: onTap) {
-            VStack(alignment: .leading, spacing: theme.spacing.sm + 2) {
-                HStack(spacing: theme.spacing.sm + 4) {
-                    // Category Icon
+            VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                HStack(spacing: theme.layout.rowContentSpacing) {
                     ZStack {
                         Circle()
                             .fill(event.category.color.opacity(isPast ? 0.1 : 0.15))
-                            .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
+                            .frame(
+                                width: theme.components.minimumHitTarget,
+                                height: theme.components.minimumHitTarget
+                            )
                         TrashIcon(systemName: event.imageSystemName)
                             .font(.system(size: 18))
-                            .foregroundColor(isPast ? theme.palette.textSecondary : event.category.color)
+                            .foregroundColor(
+                                isPast ? theme.palette.textSecondary : event.category.color
+                            )
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(event.category.rawValue)
-                                .font(theme.typography.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(isPast ? theme.palette.textSecondary : theme.palette.textPrimary)
-                                .padding(.horizontal, 8)
-                                .frame(minHeight: 28)
-                                .background(
-                                    (isPast ? theme.palette.textSecondary : event.category.color).opacity(0.15)
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
+                            TrashPill(
+                                title: event.category.rawValue.capitalized,
+                                color: isPast ? theme.palette.textSecondary : event.category.color,
+                                isSelected: false
+                            )
 
                             if isPast {
-                                Text("Past")
-                                    .font(.caption2)
-                                    .foregroundColor(theme.semanticWarning)
-                                    .padding(.horizontal, 6)
-                                    .frame(minHeight: 24)
-                                    .background(theme.semanticWarning.opacity(0.14))
-                                    .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
+                                TrashPill(
+                                    title: "Past",
+                                    color: theme.semanticWarning,
+                                    isSelected: false
+                                )
                             }
 
                             Spacer()
@@ -428,21 +434,30 @@ private struct CommunityEventCard: View {
                             .foregroundColor(
                                 isPast ? theme.palette.textSecondary : theme.palette.textPrimary
                             )
-                            .lineLimit(1)
+                            .lineLimit(2)
                     }
                 }
 
-                HStack(spacing: theme.spacing.md) {
+                HStack(spacing: theme.layout.rowContentSpacing) {
                     TrashLabel(dateFormatter.string(from: event.date), icon: "calendar")
                     Spacer()
                     TrashLabel(
-                        "\(event.participantCount)/\(event.maxParticipants)", icon: "person.2.fill")
+                        "\(event.participantCount)/\(event.maxParticipants)",
+                        icon: "person.2.fill"
+                    )
                 }
                 .font(theme.typography.caption)
                 .foregroundColor(theme.palette.textSecondary)
             }
             .padding(theme.components.cardPadding)
-            .surfaceCard(cornerRadius: theme.corners.medium)
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
+            )
         }
         .opacity(isPast ? 0.7 : 1)
     }
@@ -548,29 +563,28 @@ struct EventDetailSheetForCommunity: View {
     }
 
     private var isPast: Bool {
-        event.date < Date()
+        currentEvent.date < Date()
     }
 
     var body: some View {
         NavigationView {
             ZStack {
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: theme.spacing.lg) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                         ZStack {
                             LinearGradient(
-                                colors: [event.category.color.opacity(0.8), event.category.color],
+                                colors: [currentEvent.category.color.opacity(0.8), currentEvent.category.color],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
-                            .frame(height: 180)
+                            .frame(height: 156)
 
-                            VStack(spacing: theme.spacing.sm + 4) {
-                                TrashIcon(systemName: event.imageSystemName)
-                                    .font(.system(size: 50))
+                            VStack(spacing: theme.layout.elementSpacing) {
+                                TrashIcon(systemName: currentEvent.imageSystemName)
+                                    .font(.system(size: 40))
                                     .trashOnAccentForeground()
-                                Text(event.category.rawValue)
-                                    .font(theme.typography.headline)
+                                Text(currentEvent.category.rawValue.capitalized)
+                                    .font(theme.typography.subheadline)
                                     .foregroundColor(theme.onAccentForeground.opacity(0.9))
 
                                 if isPast {
@@ -581,54 +595,60 @@ struct EventDetailSheetForCommunity: View {
                             }
                         }
                         .clipShape(RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous))
-                        .padding(.horizontal, theme.components.contentInset)
+                        .padding(.horizontal, theme.layout.screenInset)
 
-                        VStack(alignment: .leading, spacing: theme.spacing.xs + 2) {
-                            Text(event.title)
+                        VStack(alignment: .leading, spacing: theme.spacing.sm) {
+                            Text(currentEvent.title)
                                 .font(theme.typography.title)
                                 .foregroundColor(theme.palette.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
 
                             HStack {
                                 TrashIcon(systemName: "building.2.fill")
                                     .foregroundColor(theme.palette.textSecondary)
-                                Text(event.organizer)
+                                Text(currentEvent.organizer)
                                     .foregroundColor(theme.palette.textSecondary)
                             }
                             .font(theme.typography.subheadline)
                         }
-                        .padding(.horizontal, theme.components.contentInset)
+                        .padding(.horizontal, theme.layout.screenInset)
 
-                        VStack(spacing: theme.spacing.sm + 4) {
+                        VStack(spacing: theme.layout.elementSpacing) {
                             InfoRowForCommunity(
                                 icon: "calendar", title: "Date & Time",
-                                value: dateFormatter.string(from: event.date))
+                                value: dateFormatter.string(from: currentEvent.date))
                             InfoRowForCommunity(
-                                icon: "mappin.circle.fill", title: "Location", value: event.location
+                                icon: "mappin.circle.fill", title: "Location", value: currentEvent.location
                             )
                             InfoRowForCommunity(
                                 icon: "person.2.fill", title: "Participants",
-                                value: "\(event.participantCount) / \(event.maxParticipants)")
+                                value: "\(currentEvent.participantCount) / \(currentEvent.maxParticipants)")
                         }
-                        .padding(.horizontal, theme.components.contentInset)
+                        .padding(.horizontal, theme.layout.screenInset)
 
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
                             Text("About")
-                                .font(theme.typography.headline)
+                                .font(theme.typography.subheadline)
+                                .fontWeight(.bold)
                                 .foregroundColor(theme.palette.textPrimary)
                             Text(
-                                event.description.isEmpty
-                                    ? "No description available." : event.description
+                                currentEvent.description.isEmpty
+                                    ? "No description available." : currentEvent.description
                             )
                             .font(theme.typography.body)
                             .foregroundColor(theme.palette.textSecondary)
                         }
-                        .padding(.horizontal, theme.components.contentInset)
+                        .padding(theme.components.cardPadding)
+                        .surfaceCard(cornerRadius: theme.corners.large)
+                        .padding(.horizontal, theme.layout.screenInset)
 
                         Spacer(minLength: 100)
                     }
-                    .padding(.top)
+                    .padding(.top, theme.layout.screenInset)
+                    .padding(.bottom, theme.spacing.xxl)
                 }
             }
+            .trashScreenBackground()
             .navigationTitle("Event Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -643,21 +663,22 @@ struct EventDetailSheetForCommunity: View {
                             baseColor: currentEvent.isRegistered
                                 ? theme.accents.green
                                 : (currentEvent.participantCount >= currentEvent.maxParticipants
-                                    ? theme.palette.textSecondary : event.category.color),
+                                    ? theme.palette.textSecondary : currentEvent.category.color),
                             cornerRadius: theme.corners.medium,
                             action: {
                                 Task {
-                                    await viewModel.toggleRegistration(for: event)
+                                    await viewModel.toggleRegistration(for: currentEvent)
                                 }
                             }
                         ) {
-                            HStack {
+                            HStack(spacing: theme.spacing.sm) {
                                 TrashIcon(
                                     systemName: currentEvent.isRegistered
                                         ? "checkmark.circle.fill" : "plus.circle.fill")
                                 Text(currentEvent.isRegistered ? "Registered" : "Register Now")
                             }
-                            .font(theme.typography.headline)
+                            .font(theme.typography.button)
+                            .fontWeight(.semibold)
                             .trashOnAccentForeground()
                             .frame(maxWidth: .infinity)
                         }
@@ -665,10 +686,11 @@ struct EventDetailSheetForCommunity: View {
                             currentEvent.participantCount >= currentEvent.maxParticipants
                                 && !currentEvent.isRegistered
                         )
-                        .padding(.horizontal, theme.components.contentInset)
-                        .padding(.bottom, theme.spacing.sm)
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.top, theme.layout.elementSpacing)
+                        .padding(.bottom, theme.layout.elementSpacing)
                     }
-                        .background(theme.appBackground)
+                    .background(.ultraThinMaterial)
                 }
             }
         }
@@ -682,11 +704,11 @@ private struct InfoRowForCommunity: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             TrashIcon(systemName: icon)
-                .font(.title3)
+                .font(.subheadline.weight(.semibold))
                 .foregroundColor(theme.accents.blue)
-                .frame(width: 30)
+                .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -695,12 +717,20 @@ private struct InfoRowForCommunity: View {
                 Text(value)
                     .font(theme.typography.subheadline)
                     .foregroundColor(theme.palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
         }
         .padding(theme.components.cardPadding)
-        .surfaceCard(cornerRadius: theme.corners.medium)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
     }
 }
 

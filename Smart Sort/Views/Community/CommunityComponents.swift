@@ -24,8 +24,8 @@ struct CommunitySelectionSheet: View {
                     ],
                     selection: $selectedTab
                 )
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
 
                 if selectedTab == 0 {
                     locationSelectionView
@@ -33,6 +33,7 @@ struct CommunitySelectionSheet: View {
                     communitiesView
                 }
             }
+            .trashScreenBackground()
             .navigationTitle("Location & Communities")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -48,8 +49,8 @@ struct CommunitySelectionSheet: View {
     private var locationSelectionView: some View {
         VStack(spacing: 0) {
             TrashSearchField(placeholder: "Search cities...", text: $searchText)
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
 
             if let location = userSettings.selectedLocation {
                 HStack {
@@ -66,26 +67,35 @@ struct CommunitySelectionSheet: View {
                         Task { await userSettings.selectLocation(nil) }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, theme.components.cardPadding)
+                .padding(.vertical, theme.layout.elementSpacing)
                 .frame(minHeight: theme.components.rowHeight)
-                .surfaceCard(cornerRadius: theme.corners.medium)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
 
                 localCommunitiesSection
             } else {
-                List {
-                    ForEach(PredefinedLocations.search(query: searchText), id: \.city) { location in
-                        LocationRowView(location: location) {
-                            Task {
-                                await userSettings.selectLocation(location)
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: theme.layout.elementSpacing) {
+                        ForEach(PredefinedLocations.search(query: searchText), id: \.city) { location in
+                            LocationRowView(location: location) {
+                                Task {
+                                    await userSettings.selectLocation(location)
+                                }
+                                searchText = ""
                             }
-                            searchText = ""
                         }
                     }
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.elementSpacing)
+                    .padding(.bottom, theme.spacing.lg)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
             }
         }
         .onAppear {
@@ -101,8 +111,8 @@ struct CommunitySelectionSheet: View {
     private var localCommunitiesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             TrashSectionTitle(title: "Communities in \(userSettings.selectedLocation?.city ?? "")")
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
 
             if userSettings.isLoadingCommunities {
                 VStack(spacing: 12) {
@@ -134,8 +144,8 @@ struct CommunitySelectionSheet: View {
                                 CommunityCardView(community: community)
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.bottom, theme.spacing.lg)
                     }
                 }
             }
@@ -172,21 +182,22 @@ struct CommunitySelectionSheet: View {
 
                         TrashButton(baseColor: theme.accents.blue, action: { selectedTab = 0 }) {
                             Text("Select Location")
-                                .font(.subheadline.bold())
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
+                                .font(theme.typography.subheadline.weight(.bold))
                         }
+                        .padding(.horizontal, theme.layout.screenInset)
                         Spacer()
                     }
                 } else {
-                    List {
-                        ForEach(joinedCommunities) { community in
-                            CommunityCardView(community: community)
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: theme.layout.elementSpacing) {
+                            ForEach(joinedCommunities) { community in
+                                CommunityCardView(community: community)
+                            }
                         }
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.top, theme.layout.elementSpacing)
+                        .padding(.bottom, theme.spacing.lg)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
                 }
             }
         }
@@ -206,7 +217,7 @@ struct LocationRowView: View {
 
     var body: some View {
         TrashTapArea(action: onSelect) {
-            HStack(spacing: 14) {
+            HStack(spacing: theme.layout.rowContentSpacing) {
                 RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                     .fill(theme.surfaceBackground)
                     .overlay(
@@ -238,9 +249,17 @@ struct LocationRowView: View {
                     .font(.caption)
                     .foregroundColor(theme.palette.textSecondary)
             }
-            .padding(.vertical, 6)
+            .padding(.horizontal, theme.components.cardPadding)
+            .padding(.vertical, theme.layout.elementSpacing)
             .frame(minHeight: theme.components.rowHeight)
-            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
+            )
         }
     }
 }
@@ -351,29 +370,13 @@ struct CommunityCardView: View {
                         theme.palette.divider.frame(height: 1)
                             .padding(.vertical, 4)
 
-                        HStack(spacing: 12) {
-                            if let onCreateEvent = onCreateEvent {
-                                TrashButton(baseColor: theme.accents.green, action: onCreateEvent) {
-                                    HStack {
-                                        TrashIcon(systemName: "plus.circle.fill")
-                                        Text("Event")
-                                    }
-                                    .padding(.vertical, 8)
-                                    .frame(maxWidth: .infinity)
-                                }
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: theme.layout.elementSpacing) {
+                                adminActionButtons
                             }
 
-                            TrashButton(
-                                baseColor: theme.semanticWarning.opacity(0.18),
-                                action: { showAdminDashboard = true }
-                            ) {
-                                HStack {
-                                    TrashIcon(systemName: "gearshape.fill")
-                                    Text("Manage")
-                                }
-                                .foregroundColor(theme.semanticWarning)
-                                .padding(.vertical, 8)
-                                .frame(maxWidth: .infinity)
+                            VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                                adminActionButtons
                             }
                         }
                     }
@@ -392,18 +395,27 @@ struct CommunityCardView: View {
 
     @ViewBuilder
     private func pillBadge(icon: String, text: String, foreground: Color) -> some View {
-        HStack(spacing: 4) {
-            TrashIcon(systemName: icon)
-            Text(text)
+        TrashPill(title: text, icon: icon, color: foreground, isSelected: false)
+    }
+
+    @ViewBuilder
+    private var adminActionButtons: some View {
+        if let onCreateEvent = onCreateEvent {
+            TrashPill(
+                title: "Event",
+                icon: "plus.circle.fill",
+                color: theme.accents.green,
+                isSelected: true,
+                action: onCreateEvent
+            )
         }
-        .font(theme.typography.caption)
-        .fontWeight(.bold)
-        .foregroundColor(foreground)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            Capsule(style: .continuous)
-                .fill(theme.surfaceBackground)
+
+        TrashPill(
+            title: "Manage",
+            icon: "gearshape.fill",
+            color: theme.semanticWarning,
+            isSelected: false,
+            action: { showAdminDashboard = true }
         )
     }
 }

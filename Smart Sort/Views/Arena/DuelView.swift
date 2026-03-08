@@ -18,6 +18,10 @@ struct DuelView: View {
     let isAccepting: Bool
 
     let categories = ["Recyclable", "Compostable", "Landfill", "Hazardous"]
+    
+    private var quizCardHeight: CGFloat {
+        min(480, UIScreen.main.bounds.height * 0.54)
+    }
 
     var body: some View {
         ZStack {
@@ -49,6 +53,7 @@ struct DuelView: View {
                 }
             }
         }
+        .trashScreenBackground()
         .task {
             if isAccepting, let cid = challengeId {
                 await viewModel.acceptChallenge(challengeId: cid)
@@ -73,19 +78,18 @@ struct DuelView: View {
     // MARK: - Countdown
 
     private var countdownView: some View {
-        VStack {
-            Spacer()
+        VStack(spacing: theme.layout.elementSpacing) {
+            Spacer(minLength: theme.layout.sectionSpacing)
             Text("\(viewModel.countdownValue)")
-                .font(.system(size: 120, weight: .black, design: .rounded))
+                .font(.system(size: 96, weight: .black, design: .rounded))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [theme.semanticDanger, theme.semanticWarning], startPoint: .top,
                         endPoint: .bottom)
                 )
-                .scaleEffect(1.2)
                 .animation(.spring(response: 0.3), value: viewModel.countdownValue)
             Text("Get Ready!")
-                .font(.title2.bold())
+                .font(theme.typography.headline)
                 .foregroundColor(theme.palette.textSecondary)
             Spacer()
         }
@@ -94,13 +98,9 @@ struct DuelView: View {
     // MARK: - Playing
 
     private var playingContent: some View {
-        VStack(spacing: 0) {
-            // Dual progress bar
+        VStack(spacing: theme.layout.sectionSpacing) {
             dualProgressBar
 
-            Spacer()
-
-            // Quiz card
             if let question = viewModel.currentQuestion {
                 SharedQuizCard(
                     question: question,
@@ -117,8 +117,8 @@ struct DuelView: View {
                     }
                 )
                 .id(question.id)
-                .frame(height: 480)
-                .padding(.horizontal, 16)
+                .frame(height: quizCardHeight)
+                .padding(.horizontal, theme.layout.screenInset)
             }
 
             Spacer()
@@ -126,8 +126,7 @@ struct DuelView: View {
     }
 
     private var dualProgressBar: some View {
-        HStack(spacing: 16) {
-            // Me
+        HStack(spacing: theme.layout.rowContentSpacing) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("You")
                     .font(.caption.bold())
@@ -147,29 +146,50 @@ struct DuelView: View {
                 Text(viewModel.opponentDisplayName)
                     .font(.caption.bold())
                     .foregroundColor(theme.semanticDanger)
+                    .lineLimit(1)
                 ProgressView(
-                    value: Double(viewModel.realtimeManager.opponentProgress),
+                    value: Double(viewModel.opponentProgress),
                     total: Double(max(1, viewModel.questions.count))
                 )
                 .tint(theme.semanticDanger)
-                Text("\(viewModel.realtimeManager.opponentCorrect) correct")
+                Text("\(viewModel.opponentCorrect) correct")
                     .font(.caption2)
                     .foregroundColor(theme.palette.textSecondary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, theme.components.cardPadding)
+        .padding(.vertical, theme.layout.elementSpacing)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.top, theme.layout.elementSpacing)
     }
 
     // MARK: - Waiting
 
     private var waitingForOpponent: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             Spacer()
             EnhancedLoadingView()
             Text("Waiting for opponent to finish...")
                 .font(.headline)
                 .foregroundColor(theme.palette.textSecondary)
+                .padding(theme.components.cardPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
+                .padding(.horizontal, theme.layout.screenInset)
             Spacer()
         }
     }
@@ -183,25 +203,33 @@ struct DuelView: View {
     // MARK: - Error
 
     private func errorView(_ message: String) -> some View {
-        VStack(spacing: 24) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             Spacer()
 
             TrashIcon(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 50))
+                .font(.system(size: 40))
                 .foregroundColor(theme.semanticWarning)
 
             Text(message)
                 .font(.subheadline)
                 .foregroundColor(theme.palette.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                .padding(theme.components.cardPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
+                .padding(.horizontal, theme.layout.screenInset)
 
             TrashButton(baseColor: theme.accents.blue, action: { dismiss() }) {
                 Text("Go Back")
-                    .font(.headline.bold())
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
+                    .font(theme.typography.subheadline.weight(.bold))
             }
+            .padding(.horizontal, theme.layout.screenInset)
 
             Spacer()
         }
@@ -216,54 +244,63 @@ struct DuelLobbyContent: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: theme.layout.sectionSpacing) {
+                badgeCircle(icon: "person.2.fill", iconColor: theme.semanticWarning)
 
-            badgeCircle(icon: "person.2.fill", iconColor: theme.semanticWarning)
+                VStack(spacing: theme.spacing.sm) {
+                    Text("Waiting for opponent...")
+                        .font(theme.typography.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.palette.textPrimary)
 
-            VStack(spacing: 8) {
-                Text("Waiting for opponent...")
-                    .font(theme.typography.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.palette.textPrimary)
-
-                if viewModel.realtimeManager.opponentReady {
-                    Text("Opponent is ready!")
-                        .font(theme.typography.subheadline)
-                        .foregroundColor(theme.accents.green)
-                }
-
-                if !viewModel.realtimeManager.myReady {
-                    Text("Loading questions...")
-                        .font(theme.typography.caption)
-                        .foregroundColor(theme.palette.textSecondary)
-                }
-            }
-
-            // Share link
-            if let cid = challengeId ?? viewModel.challengeId {
-                let shareURL = URL(string: "smartsort://challenge/\(cid.uuidString)")!
-                ShareLink(
-                    item: shareURL, subject: Text("Trash Arena Challenge"),
-                    message: Text("I challenge you to a 1v1 Trash Arena duel! Tap to accept:")
-                ) {
-                    HStack(spacing: 10) {
-                        TrashIcon(systemName: "square.and.arrow.up")
-                        Text("Share Challenge Link")
+                    if viewModel.opponentReady {
+                        Text("Opponent is ready!")
+                            .font(theme.typography.subheadline)
+                            .foregroundColor(theme.accents.green)
                     }
-                    .font(theme.typography.subheadline)
-                    .fontWeight(.bold)
-                    .trashOnAccentForeground()
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(theme.accents.blue)
-                    )
+
+                    if !viewModel.myReady {
+                        Text("Loading questions...")
+                            .font(theme.typography.caption)
+                            .foregroundColor(theme.palette.textSecondary)
+                    }
+                }
+                .padding(theme.components.cardPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                        )
+                )
+
+                if let cid = challengeId ?? viewModel.challengeId {
+                    let shareURL = URL(string: "smartsort://challenge/\(cid.uuidString)")!
+                    ShareLink(
+                        item: shareURL,
+                        subject: Text("Trash Arena Challenge"),
+                        message: Text("I challenge you to a 1v1 Trash Arena duel! Tap to accept:")
+                    ) {
+                        HStack(spacing: 8) {
+                            TrashIcon(systemName: "square.and.arrow.up")
+                            Text("Share Challenge Link")
+                        }
+                        .font(theme.typography.subheadline.weight(.bold))
+                        .trashOnAccentForeground()
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: theme.components.buttonHeight)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(theme.accents.blue)
+                        )
+                    }
                 }
             }
-
-            Spacer()
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.sectionSpacing)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -272,13 +309,13 @@ struct DuelLobbyContent: View {
         ZStack {
             Circle()
                 .fill(theme.surfaceBackground)
-                .frame(width: 120, height: 120)
+                .frame(width: 104, height: 104)
                 .overlay(
                     Circle()
                         .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                 )
 
-            StampedIcon(systemName: icon, size: 50, weight: .semibold, color: iconColor)
+            StampedIcon(systemName: icon, size: 42, weight: .semibold, color: iconColor)
         }
     }
 }
@@ -302,12 +339,12 @@ struct DuelResultsContent: View {
 
     var myFinalScore: Int {
         guard let result = viewModel.result else { return 0 }
-        return viewModel.isChallenger ? result.challengerScore : result.opponentScore
+        return viewModel.isChallenger ? (result.challengerScore ?? 0) : (result.opponentScore ?? 0)
     }
 
     var opponentFinalScore: Int {
         guard let result = viewModel.result else { return 0 }
-        return viewModel.isChallenger ? result.opponentScore : result.challengerScore
+        return viewModel.isChallenger ? (result.opponentScore ?? 0) : (result.challengerScore ?? 0)
     }
 
     var myPoints: Int {
@@ -317,74 +354,70 @@ struct DuelResultsContent: View {
     }
 
     var body: some View {
-        VStack(spacing: 28) {
-            Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: theme.layout.sectionSpacing) {
+                resultBadge
 
-            // Crown or tie icon
-            resultBadge
+                Text(isTie ? "It's a Tie!" : (iWon ? "You Win!" : "You Lose"))
+                    .font(theme.typography.title)
+                    .fontWeight(.heavy)
+                    .foregroundColor(theme.palette.textPrimary)
 
-            Text(isTie ? "It's a Tie!" : (iWon ? "You Win!" : "You Lose"))
-                .font(theme.typography.title)
-                .fontWeight(.heavy)
-                .foregroundColor(theme.palette.textPrimary)
+                HStack(spacing: theme.layout.sectionSpacing) {
+                    VStack(spacing: 4) {
+                        Text("You")
+                            .font(theme.typography.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.palette.textSecondary)
+                        Text("\(myFinalScore)")
+                            .font(.system(size: 36, weight: .black, design: .rounded))
+                            .foregroundColor(theme.accents.blue)
+                    }
 
-            // Score comparison
-            HStack(spacing: 32) {
-                VStack(spacing: 4) {
-                    Text("You")
-                        .font(theme.typography.caption)
+                    Text("vs")
+                        .font(theme.typography.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(theme.palette.textSecondary)
-                    Text("\(myFinalScore)")
-                        .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundColor(theme.accents.blue)
+
+                    VStack(spacing: 4) {
+                        Text(viewModel.opponentDisplayName)
+                            .font(theme.typography.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.palette.textSecondary)
+                            .lineLimit(1)
+                        Text("\(opponentFinalScore)")
+                            .font(.system(size: 36, weight: .black, design: .rounded))
+                            .foregroundColor(theme.semanticDanger)
+                    }
                 }
-
-                Text("vs")
-                    .font(theme.typography.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.palette.textSecondary)
-
-                VStack(spacing: 4) {
-                    Text(viewModel.opponentDisplayName)
-                        .font(theme.typography.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.palette.textSecondary)
-                    Text("\(opponentFinalScore)")
-                        .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundColor(theme.semanticDanger)
-                }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(theme.surfaceBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                    )
-            )
-            .opacity(showStats ? 1 : 0)
-            .offset(y: showStats ? 0 : 20)
-
-            Text("+\(myPoints) points earned")
-                .font(theme.typography.headline)
-                .foregroundColor(theme.accents.green)
+                .padding(theme.components.cardPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .fill(theme.surfaceBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                                .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                        )
+                )
                 .opacity(showStats ? 1 : 0)
+                .offset(y: showStats ? 0 : 20)
 
-            TrashButton(baseColor: theme.accents.blue, action: onDismiss) {
-                HStack(spacing: 10) {
-                    TrashIcon(systemName: "arrow.left")
-                    Text("Back to Arena")
+                Text("+\(myPoints) points earned")
+                    .font(theme.typography.headline)
+                    .foregroundColor(theme.accents.green)
+                    .opacity(showStats ? 1 : 0)
+
+                TrashButton(baseColor: theme.accents.blue, action: onDismiss) {
+                    HStack(spacing: 8) {
+                        TrashIcon(systemName: "arrow.left")
+                        Text("Back to Arena")
+                    }
+                    .font(theme.typography.subheadline.weight(.bold))
                 }
-                .font(theme.typography.button)
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
             }
-
-            Spacer()
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.sectionSpacing)
         }
-        .padding()
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.3)) {
                 showStats = true
@@ -397,7 +430,7 @@ struct DuelResultsContent: View {
         ZStack {
             Circle()
                 .fill(theme.surfaceBackground)
-                .frame(width: 120, height: 120)
+                .frame(width: 104, height: 104)
                 .overlay(
                     Circle()
                         .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
@@ -405,15 +438,15 @@ struct DuelResultsContent: View {
 
             if isTie {
                 StampedIcon(
-                    systemName: "equal.circle.fill", size: 60, weight: .semibold,
+                    systemName: "equal.circle.fill", size: 48, weight: .semibold,
                     color: theme.semanticWarning)
             } else if iWon {
                 StampedIcon(
-                    systemName: "crown.fill", size: 60, weight: .semibold,
+                    systemName: "crown.fill", size: 48, weight: .semibold,
                     color: theme.semanticHighlight)
             } else {
                 StampedIcon(
-                    systemName: "flag.checkered", size: 60, weight: .semibold,
+                    systemName: "flag.checkered", size: 48, weight: .semibold,
                     color: theme.palette.textSecondary)
             }
         }

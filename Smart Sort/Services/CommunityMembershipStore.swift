@@ -12,9 +12,6 @@ final class CommunityMembershipStore: ObservableObject {
     @Published private(set) var joinedCommunities: [Community] = []
     @Published private(set) var isLoadingCommunities = false
 
-    private let joinedCommunitiesKey = "joinedCommunityIds"
-    private let pendingCommunitiesKey = "pendingCommunityIds"
-
     private var communityService: CommunityService {
         CommunityService.shared
     }
@@ -28,16 +25,6 @@ final class CommunityMembershipStore: ObservableObject {
         pendingCommunityIds = []
         joinedCommunities = []
         communitiesInCity = []
-        loadSavedMembershipState()
-    }
-
-    private func loadSavedMembershipState() {
-        if let ids = UserDefaults.standard.array(forKey: scopedKey(joinedCommunitiesKey)) as? [String] {
-            joinedCommunityIds = Set(ids)
-        }
-        if let ids = UserDefaults.standard.array(forKey: scopedKey(pendingCommunitiesKey)) as? [String] {
-            pendingCommunityIds = Set(ids)
-        }
     }
 
     func clearCommunitiesInCity() {
@@ -51,12 +38,23 @@ final class CommunityMembershipStore: ObservableObject {
         do {
             let response = try await communityService.getCommunitiesByCity(city)
             communitiesInCity = response.map { Community(from: $0) }
+            let fetchedCityIDs = Set(communitiesInCity.map(\.id))
+            joinedCommunityIds.subtract(fetchedCityIDs)
+            pendingCommunityIds.subtract(fetchedCityIDs)
 
-            for community in communitiesInCity where community.isMember {
-                joinedCommunityIds.insert(community.id)
-                pendingCommunityIds.remove(community.id)
+            for response in response {
+                switch response.membershipStatus ?? .none {
+                case .member, .admin:
+                    joinedCommunityIds.insert(response.id)
+                    pendingCommunityIds.remove(response.id)
+                case .pending:
+                    joinedCommunityIds.remove(response.id)
+                    pendingCommunityIds.insert(response.id)
+                case .none:
+                    joinedCommunityIds.remove(response.id)
+                    pendingCommunityIds.remove(response.id)
+                }
             }
-            saveMembershipState()
         } catch {
             print("❌ Get communities error: \(error)")
         }
@@ -88,7 +86,6 @@ final class CommunityMembershipStore: ObservableObject {
 
             joinedCommunityIds = Set(joinedCommunities.map(\.id))
             pendingCommunityIds.subtract(joinedCommunityIds)
-            saveMembershipState()
         } catch {
             print("❌ Get my communities error: \(error)")
         }
@@ -145,7 +142,9 @@ final class CommunityMembershipStore: ObservableObject {
     }
 
     func isAdmin(of community: Community) -> Bool {
-        joinedCommunities.first(where: { $0.id == community.id })?.isAdmin ?? false
+        joinedCommunities.first(where: { $0.id == community.id })?.isAdmin
+            ?? communitiesInCity.first(where: { $0.id == community.id })?.isAdmin
+            ?? false
     }
 
     func isPending(of community: Community) -> Bool {
@@ -181,7 +180,6 @@ final class CommunityMembershipStore: ObservableObject {
         } else {
             joinedCommunityIds.remove(community.id)
         }
-        saveMembershipState()
 
         if let index = communitiesInCity.firstIndex(where: { $0.id == community.id }) {
             if communitiesInCity[index].isMember != isMember {
@@ -215,16 +213,5 @@ final class CommunityMembershipStore: ObservableObject {
         } else {
             pendingCommunityIds.remove(community.id)
         }
-        saveMembershipState()
-    }
-
-    private func saveMembershipState() {
-        UserDefaults.standard.set(Array(joinedCommunityIds), forKey: scopedKey(joinedCommunitiesKey))
-        UserDefaults.standard.set(Array(pendingCommunityIds), forKey: scopedKey(pendingCommunitiesKey))
-    }
-
-    private func scopedKey(_ base: String) -> String {
-        let userNamespace = SupabaseManager.shared.client.auth.currentUser?.id.uuidString ?? "guest"
-        return "\(base):\(userNamespace)"
     }
 }

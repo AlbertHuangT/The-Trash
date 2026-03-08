@@ -29,49 +29,67 @@ struct EditCommunityInfoView: View {
     }
 
     var body: some View {
-        Form {
-            Section("Community Description") {
-                TrashFormTextEditor(text: $description, minHeight: 100)
-            }
-
-            Section("Welcome Message") {
-                TrashFormTextEditor(text: $welcomeMessage, minHeight: 80)
-                Text("This message will be shown to new members when they join.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Section("Community Rules") {
-                TrashFormTextEditor(text: $rules, minHeight: 120)
-            }
-
-            Section {
-                TrashFormToggle(title: "Require Approval to Join", isOn: $requiresApproval)
-            } footer: {
-                Text("If enabled, new members must be approved by an admin before joining.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Section {
-                TrashButton(baseColor: .blue, action: saveChanges) {
-                    if isSaving {
-                        ProgressView()
-                            .tint(theme.onAccentForeground)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    } else {
-                        Text("Save Changes")
-                            .frame(maxWidth: .infinity)
-                            .trashOnAccentForeground()
-                            .padding(.vertical, 6)
-                    }
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                    TrashSectionTitle(title: "Community Description")
+                    TrashFormTextEditor(text: $description, minHeight: 100)
                 }
-                .disabled(isSaving)
+                .padding(theme.components.cardPadding)
+                .surfaceCard(cornerRadius: theme.corners.large)
+
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                    TrashSectionTitle(title: "Welcome Message")
+                    TrashFormTextEditor(text: $welcomeMessage, minHeight: 80)
+                    Text("This message will be shown to new members when they join.")
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
+                }
+                .padding(theme.components.cardPadding)
+                .surfaceCard(cornerRadius: theme.corners.large)
+
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                    TrashSectionTitle(title: "Community Rules")
+                    TrashFormTextEditor(text: $rules, minHeight: 120)
+                }
+                .padding(theme.components.cardPadding)
+                .surfaceCard(cornerRadius: theme.corners.large)
+
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                    TrashFormToggle(title: "Require Approval to Join", isOn: $requiresApproval)
+                    Text("If enabled, new members must be approved by an admin before joining.")
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary)
+                }
+                .padding(theme.components.cardPadding)
+                .surfaceCard(cornerRadius: theme.corners.large)
             }
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.top, theme.layout.screenInset)
+            .padding(.bottom, theme.spacing.xxl)
         }
+        .trashScreenBackground()
         .navigationTitle("Edit Community Info")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            TrashButton(baseColor: theme.accents.blue, action: saveChanges) {
+                if isSaving {
+                    ProgressView()
+                        .tint(theme.onAccentForeground)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Save Changes")
+                        .font(theme.typography.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .trashOnAccentForeground()
+                }
+            }
+            .disabled(isSaving)
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.top, theme.layout.elementSpacing)
+            .padding(.bottom, theme.layout.elementSpacing)
+            .background(.ultraThinMaterial)
+        }
         .task {
             isLoadingSettings = true
             do {
@@ -95,7 +113,7 @@ struct EditCommunityInfoView: View {
                     dismiss()
                 }
             )
-            .presentationDetents([.fraction(0.3), .medium])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .presentationBackground(theme.appBackground)
         }

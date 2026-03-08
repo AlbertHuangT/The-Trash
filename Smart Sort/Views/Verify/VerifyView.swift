@@ -79,23 +79,26 @@ struct VerifyView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                cameraArea
-
-                interactionArea
-
-                Spacer(minLength: 10)
-
-                mainActionButton
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: theme.layout.sectionSpacing) {
+                    cameraArea
+                    interactionArea
+                }
+                .padding(.bottom, theme.spacing.md)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .clipped()
 
             if viewModel.appState == .analyzing {
                 analyzingOverlay
             }
         }
         .trashScreenBackground()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            mainActionButton
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.elementSpacing)
+                .padding(.bottom, theme.layout.elementSpacing)
+                .background(.ultraThinMaterial)
+        }
         .navigationTitle("Verify")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -152,15 +155,15 @@ struct VerifyView: View {
         GeometryReader { geo in
             ecoCameraArea(size: geo.size)
         }
-        .frame(maxHeight: min(340, UIScreen.main.bounds.height * 0.4))
-        .padding(.horizontal, theme.spacing.md)
-        .padding(.top, theme.spacing.md)
+        .frame(height: cameraAreaHeight)
+        .padding(.horizontal, theme.layout.screenInset)
+        .padding(.top, theme.layout.elementSpacing)
     }
 
     private func ecoCameraArea(size: CGSize) -> some View {
-        let outerRadius = theme.corners.large + 6
-        let innerRadius = theme.corners.large
-        let inset: CGFloat = 18
+        let outerRadius = theme.layout.prominentCardCornerRadius + 4
+        let innerRadius = theme.layout.prominentCardCornerRadius
+        let inset = theme.layout.screenInset + 2
         let safeWidth = size.width.isFinite ? size.width : 0
         let safeHeight = size.height.isFinite ? size.height : 0
         let contentWidth = max(safeWidth - inset * 2, 0)
@@ -173,12 +176,24 @@ struct VerifyView: View {
                     RoundedRectangle(cornerRadius: outerRadius, style: .continuous)
                         .stroke(theme.palette.divider, lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
 
             RoundedRectangle(cornerRadius: innerRadius, style: .continuous)
-                .fill(Color.black.opacity(0.22))
+                .fill(theme.cameraViewportBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: innerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.68),
+                                    Color.white.opacity(0.16)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                )
                 .padding(inset)
-                .blendMode(.multiply)
 
             Group {
                 if let image = cameraManager.capturedImage {
@@ -196,7 +211,7 @@ struct VerifyView: View {
                             weight: .semibold,
                             color: theme.palette.textPrimary.opacity(0.62)
                         )
-                        Text("Cardboard Viewfinder")
+                        Text("Camera Viewfinder")
                             .font(theme.typography.subheadline)
                             .foregroundColor(theme.palette.textPrimary.opacity(0.85))
                         Text("Point at an item to scan")
@@ -216,9 +231,9 @@ struct VerifyView: View {
             .clipShape(RoundedRectangle(cornerRadius: innerRadius, style: .continuous))
 
             RoundedRectangle(cornerRadius: innerRadius, style: .continuous)
-                .stroke(theme.palette.divider.opacity(0.78), lineWidth: 1.8)
+                .stroke(theme.cameraViewportBorder.opacity(0.7), lineWidth: 1.2)
                 .padding(inset)
-                .shadow(color: Color.black.opacity(0.28), radius: 2, x: 0, y: 1)
+                .shadow(color: Color.white.opacity(0.45), radius: 1, x: 0, y: -1)
 
             if isCameraActive {
                 VStack(spacing: 12) {
@@ -263,7 +278,9 @@ struct VerifyView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .frame(height: isEcoCameraCaptureMode ? 84 : 170)
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: isEcoCameraCaptureMode ? 72 : 0, alignment: .top)
+        .padding(.horizontal, theme.layout.screenInset)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.appState)
     }
 
@@ -275,27 +292,28 @@ struct VerifyView: View {
                     ZStack {
                         Circle()
                             .fill(theme.accents.green.opacity(0.7))
-                            .frame(width: 84, height: 84)
+                            .frame(width: 68, height: 68)
                             .offset(y: 3)
 
                         Circle()
                             .fill(theme.accents.green)
-                            .frame(width: 88, height: 88)
+                            .frame(width: 72, height: 72)
                             .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 3)
 
                         StampedIcon(
                             systemName: "camera.fill",
-                            size: 24,
+                            size: 20,
                             weight: .bold,
                             color: theme.onAccentForeground
                         )
                     }
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
             } else {
                 TrashButton(
                     baseColor: showFeedbackForm ? theme.accents.green : theme.accents.blue,
-                    cornerRadius: theme.corners.large,
+                    cornerRadius: theme.layout.prominentCardCornerRadius,
                     action: handleMainButtonTap
                 ) {
                     HStack(spacing: 12) {
@@ -307,10 +325,8 @@ struct VerifyView: View {
                     .trashOnAccentForeground()
                     .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, theme.spacing.xl)
             }
         }
-        .padding(.bottom, 8)
         .disabled(viewModel.appState == .analyzing || isSubmittingFeedback || (isPreviewState && isClassifierPreparing))
     }
 
@@ -320,42 +336,42 @@ struct VerifyView: View {
             Color.black.opacity(0.15)
                 .ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: theme.spacing.sm) {
                 // Animated loading indicator
                 ZStack {
                     paperIconCircle
-                        .frame(width: 100, height: 100)
+                        .frame(width: 68, height: 68)
                     Circle()
                         .trim(from: 0, to: 0.7)
                         .stroke(
                             theme.gradients.primary,
                             style: StrokeStyle(lineWidth: 4, lineCap: .round)
                         )
-                        .frame(width: 80, height: 80)
+                        .frame(width: 52, height: 52)
                         .rotationEffect(.degrees(pulseAnimation ? 360 : 0))
                         .animation(
                             .linear(duration: 1).repeatForever(autoreverses: false),
                             value: pulseAnimation)
 
                     TrashIcon(systemName: "brain")
-                        .font(.system(size: 30))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(theme.accents.blue)
                 }
 
                 Text("Analyzing...")
-                    .font(theme.typography.headline)
+                    .font(theme.typography.subheadline.weight(.bold))
                     .foregroundColor(theme.palette.textPrimary)
 
                 Text("AI is identifying the item")
                     .font(theme.typography.caption)
                     .foregroundColor(theme.palette.textSecondary)
             }
-            .padding(40)
+            .padding(24)
             .background(
-                RoundedRectangle(cornerRadius: theme.corners.large + 6, style: .continuous)
+                RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius + 4, style: .continuous)
                     .fill(theme.surfaceBackground)
                     .overlay(
-                        RoundedRectangle(cornerRadius: theme.corners.large + 6, style: .continuous)
+                        RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius + 4, style: .continuous)
                             .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                     )
                     .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
@@ -382,13 +398,25 @@ struct VerifyView: View {
     private func stampedOverlayButton(systemName: String, action: @escaping () -> Void) -> some View
     {
         Button(action: action) {
-            StampedIcon(
-                systemName: systemName,
-                size: 17,
-                weight: .bold,
-                color: theme.onAccentForeground.opacity(0.94)
+            ZStack {
+                Circle()
+                    .fill(Color.black.opacity(0.34))
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+
+                StampedIcon(
+                    systemName: systemName,
+                    size: 17,
+                    weight: .bold,
+                    color: theme.onAccentForeground.opacity(0.94)
+                )
+            }
+            .frame(
+                width: theme.components.minimumHitTarget,
+                height: theme.components.minimumHitTarget
             )
-            .padding(8)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
@@ -499,18 +527,28 @@ struct VerifyView: View {
 
 // MARK: - Helpers
 extension VerifyView {
+    private var cameraAreaHeight: CGFloat {
+        if showFeedbackForm || {
+            if case .error = viewModel.appState { return true }
+            if case .finished = viewModel.appState { return true }
+            return false
+        }() {
+            return 272
+        }
+        return min(328, UIScreen.main.bounds.height * 0.4)
+    }
     private var paperIconCircle: some View {
         ZStack {
             Circle()
                 .fill(theme.surfaceBackground)
-                .frame(width: 100, height: 100)
+                .frame(width: 68, height: 68)
                 .overlay(
                     Circle()
                         .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                 )
 
             TrashIcon(systemName: "camera.viewfinder")
-                .font(.system(size: 40, weight: .light))
+                .font(.system(size: 26, weight: .light))
                 .foregroundColor(theme.palette.textSecondary)
         }
     }
@@ -519,8 +557,8 @@ extension VerifyView {
         Text(text)
             .font(theme.typography.caption)
             .foregroundColor(isClassifierFailed ? theme.semanticDanger : theme.palette.textPrimary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+            .frame(minHeight: 32)
             .background(
                 Capsule()
                     .fill(theme.surfaceBackground.opacity(0.94))

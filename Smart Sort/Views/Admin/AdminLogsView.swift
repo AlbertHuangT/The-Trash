@@ -11,6 +11,7 @@ import Combine
 struct AdminLogsView: View {
     let communityId: String
     @StateObject private var viewModel: AdminLogsViewModel
+    private let theme = TrashTheme()
     
     init(communityId: String) {
         self.communityId = communityId
@@ -18,11 +19,17 @@ struct AdminLogsView: View {
     }
     
     var body: some View {
-        List {
-            ForEach(viewModel.logs) { log in
-                AdminLogRow(log: log)
+        ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: theme.layout.elementSpacing) {
+                ForEach(viewModel.logs) { log in
+                    AdminLogRow(log: log)
+                }
             }
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.top, theme.layout.screenInset)
+            .padding(.bottom, theme.spacing.xxl)
         }
+        .trashScreenBackground()
         .navigationTitle("Audit Logs")
         .refreshable {
             await viewModel.loadLogs()
@@ -93,16 +100,17 @@ struct AdminLogRow: View {
     }
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: theme.layout.rowContentSpacing) {
             TrashIcon(systemName: actionIcon)
-                .font(.title2)
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(actionColor)
-                .frame(width: 32)
+                .frame(width: theme.components.minimumHitTarget)
                 .padding(.top, 4)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(log.actionDescription)
-                    .font(.headline)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
                 
                 HStack {
                     Text("By: \(log.adminUsername)")
@@ -121,10 +129,18 @@ struct AdminLogRow: View {
                 }
                 
                 Text(log.createdAt.formatted())
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textSecondary)
             }
         }
-        .padding(.vertical, 6)
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
     }
 }

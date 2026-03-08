@@ -12,6 +12,7 @@ struct CommunityAdminDashboard: View {
     let community: Community
     @StateObject private var viewModel: AdminDashboardViewModel
     @Environment(\.dismiss) var dismiss
+    private let theme = TrashTheme()
 
     init(community: Community) {
         self.community = community
@@ -20,73 +21,90 @@ struct CommunityAdminDashboard: View {
 
     var body: some View {
         NavigationView {
-            List {
-                // Pending Applications
-                if !viewModel.pendingApplications.isEmpty {
-                    Section {
-                        ForEach(viewModel.pendingApplications) { application in
-                            ApplicationRow(
-                                application: application,
-                                onApprove: { await viewModel.approveApplication(application.id) },
-                                onReject: { reason in
-                                    await viewModel.rejectApplication(
-                                        application.id, reason: reason)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    if !viewModel.pendingApplications.isEmpty {
+                        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                            HStack {
+                                TrashSectionTitle(title: "Pending Applications")
+                                Spacer()
+                                TrashPill(
+                                    title: "\(viewModel.pendingApplications.count)",
+                                    color: theme.semanticDanger,
+                                    isSelected: true
+                                )
+                            }
+
+                            LazyVStack(spacing: theme.layout.elementSpacing) {
+                                ForEach(viewModel.pendingApplications) { application in
+                                    ApplicationRow(
+                                        application: application,
+                                        onApprove: { await viewModel.approveApplication(application.id) },
+                                        onReject: { reason in
+                                            await viewModel.rejectApplication(
+                                                application.id,
+                                                reason: reason
+                                            )
+                                        }
+                                    )
                                 }
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Management")
+
+                        adminLinkRow(
+                            title: "Edit Community Info",
+                            icon: "pencil",
+                            destination: EditCommunityInfoView(community: community)
+                        )
+
+                        adminLinkRow(
+                            title: "Manage Members",
+                            icon: "person.2.fill",
+                            destination: CommunityMembersListView(communityId: community.id)
+                        )
+
+                        adminLinkRow(
+                            title: "Audit Logs",
+                            icon: "doc.text.magnifyingglass",
+                            destination: AdminLogsView(communityId: community.id)
+                        )
+
+                        adminLinkRow(
+                            title: "Manage Achievements",
+                            icon: "trophy",
+                            destination: ManageAchievementsView(communityId: community.id)
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Statistics")
+
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 120), spacing: theme.layout.elementSpacing)],
+                            spacing: theme.layout.elementSpacing
+                        ) {
+                            adminStatCard(
+                                title: "Total Members",
+                                value: "\(community.memberCount)",
+                                color: theme.accents.blue
+                            )
+                            adminStatCard(
+                                title: "Pending",
+                                value: "\(viewModel.pendingApplications.count)",
+                                color: theme.semanticWarning
                             )
                         }
-                    } header: {
-                        HStack {
-                            Text("Pending Applications")
-                            Spacer()
-                            Text("\(viewModel.pendingApplications.count)")
-                                .trashOnAccentForeground()
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color.red)
-                                .clipShape(Capsule())
-                        }
                     }
                 }
-
-                // Management Features
-                Section("Management") {
-                    NavigationLink(destination: EditCommunityInfoView(community: community)) {
-                        TrashLabel("Edit Community Info", icon: "pencil")
-                    }
-
-                    NavigationLink(destination: CommunityMembersListView(communityId: community.id))
-                    {
-                        TrashLabel("Manage Members", icon: "person.2.fill")
-                    }
-
-                    NavigationLink(destination: AdminLogsView(communityId: community.id)) {
-                        TrashLabel("Audit Logs", icon: "doc.text.magnifyingglass")
-                    }
-
-                    NavigationLink(destination: ManageAchievementsView(communityId: community.id)) {
-                        TrashLabel("Manage Achievements", icon: "trophy")
-                    }
-                }
-
-                // Stats
-                Section("Statistics") {
-                    HStack {
-                        Text("Total Members")
-                        Spacer()
-                        Text("\(community.memberCount)")
-                            .foregroundColor(.blue)
-                            .bold()
-                    }
-
-                    HStack {
-                        Text("Pending Approvals")
-                        Spacer()
-                        Text("\(viewModel.pendingApplications.count)")
-                            .foregroundColor(.orange)
-                            .bold()
-                    }
-                }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Admin Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -101,6 +119,66 @@ struct CommunityAdminDashboard: View {
                 await viewModel.loadApplications()
             }
         }
+    }
+
+    private func adminLinkRow<Destination: View>(
+        title: String,
+        icon: String,
+        destination: Destination
+    ) -> some View {
+        NavigationLink(destination: destination) {
+            HStack(spacing: theme.layout.rowContentSpacing) {
+                TrashIcon(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(theme.accents.blue)
+                    .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
+                    .background(theme.palette.card)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous))
+
+                Text(title)
+                    .font(theme.typography.subheadline)
+                    .foregroundColor(theme.palette.textPrimary)
+
+                Spacer()
+
+                TrashIcon(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(theme.palette.textSecondary)
+            }
+            .padding(theme.components.cardPadding)
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func adminStatCard(title: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: theme.spacing.sm) {
+            Text(title)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
+
+            Text(value)
+                .font(theme.typography.subheadline)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+        }
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -162,16 +240,17 @@ struct ApplicationRow: View {
     @State private var showRejectSheet = false
     @State private var rejectionReason = ""
     @State private var isProcessing = false
+    private let theme = TrashTheme()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // User Header
-            HStack {
+        VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+            HStack(spacing: theme.layout.rowContentSpacing) {
                 UserAvatarView(name: application.username)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(application.username)
-                        .font(.headline)
+                        .font(theme.typography.subheadline)
+                        .fontWeight(.bold)
                     HStack(spacing: 12) {
                         TrashLabel("\(application.userCredits) Credits", icon: "star.fill")
                             .font(.caption)
@@ -185,51 +264,36 @@ struct ApplicationRow: View {
                 Spacer()
             }
 
-            // Message
             if let message = application.message, !message.isEmpty {
                 Text(message)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
-                    .padding(10)
-                    .background(Color(.tertiarySystemGroupedBackground))
-                    .cornerRadius(8)
+                    .font(theme.typography.caption)
+                    .foregroundColor(theme.palette.textPrimary)
+                    .padding(theme.components.cardPadding)
+                    .background(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .fill(theme.palette.card.opacity(0.42))
+                    )
             }
 
-            // Action Buttons
-            HStack(spacing: 12) {
-                TrashButton(
-                    baseColor: .green,
-                    action: {
-                        isProcessing = true
-                        Task {
-                            await onApprove()
-                            isProcessing = false
-                        }
-                    }
-                ) {
-                    HStack {
-                        TrashIcon(systemName: "checkmark.circle.fill")
-                        Text("Approve")
-                    }
-                    .trashOnAccentForeground()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: theme.layout.elementSpacing) {
+                    actionButtons
                 }
-                .disabled(isProcessing)
 
-                TrashButton(baseColor: .red, action: { showRejectSheet = true }) {
-                    HStack {
-                        TrashIcon(systemName: "xmark.circle.fill")
-                        Text("Reject")
-                    }
-                    .trashOnAccentForeground()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                    actionButtons
                 }
-                .disabled(isProcessing)
             }
         }
-        .padding(.vertical, 8)
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                .fill(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
+                )
+        )
         .sheet(isPresented: $showRejectSheet) {
             RejectApplicationSheet(
                 username: application.username,
@@ -243,7 +307,36 @@ struct ApplicationRow: View {
                     }
                 }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        TrashPill(
+            title: "Approve",
+            icon: "checkmark.circle.fill",
+            color: .green,
+            isSelected: true,
+            action: {
+                isProcessing = true
+                Task {
+                    await onApprove()
+                    isProcessing = false
+                }
+            }
+        )
+        .disabled(isProcessing)
+
+        TrashPill(
+            title: "Reject",
+            icon: "xmark.circle.fill",
+            color: .red,
+            isSelected: false,
+            action: { showRejectSheet = true }
+        )
+        .disabled(isProcessing)
     }
 
     private func timeAgo(from date: Date) -> String {
@@ -260,27 +353,41 @@ struct RejectApplicationSheet: View {
     @Binding var rejectionReason: String
     let onConfirm: () -> Void
     @Environment(\.dismiss) var dismiss
+    private let theme = TrashTheme()
 
     var body: some View {
         NavigationView {
-            Form {
-                Section {
-                    Text("Are you sure you want to reject the application from \(username)?")
-                        .foregroundColor(.secondary)
-                }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Confirmation")
+                        Text("Are you sure you want to reject the application from \(username)?")
+                            .font(theme.typography.body)
+                            .foregroundColor(theme.palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section("Rejection Reason (Optional)") {
-                    TrashFormTextEditor(text: $rejectionReason, minHeight: 100)
-                }
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Rejection Reason")
+                        TrashFormTextEditor(text: $rejectionReason, minHeight: 100)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section {
-                    TrashTextButton(
-                        title: "Reject Application", variant: .destructive
-                    ) {
-                        onConfirm()
+                    TrashButton(baseColor: theme.semanticDanger, action: onConfirm) {
+                        Text("Reject Application")
+                            .font(theme.typography.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                            .trashOnAccentForeground()
                     }
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Reject Application")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -14,7 +14,7 @@ struct AchievementsListView: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        VStack(spacing: theme.spacing.md) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             TrashSegmentedControl(
                 options: [
                     TrashSegmentOption(value: 0, title: "Official", icon: "shield.fill"),
@@ -22,8 +22,8 @@ struct AchievementsListView: View {
                 ],
                 selection: $selectedTab
             )
-            .padding(.horizontal, theme.components.contentInset)
-            .padding(.top, theme.spacing.sm + 4)
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.top, theme.layout.elementSpacing)
 
             if service.isLoading {
                 Spacer(minLength: 0)
@@ -33,8 +33,8 @@ struct AchievementsListView: View {
                 emptyStateView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: theme.spacing.md) {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                         Text(selectedTab == 0 ? "Official Achievements" : "Community Achievements")
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(theme.palette.textSecondary)
@@ -53,12 +53,13 @@ struct AchievementsListView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, theme.components.contentInset)
-                    .padding(.top, theme.spacing.sm + 4)
-                    .padding(.bottom, theme.spacing.lg)
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.elementSpacing)
+                    .padding(.bottom, theme.spacing.xxl)
                 }
             }
         }
+        .trashScreenBackground()
         .optionalNavigationTitle(showsNavigationTitle ? "Achievements" : nil)
         .onAppear {
             Task {
@@ -96,8 +97,7 @@ struct AchievementCard: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack(spacing: theme.spacing.sm + 6) {
-            // Achievement icon
+        HStack(spacing: theme.layout.rowContentSpacing) {
             ZStack {
                 Circle()
                     .fill(
@@ -107,36 +107,32 @@ struct AchievementCard: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 56, height: 56)
+                    .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
                     .shadow(color: achievement.rarity.color.opacity(0.3), radius: 6, x: 0, y: 3)
 
                 TrashIcon(systemName: achievement.iconName)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(theme.typography.subheadline)
                     .trashOnAccentForeground()
             }
 
             VStack(alignment: .leading, spacing: theme.spacing.xs) {
-                HStack(spacing: 6) {
+                HStack(spacing: theme.spacing.xs) {
                     Text(achievement.name)
                         .font(theme.typography.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(theme.palette.textPrimary)
+                        .lineLimit(1)
 
-                    // Rarity badge
-                    Text(achievement.rarity.displayName)
-                        .font(theme.typography.caption)
-                        .foregroundColor(achievement.rarity.color)
-                        .padding(.horizontal, 8)
-                        .frame(minHeight: 24)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(achievement.rarity.color.opacity(0.15))
-                        )
+                    TrashPill(
+                        title: achievement.rarity.displayName,
+                        color: achievement.rarity.color,
+                        isSelected: false
+                    )
                 }
 
                 if let desc = achievement.description {
                     Text(desc)
-                        .font(.caption)
+                        .font(theme.typography.caption)
                         .foregroundColor(theme.palette.textSecondary)
                         .lineLimit(2)
                 }
@@ -164,42 +160,13 @@ struct AchievementCard: View {
 
             Spacer()
 
-            // Equip / unequip button
-            TrashTapArea(action: onToggleEquip) {
-                if achievement.isEquipped {
-                    HStack(spacing: 3) {
-                        TrashIcon(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
-                        Text("Equipped")
-                            .font(theme.typography.caption.weight(.bold))
-                    }
-                    .trashOnAccentForeground()
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: theme.components.minimumHitTarget)
-                    .background(
-                        LinearGradient(
-                            colors: achievement.rarity.gradient,
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
-                } else {
-                    Text("Equip")
-                        .font(theme.typography.caption.weight(.bold))
-                        .foregroundColor(theme.accents.blue)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: theme.components.minimumHitTarget)
-                        .background(
-                            RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
-                                .fill(theme.surfaceBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
-                                        .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
-                                )
-                        )
-                }
-            }
+            TrashPill(
+                title: achievement.isEquipped ? "Equipped" : "Equip",
+                icon: achievement.isEquipped ? "checkmark" : nil,
+                color: achievement.isEquipped ? achievement.rarity.color : theme.accents.blue,
+                isSelected: achievement.isEquipped,
+                action: onToggleEquip
+            )
         }
         .padding(theme.components.cardPadding)
         .background(

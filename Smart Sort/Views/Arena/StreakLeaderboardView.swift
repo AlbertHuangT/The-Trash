@@ -24,7 +24,7 @@ struct StreakLeaderboardView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: theme.spacing.md + 2) {
+                        LazyVStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
                             Text("Best Streaks")
                                 .font(.footnote.weight(.semibold))
                                 .foregroundColor(theme.palette.textSecondary)
@@ -35,11 +35,13 @@ struct StreakLeaderboardView: View {
                                 StreakLeaderboardRow(rank: index + 1, entry: entry)
                             }
                         }
-                        .padding(.horizontal, theme.components.contentInset)
-                        .padding(.top, 8)
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.top, theme.layout.elementSpacing)
+                        .padding(.bottom, theme.layout.sectionSpacing)
                     }
                 }
             }
+            .trashScreenBackground()
             .navigationTitle("Streak Leaderboard")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -79,7 +81,7 @@ struct StreakLeaderboardRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             // Rank
             ZStack {
                 if rank <= 3 {
@@ -101,6 +103,7 @@ struct StreakLeaderboardRow: View {
                 Text(entry.displayName)
                     .font(.subheadline.bold())
                     .foregroundColor(theme.palette.textPrimary)
+                    .lineLimit(1)
                 Text("\(entry.totalGames) games played")
                     .font(.caption)
                     .foregroundColor(theme.palette.textSecondary)
@@ -118,7 +121,8 @@ struct StreakLeaderboardRow: View {
             }
         }
         .padding(.horizontal, theme.components.contentInset)
-        .padding(.vertical, 12)
+        .padding(.vertical, theme.layout.elementSpacing)
+        .frame(minHeight: theme.components.rowHeight)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(theme.surfaceBackground)

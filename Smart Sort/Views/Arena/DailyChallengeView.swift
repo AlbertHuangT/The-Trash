@@ -41,6 +41,7 @@ struct DailyChallengeView: View {
                     .transition(.opacity)
             }
         }
+        .trashScreenBackground()
         .sheet(isPresented: $showLeaderboard) {
             DailyLeaderboardView()
         }
@@ -61,74 +62,65 @@ struct DailyChallengeView: View {
     }
 
     private var quizCardHeight: CGFloat {
-        min(540, UIScreen.main.bounds.height * 0.58)
+        min(500, UIScreen.main.bounds.height * 0.54)
     }
 
     // MARK: - Already Played View
 
     private var alreadyPlayedView: some View {
-        VStack(spacing: 28) {
-            Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(theme.surfaceBackground)
-                    .frame(width: 140, height: 140)
-                    .overlay(
-                        Circle()
-                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                    )
-
-                TrashIcon(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 70))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [theme.semanticSuccess, theme.accents.blue],
-                            startPoint: .top,
-                            endPoint: .bottom
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: theme.layout.sectionSpacing) {
+                ZStack {
+                    Circle()
+                        .fill(theme.surfaceBackground)
+                        .frame(width: 112, height: 112)
+                        .overlay(
+                            Circle()
+                                .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                         )
-                    )
-            }
 
-            VStack(spacing: 12) {
-                Text("Already Completed!")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(theme.palette.textPrimary)
-
-                Text(
-                    "You've already completed today's challenge.\nCome back tomorrow for a new one!"
-                )
-                .multilineTextAlignment(.center)
-                .foregroundColor(theme.palette.textSecondary)
-                .padding(.horizontal, 40)
-
-                Text("Resets at midnight UTC")
-                    .font(.caption)
-                    .foregroundColor(theme.palette.textSecondary.opacity(0.7))
-            }
-
-            TrashButton(
-                baseColor: theme.semanticSuccess, cornerRadius: 999,
-                action: { showLeaderboard = true }
-            ) {
-                HStack(spacing: 10) {
-                    TrashIcon(systemName: "chart.bar.fill")
-                    Text("View Leaderboard")
+                    TrashIcon(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [theme.semanticSuccess, theme.accents.blue],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                 }
-                .font(.headline.bold())
-                .trashOnAccentForeground()
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
-                .background(
-                    LinearGradient(
-                        colors: [theme.semanticSuccess, theme.accents.blue], startPoint: .leading,
-                        endPoint: .trailing)
-                )
-                .clipShape(Capsule())
-                .shadow(color: theme.semanticSuccess.opacity(0.4), radius: 12, y: 6)
-            }
 
-            Spacer()
+                VStack(spacing: theme.layout.elementSpacing) {
+                    Text("Already Completed!")
+                        .font(theme.typography.title)
+                        .foregroundColor(theme.palette.textPrimary)
+
+                    Text(
+                        "You've already completed today's challenge.\nCome back tomorrow for a new one!"
+                    )
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(theme.palette.textSecondary)
+
+                    Text("Resets at midnight UTC")
+                        .font(theme.typography.caption)
+                        .foregroundColor(theme.palette.textSecondary.opacity(0.7))
+                }
+
+                TrashButton(
+                    baseColor: theme.accents.blue,
+                    cornerRadius: 999,
+                    action: { showLeaderboard = true }
+                ) {
+                    HStack(spacing: 8) {
+                        TrashIcon(systemName: "chart.bar.fill")
+                        Text("View Leaderboard")
+                    }
+                    .font(theme.typography.subheadline.weight(.bold))
+                    .trashOnAccentForeground()
+                }
+            }
+            .padding(.horizontal, theme.layout.screenInset)
+            .padding(.vertical, theme.layout.sectionSpacing)
         }
     }
 
@@ -152,8 +144,8 @@ struct DailyChallengeView: View {
                     }
                     .font(.subheadline)
                     .foregroundColor(theme.semanticSuccess)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, theme.layout.compactControlHorizontalInset)
+                    .frame(minHeight: 32)
                     .background(statusPillBackground)
                 )
             )
@@ -199,7 +191,7 @@ struct DailyChallengeView: View {
             }
         }
         .frame(height: quizCardHeight)
-        .padding(.horizontal, theme.components.contentInset)
+        .padding(.horizontal, theme.layout.screenInset)
     }
 
     private var errorBanner: some View {
@@ -221,7 +213,7 @@ struct DailyChallengeView: View {
                         .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
                 )
         )
-        .padding(.horizontal, theme.components.contentInset)
+        .padding(.horizontal, theme.layout.screenInset)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 

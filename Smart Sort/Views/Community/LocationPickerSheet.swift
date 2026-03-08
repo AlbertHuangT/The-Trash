@@ -15,49 +15,28 @@ struct LocationPickerSheet: View {
     private let theme = TrashTheme()
     @State private var searchText = ""
     @State private var isSelecting = false
+    @State private var isUsingCurrentLocation = false
+    @State private var pendingLocationKey: String?
     @State private var showLocationPermissionAlert = false
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                if userSettings.locationPermissionStatus != .denied && userSettings.locationPermissionStatus != .restricted {
-                    useCurrentLocationSection
-                }
+            ZStack {
+                theme.appBackground
+                    .ignoresSafeArea()
 
-                TrashSearchField(placeholder: "Search cities...", text: $searchText)
-                .padding(.horizontal, theme.components.contentInset)
-                .padding(.vertical, theme.spacing.sm + 4)
-
-                HStack {
-                    Text("Or select a city")
-                        .font(theme.typography.subheadline)
-                        .foregroundColor(theme.palette.textSecondary)
-                    Spacer()
-                }
-                .padding(.horizontal, theme.spacing.lg)
-                .padding(.bottom, 8)
-
-                List {
-                    ForEach(PredefinedLocations.search(query: searchText), id: \.city) { location in
-                        LocationRow(
-                            location: location,
-                            isSelected: userSettings.selectedLocation?.city == location.city,
-                            isDisabled: isSelecting
-                        ) {
-                            guard !isSelecting else { return }
-                            isSelecting = true
-                            Task {
-                                await userSettings.selectLocation(location)
-                                if userSettings.locationSyncError == nil {
-                                    isPresented = false
-                                } else {
-                                    isSelecting = false
-                                }
-                            }
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: theme.spacing.md) {
+                        if showsCurrentLocationSection {
+                            useCurrentLocationSection
                         }
+                        searchSection
+                        resultsSection
                     }
+                    .padding(.horizontal, theme.components.contentInset)
+                    .padding(.top, theme.components.contentInset)
+                    .padding(.bottom, theme.spacing.xxl)
                 }
-                .listStyle(.plain)
             }
             .navigationTitle("Select Location")
             .navigationBarTitleDisplayMode(.inline)
@@ -81,110 +60,195 @@ struct LocationPickerSheet: View {
                     cancelTitle: "Not Now",
                     onCancel: { showLocationPermissionAlert = false }
                 )
-                .presentationDetents([.fraction(0.36), .medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.appBackground)
             }
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: userSettings.locationPermissionStatus) { newStatus in
                 if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
+                    isUsingCurrentLocation = true
+                    pendingLocationKey = nil
                     userSettings.requestCurrentLocation()
                 }
             }
             .onChange(of: userSettings.preciseLocation) { newLocation in
-                if let location = newLocation, !isSelecting {
-                    isSelecting = true
-                    Task {
-                        let nearestCity = findNearestCity(to: location)
-                        await userSettings.selectLocation(nearestCity)
-                        if userSettings.locationSyncError == nil {
-                            isPresented = false
-                        } else {
-                            isSelecting = false
-                        }
-                    }
+                if let location = newLocation, isUsingCurrentLocation {
+                    selectNearestLocation(from: location)
                 }
             }
             .onChange(of: userSettings.locationSyncError) { newError in
                 if newError != nil {
-                    isSelecting = false
+                    resetSelectionState()
                 }
             }
         }
     }
 
+    private var showsCurrentLocationSection: Bool {
+        userSettings.locationPermissionStatus != .denied
+            && userSettings.locationPermissionStatus != .restricted
+    }
+
     private var useCurrentLocationSection: some View {
-        VStack(spacing: 0) {
-            TrashTapArea(action: handleUseCurrentLocation) {
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [theme.accents.blue, theme.accents.green],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+        TrashTapArea(action: handleUseCurrentLocation) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [theme.accents.blue, theme.accents.green],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
+                        )
+                        .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
 
-                        if userSettings.isRequestingLocation {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: theme.onAccentForeground))
-                        } else {
-                            TrashIcon(systemName: "location.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .trashOnAccentForeground()
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Use Current Location")
-                            .font(theme.typography.headline)
-                            .foregroundColor(theme.palette.textPrimary)
-
-                        Text(locationSubtitle)
-                            .font(.caption)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
-
-                    Spacer()
-
-                    if userSettings.hasLocationPermission {
-                        TrashIcon(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(theme.palette.textSecondary)
+                    if userSettings.isRequestingLocation || isUsingCurrentLocation {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: theme.onAccentForeground))
                     } else {
-                        Text("Enable")
-                            .font(.caption.bold())
+                        TrashIcon(systemName: "location.fill")
+                            .font(.system(size: 17, weight: .semibold))
                             .trashOnAccentForeground()
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: theme.components.minimumHitTarget)
-                            .background(theme.accents.blue)
-                            .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
                     }
                 }
-                .padding(theme.components.cardPadding)
-                .background(
-                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
-                        .fill(theme.surfaceBackground)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
-                                .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
-                        )
-                )
-            }
-            .disabled(userSettings.isRequestingLocation)
-            .padding(.horizontal, theme.components.contentInset)
-            .padding(.top, theme.components.contentInset)
-            .padding(.bottom, 8)
+                .padding(.top, 2)
 
-            Divider()
-                .padding(.horizontal, theme.components.contentInset)
-                .padding(.vertical, 8)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Use Current Location")
+                        .font(theme.typography.subheadline)
+                        .foregroundColor(theme.palette.textPrimary)
+                        .lineLimit(2)
+
+                    Text(locationSubtitle)
+                        .font(theme.typography.caption)
+                        .foregroundColor(locationSubtitleColor)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+
+                currentLocationTrailingAccessory
+                    .padding(.top, 2)
+            }
+            .padding(theme.components.cardPadding)
+            .frame(maxWidth: .infinity, minHeight: theme.components.rowHeight + 12, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                    )
+            )
+        }
+        .disabled(isCurrentLocationControlDisabled || isSelecting)
+        .opacity((isCurrentLocationControlDisabled || isSelecting) ? 0.72 : 1.0)
+    }
+
+    private var searchSection: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.sm) {
+            TrashSearchField(placeholder: "Search cities...", text: $searchText)
+
+            Text(searchSectionTitle)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textSecondary)
+        }
+    }
+
+    private var resultsSection: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.sm) {
+            if filteredLocations.isEmpty {
+                EmptyStateView(
+                    icon: "magnifyingglass",
+                    title: "No Matching Cities",
+                    subtitle: "Try another city or state, or use your current location."
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.top, theme.spacing.sm)
+            } else {
+                ForEach(filteredLocations, id: \.displayName) { location in
+                    LocationRow(
+                        location: location,
+                        isSelected: userSettings.selectedLocation == location,
+                        isLoading: pendingLocationKey == location.displayName,
+                        isDisabled: isSelecting
+                    ) {
+                        selectManualLocation(location)
+                    }
+                }
+            }
+        }
+    }
+
+    private var filteredLocations: [UserLocation] {
+        PredefinedLocations.search(query: searchText.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private var searchSectionTitle: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Choose a city manually"
+            : "Matching cities"
+    }
+
+    private var isCurrentLocationControlDisabled: Bool {
+        userSettings.isRequestingLocation || isUsingCurrentLocation
+    }
+
+    private var locationSubtitleColor: Color {
+        if userSettings.locationSyncError != nil {
+            return theme.semanticDanger
+        }
+
+        return theme.palette.textSecondary
+    }
+
+    @ViewBuilder
+    private var currentLocationTrailingAccessory: some View {
+        if userSettings.isRequestingLocation || isUsingCurrentLocation {
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: theme.accents.blue))
+                .frame(minWidth: 74, minHeight: theme.components.minimumHitTarget, alignment: .trailing)
+        } else if userSettings.hasLocationPermission {
+            TrashIcon(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(theme.palette.textSecondary)
+                .frame(minWidth: 74, minHeight: theme.components.minimumHitTarget, alignment: .trailing)
+        } else if userSettings.locationPermissionStatus == .notDetermined {
+            Text("Enable")
+                .font(theme.typography.caption.weight(.bold))
+                .trashOnAccentForeground()
+                .padding(.horizontal, 12)
+                .frame(minWidth: 74, minHeight: theme.components.minimumHitTarget)
+                .background(theme.accents.blue)
+                .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
+        } else {
+            Text("Unavailable")
+                .font(theme.typography.caption.weight(.bold))
+                .foregroundColor(theme.palette.textSecondary)
+                .padding(.horizontal, 12)
+                .frame(minWidth: 96, minHeight: theme.components.minimumHitTarget)
+                .background(theme.surfaceBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
+                        .stroke(theme.palette.divider.opacity(0.85), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
         }
     }
 
     private var locationSubtitle: String {
+        if userSettings.isRequestingLocation {
+            return "Finding your precise location..."
+        }
+
+        if isUsingCurrentLocation {
+            return "Saving the nearest supported city..."
+        }
+
         if let error = userSettings.locationSyncError {
             return error
         }
@@ -195,7 +259,7 @@ struct LocationPickerSheet: View {
         case .authorizedWhenInUse, .authorizedAlways:
             return "Find the nearest city automatically"
         case .denied, .restricted:
-            return "Location access denied"
+            return "Location access is unavailable. Choose a city below."
         @unknown default:
             return "Enable for better experience"
         }
@@ -203,10 +267,53 @@ struct LocationPickerSheet: View {
 
     private func handleUseCurrentLocation() {
         if userSettings.hasLocationPermission {
+            resetSelectionState()
+            isSelecting = true
+            isUsingCurrentLocation = true
             userSettings.requestCurrentLocation()
         } else if userSettings.locationPermissionStatus == .notDetermined {
             showLocationPermissionAlert = true
         }
+    }
+
+    private func selectManualLocation(_ location: UserLocation) {
+        guard !isSelecting else { return }
+
+        resetSelectionState()
+        isSelecting = true
+        pendingLocationKey = location.displayName
+
+        Task {
+            await userSettings.selectLocation(location)
+            if userSettings.locationSyncError == nil {
+                isPresented = false
+            } else {
+                resetSelectionState()
+            }
+        }
+    }
+
+    private func selectNearestLocation(from location: CLLocation) {
+        guard !isSelecting || isUsingCurrentLocation else { return }
+
+        isSelecting = true
+        pendingLocationKey = nil
+
+        Task {
+            let nearestCity = findNearestCity(to: location)
+            await userSettings.selectLocation(nearestCity)
+            if userSettings.locationSyncError == nil {
+                isPresented = false
+            } else {
+                resetSelectionState()
+            }
+        }
+    }
+
+    private func resetSelectionState() {
+        isSelecting = false
+        isUsingCurrentLocation = false
+        pendingLocationKey = nil
     }
 
     private func findNearestCity(to location: CLLocation) -> UserLocation {
@@ -230,6 +337,7 @@ struct LocationPickerSheet: View {
 private struct LocationRow: View {
     let location: UserLocation
     let isSelected: Bool
+    let isLoading: Bool
     let isDisabled: Bool
     let onTap: () -> Void
     private let theme = TrashTheme()
@@ -239,11 +347,11 @@ private struct LocationRow: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(theme.accents.blue.opacity(0.15))
+                        .fill((isSelected ? theme.accents.green : theme.accents.blue).opacity(0.15))
                         .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
                     TrashIcon(systemName: "mappin.circle.fill")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(theme.accents.blue)
+                        .foregroundColor(isSelected ? theme.accents.green : theme.accents.blue)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -251,19 +359,45 @@ private struct LocationRow: View {
                         .font(theme.typography.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(theme.palette.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     Text(location.state)
                         .font(theme.typography.caption)
                         .foregroundColor(theme.palette.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-
-                if isSelected {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: theme.accents.blue))
+                        .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
+                } else if isSelected {
                     TrashIcon(systemName: "checkmark.circle.fill")
                         .foregroundColor(theme.accents.green)
+                        .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
+                } else {
+                    TrashIcon(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(theme.palette.textSecondary.opacity(0.7))
+                        .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, theme.components.cardPadding)
+            .padding(.vertical, theme.spacing.sm)
+            .frame(maxWidth: .infinity, minHeight: theme.components.rowHeight + 8, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                    .fill(theme.surfaceBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                            .stroke(
+                                isSelected ? theme.interactiveStroke : theme.palette.divider.opacity(0.85),
+                                lineWidth: 1
+                            )
+                    )
+            )
             .contentShape(Rectangle())
         }
         .disabled(isDisabled)

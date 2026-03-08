@@ -18,6 +18,7 @@ struct HistoryItem: Decodable, Identifiable {
     let userCorrection: String
     let imagePath: String
     let userComment: String?
+    var signedImageURL: URL? = nil
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,11 +30,7 @@ struct HistoryItem: Decodable, Identifiable {
         case userComment = "user_comment"
     }
     
-    // Build the public Supabase Storage URL
-    var publicImageUrl: URL? {
-        SupabaseManager.shared.baseURL
-            .appending(path: "storage/v1/object/public/feedback_images/\(imagePath)")
-    }
+    var imageURL: URL? { signedImageURL }
 }
 
 // MARK: - ViewModel
@@ -55,7 +52,7 @@ class TrashHistoryViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let items: [HistoryItem] = try await client
+            var items: [HistoryItem] = try await client
                 .from("feedback_logs")
                 .select()
                 .eq("user_id", value: userId)
@@ -63,7 +60,13 @@ class TrashHistoryViewModel: ObservableObject {
                 .limit(50) // Keep the latest 50 entries
                 .execute()
                 .value
-            
+
+            for index in items.indices {
+                items[index].signedImageURL = try? await client.storage
+                    .from("feedback_images")
+                    .createSignedURL(path: items[index].imagePath, expiresIn: 3600)
+            }
+
             self.historyItems = items
         } catch {
             print("❌ Fetch history error: \(error)")
@@ -91,7 +94,7 @@ struct TrashHistoryView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
-                        Text("Recent Corrections")
+                        Text("Recent Feedback")
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(theme.palette.textSecondary)
                             .textCase(.uppercase)
@@ -135,7 +138,7 @@ struct HistoryRow: View {
     var body: some View {
         HStack(spacing: 12) {
             // 1. Thumbnail
-            AsyncImage(url: item.publicImageUrl) { phase in
+            AsyncImage(url: item.imageURL) { phase in
                 switch phase {
                 case .empty:
                     Rectangle().fill(theme.surfaceBackground)
@@ -170,22 +173,21 @@ struct HistoryRow: View {
                         .foregroundColor(theme.palette.textSecondary)
                 }
                 
-                // Show how the user corrected the result
-                if item.userCorrection != item.predictedCategory {
+                if item.userCorrection.caseInsensitiveCompare(item.predictedLabel) != .orderedSame {
                     HStack(spacing: 4) {
-                        Text(item.predictedCategory)
+                        Text(item.predictedLabel.capitalized)
                             .strikethrough()
                             .foregroundColor(theme.semanticDanger.opacity(0.7))
                         TrashIcon(systemName: "arrow.right")
                             .font(.caption2)
                             .foregroundColor(theme.palette.textSecondary)
-                        Text(item.userCorrection)
+                        Text(item.userCorrection.capitalized)
                             .fontWeight(.semibold)
                             .foregroundColor(theme.semanticSuccess)
                     }
                     .font(.caption)
                 } else {
-                    Text(item.predictedCategory)
+                    Text(item.predictedLabel.capitalized)
                         .font(.caption)
                         .foregroundColor(theme.palette.textSecondary)
                         .padding(.horizontal, 8)
@@ -200,6 +202,10 @@ struct HistoryRow: View {
                         )
                 }
                 
+                Text("Category: \(item.predictedCategory)")
+                    .font(.caption2)
+                    .foregroundColor(theme.palette.textSecondary)
+
                 if let comment = item.userComment, !comment.isEmpty {
                     Text("\"\(comment)\"")
                         .font(.caption2)

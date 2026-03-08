@@ -35,10 +35,10 @@ struct TrashSegmentedControl<Value: Hashable>: View {
         .frame(minHeight: theme.components.segmentedControlHeight)
         .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius, style: .continuous)
                 .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius, style: .continuous)
                         .stroke(theme.palette.divider.opacity(0.75), lineWidth: 1)
                 )
         )

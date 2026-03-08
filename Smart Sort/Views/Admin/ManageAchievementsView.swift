@@ -28,8 +28,8 @@ struct ManageAchievementsView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 18) {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                         Text("Community Achievements")
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(theme.palette.textSecondary)
@@ -46,11 +46,13 @@ struct ManageAchievementsView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.elementSpacing)
+                    .padding(.bottom, theme.spacing.xxl)
                 }
             }
         }
+        .trashScreenBackground()
         .navigationTitle("Manage Achievements")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -70,7 +72,7 @@ struct ManageAchievementsView: View {
     // MARK: - Achievement Card
 
     private func achievementCard(_ achievement: Achievement) -> some View {
-        HStack(spacing: 14) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             ZStack {
                 Circle()
                     .fill(
@@ -86,25 +88,24 @@ struct ManageAchievementsView: View {
                     .font(.title3)
                     .trashOnAccentForeground()
             }
+            .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: theme.spacing.xs) {
                 Text(achievement.name)
-                    .font(.headline)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
                     .foregroundColor(theme.palette.textPrimary)
                 if let desc = achievement.description {
                     Text(desc)
                         .font(.caption)
                         .foregroundColor(theme.palette.textSecondary)
+                        .lineLimit(2)
                 }
-                Text(achievement.rarity.displayName)
-                    .font(.caption2.bold())
-                    .foregroundColor(achievement.rarity.color)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(achievement.rarity.color.opacity(0.15))
-                    )
+                TrashPill(
+                    title: achievement.rarity.displayName,
+                    color: achievement.rarity.color,
+                    isSelected: false
+                )
             }
 
             Spacer()
@@ -113,12 +114,13 @@ struct ManageAchievementsView: View {
                 .font(.caption)
                 .foregroundColor(theme.palette.textSecondary)
         }
-        .padding(14)
+        .padding(theme.components.cardPadding)
+        .frame(minHeight: theme.components.rowHeight)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                 .fill(theme.surfaceBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                         .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                 )
         )
@@ -129,6 +131,7 @@ private struct CreateAchievementView: View {
     let communityId: String
     @Binding var isPresented: Bool
     @StateObject private var service = AchievementService.shared
+    private let theme = TrashTheme()
 
     @State private var name = ""
     @State private var description = ""
@@ -139,39 +142,52 @@ private struct CreateAchievementView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Details")) {
-                    TrashFormTextField(title: "Achievement Name", text: $name, textInputAutocapitalization: .words)
-                    TrashFormTextField(title: "Description", text: $description, textInputAutocapitalization: .sentences)
-                }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Details")
+                        TrashFormTextField(title: "Achievement Name", text: $name, textInputAutocapitalization: .words)
+                        TrashFormTextField(title: "Description", text: $description, textInputAutocapitalization: .sentences)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section(header: Text("Rarity")) {
-                    TrashFormPicker(
-                        title: "Rarity",
-                        selection: $selectedRarity,
-                        options: AchievementRarity.allCases.map {
-                            TrashPickerOption(value: $0, title: $0.displayName, icon: nil)
-                        }
-                    )
-                }
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Rarity")
+                        TrashFormPicker(
+                            title: "Rarity",
+                            selection: $selectedRarity,
+                            options: AchievementRarity.allCases.map {
+                                TrashPickerOption(value: $0, title: $0.displayName, icon: nil)
+                            }
+                        )
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section(header: Text("Icon")) {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 40))], spacing: 10) {
-                        ForEach(icons, id: \.self) { icon in
-                            TrashIcon(systemName: icon)
-                                .font(.title2)
-                                .padding(8)
-                                .background(selectedIcon == icon ? selectedRarity.color.opacity(0.2) : Color.clear)
-                                .cornerRadius(8)
-                                .foregroundColor(selectedIcon == icon ? selectedRarity.color : .primary)
-                                .onTapGesture {
-                                    selectedIcon = icon
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "Icon")
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 48), spacing: theme.layout.elementSpacing)], spacing: theme.layout.elementSpacing) {
+                            ForEach(icons, id: \.self) { icon in
+                                TrashTapArea(action: { selectedIcon = icon }) {
+                                    TrashIcon(systemName: icon)
+                                        .font(.title3)
+                                        .foregroundColor(selectedIcon == icon ? selectedRarity.color : theme.palette.textPrimary)
+                                        .frame(width: 48, height: 48)
+                                        .background(selectedIcon == icon ? selectedRarity.color.opacity(0.18) : theme.palette.card.opacity(0.24))
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous))
                                 }
+                            }
                         }
                     }
-                    .padding(.vertical)
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("New Achievement")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

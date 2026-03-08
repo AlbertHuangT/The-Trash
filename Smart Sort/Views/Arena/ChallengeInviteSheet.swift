@@ -28,7 +28,7 @@ struct ChallengeInviteSheet: View {
                     emptyState
                 } else {
                     ScrollView {
-                        VStack(spacing: 12) {
+                        LazyVStack(spacing: theme.layout.elementSpacing) {
                             ForEach(viewModel.members) { member in
                                 InviteMemberRow(member: member) {
                                     onChallenge(member.id)
@@ -36,11 +36,13 @@ struct ChallengeInviteSheet: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .padding(.horizontal, theme.layout.screenInset)
+                        .padding(.top, theme.layout.elementSpacing)
+                        .padding(.bottom, theme.layout.sectionSpacing)
                     }
                 }
             }
+            .trashScreenBackground()
             .navigationTitle("Challenge Someone")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -71,35 +73,39 @@ struct InviteMemberRow: View {
     private let theme = TrashTheme()
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: theme.layout.rowContentSpacing) {
             Circle()
                 .fill(theme.surfaceBackground)
-                .frame(width: theme.components.minimumHitTarget, height: theme.components.minimumHitTarget)
+                .frame(
+                    width: theme.components.minimumHitTarget,
+                    height: theme.components.minimumHitTarget
+                )
                 .overlay(
                     Text(String(member.displayName.prefix(1)).uppercased())
-                        .font(.headline.bold())
+                        .font(theme.typography.subheadline.weight(.bold))
                         .foregroundColor(theme.accents.blue)
                 )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.displayName)
-                    .font(.subheadline.bold())
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
                     .foregroundColor(theme.palette.textPrimary)
+                    .lineLimit(1)
             }
 
             Spacer()
 
-            TrashButton(baseColor: theme.semanticDanger, cornerRadius: 999, action: onChallenge) {
-                HStack(spacing: 4) {
-                    TrashIcon(systemName: "bolt.fill")
-                    Text("Challenge")
-                }
-                .font(.caption.bold())
-                .trashOnAccentForeground()
-            }
+            TrashPill(
+                title: "Challenge",
+                icon: "bolt.fill",
+                color: theme.semanticDanger,
+                isSelected: true,
+                action: onChallenge
+            )
         }
-        .padding(.horizontal, theme.components.contentInset)
-        .padding(.vertical, 12)
+        .padding(.horizontal, theme.components.cardPadding)
+        .padding(.vertical, theme.layout.elementSpacing)
         .frame(minHeight: theme.components.rowHeight)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)

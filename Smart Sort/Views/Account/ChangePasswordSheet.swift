@@ -16,13 +16,16 @@ struct ChangePasswordSheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("New Password")) {
-                    TrashFormSecureField(title: "Enter new password", text: $newPassword)
-                    TrashFormSecureField(title: "Confirm password", text: $confirmPassword)
-                }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
+                        TrashSectionTitle(title: "New Password")
+                        TrashFormSecureField(title: "Enter new password", text: $newPassword)
+                        TrashFormSecureField(title: "Confirm password", text: $confirmPassword)
+                    }
+                    .padding(theme.components.cardPadding)
+                    .surfaceCard(cornerRadius: theme.corners.large)
 
-                Section {
                     TrashButton(baseColor: theme.accents.blue, action: {
                         Task { await submit() }
                     }) {
@@ -37,22 +40,18 @@ struct ChangePasswordSheet: View {
                         }
                     }
                     .disabled(authVM.isLoading)
-                }
 
-                if let message = localError ?? authVM.errorMessage {
-                    Section {
-                        Text(message)
-                            .font(theme.typography.caption)
-                            .foregroundColor(theme.semanticDanger)
-                    }
-                } else if let success = successMessage {
-                    Section {
-                        Text(success)
-                            .font(theme.typography.caption)
-                            .foregroundColor(theme.semanticSuccess)
+                    if let message = localError ?? authVM.errorMessage {
+                        messageCard(message, color: theme.semanticDanger, icon: "exclamationmark.circle.fill")
+                    } else if let success = successMessage {
+                        messageCard(success, color: theme.semanticSuccess, icon: "checkmark.circle.fill")
                     }
                 }
+                .padding(.horizontal, theme.layout.screenInset)
+                .padding(.top, theme.layout.screenInset)
+                .padding(.bottom, theme.spacing.xxl)
             }
+            .trashScreenBackground()
             .navigationTitle("Change Password")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -63,6 +62,26 @@ struct ChangePasswordSheet: View {
                 }
             }
         }
+    }
+
+    private func messageCard(_ message: String, color: Color, icon: String) -> some View {
+        HStack(spacing: theme.spacing.sm) {
+            TrashIcon(systemName: icon)
+                .foregroundColor(color)
+            Text(message)
+                .font(theme.typography.caption)
+                .foregroundColor(theme.palette.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(theme.components.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                .fill(color.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
+                        .stroke(color.opacity(0.22), lineWidth: 1)
+                )
+        )
     }
 
     private func submit() async {

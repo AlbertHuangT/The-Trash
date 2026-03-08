@@ -15,7 +15,7 @@ struct BadgePickerView: View {
     }
 
     var body: some View {
-        VStack(spacing: theme.spacing.md) {
+        VStack(spacing: theme.layout.sectionSpacing) {
             if service.isLoading {
                 Spacer(minLength: 0)
                 ProgressView("Loading badges...")
@@ -28,10 +28,10 @@ struct BadgePickerView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: theme.spacing.md) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: theme.layout.sectionSpacing) {
                         if let equipped = equippedBadge {
-                            VStack(alignment: .leading, spacing: theme.spacing.sm) {
+                            VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
                                 sectionHeader("Currently Equipped")
 
                                 AchievementCard(achievement: equipped) {
@@ -42,7 +42,7 @@ struct BadgePickerView: View {
 
                         sectionHeader("All Badges")
 
-                        LazyVStack(spacing: 12) {
+                        LazyVStack(spacing: theme.layout.elementSpacing) {
                             ForEach(service.myAchievements) { achievement in
                                 AchievementCard(achievement: achievement) {
                                     Task {
@@ -56,12 +56,13 @@ struct BadgePickerView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, theme.components.contentInset)
-                    .padding(.top, theme.components.contentInset)
-                    .padding(.bottom, theme.spacing.xl)
+                    .padding(.horizontal, theme.layout.screenInset)
+                    .padding(.top, theme.layout.screenInset)
+                    .padding(.bottom, theme.spacing.xxl)
                 }
             }
         }
+        .trashScreenBackground()
         .optionalNavigationTitle(showsNavigationTitle ? "Badges" : nil)
         .onAppear {
             Task {
