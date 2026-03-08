@@ -43,5 +43,6 @@ GEMINI.md
 plan.md
 .claude/
 .gemini/
+.omx/
 supabase/.temp/
 supabase/.DS_Store
