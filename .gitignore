@@ -44,5 +44,7 @@ plan.md
 .claude/
 .gemini/
 .omx/
+.omc/
+agents/
 supabase/.temp/
 supabase/.DS_Store
