@@ -12,7 +12,7 @@ struct AchievementToastView: View {
     let onDismiss: () -> Void
 
     @State private var isVisible = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var rarity: AchievementRarity {
         result.rarity ?? .common

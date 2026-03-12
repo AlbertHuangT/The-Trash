@@ -203,7 +203,7 @@ struct ArenaHubView: View {
 struct GameModeCard: View {
     let mode: ArenaGameMode
     let onTap: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     private var gradient: LinearGradient {
         let colors: [Color] = {
@@ -233,13 +233,11 @@ struct GameModeCard: View {
                 }
 
                 Text(mode.title)
-                    .font(theme.typography.subheadline)
-                    .foregroundColor(theme.palette.textPrimary)
+                    .trashTextRole(.headline, compact: true)
                     .multilineTextAlignment(.center)
 
                 Text(mode.subtitle)
-                    .font(theme.typography.caption)
-                    .foregroundColor(theme.palette.textSecondary)
+                    .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)

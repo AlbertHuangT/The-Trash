@@ -8,8 +8,8 @@ import SwiftUI
 struct CommunityView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject private var appRouter: AppRouter
+    @Environment(\.trashTheme) private var theme
     @State private var selectedTab: CommunityTab = .events
-    private let theme = TrashTheme()
 
     enum CommunityTab: String, CaseIterable {
         case events = "Events"

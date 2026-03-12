@@ -12,7 +12,7 @@ struct EventsMapView: View {
     let events: [CommunityEvent]
     @ObservedObject var userSettings: UserSettings
     let onEventSelected: (CommunityEvent) -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     @State private var region: MKCoordinateRegion
 

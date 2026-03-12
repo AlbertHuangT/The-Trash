@@ -349,7 +349,7 @@ private struct StatItem: View {
     let label: String
     let icon: String
     let color: Color
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.spacing.sm) {

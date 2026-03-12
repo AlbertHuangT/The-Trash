@@ -8,7 +8,7 @@ struct TrashLabel<Title: View>: View {
     @ViewBuilder let title: () -> Title
 
     init(
-        icon: String, spacing: CGFloat = 6, iconSize: CGFloat? = nil, iconColor: Color? = nil,
+        icon: String, spacing: CGFloat = 8, iconSize: CGFloat? = nil, iconColor: Color? = nil,
         @ViewBuilder title: @escaping () -> Title
     ) {
         self.icon = icon
@@ -33,7 +33,7 @@ struct TrashLabel<Title: View>: View {
 
 extension TrashLabel where Title == Text {
     init(
-        _ title: String, icon: String, spacing: CGFloat = 6, iconSize: CGFloat? = nil,
+        _ title: String, icon: String, spacing: CGFloat = 8, iconSize: CGFloat? = nil,
         iconColor: Color? = nil
     ) {
         self.init(icon: icon, spacing: spacing, iconSize: iconSize, iconColor: iconColor) {
@@ -42,7 +42,7 @@ extension TrashLabel where Title == Text {
     }
 
     init(
-        _ title: LocalizedStringKey, icon: String, spacing: CGFloat = 6, iconSize: CGFloat? = nil,
+        _ title: LocalizedStringKey, icon: String, spacing: CGFloat = 8, iconSize: CGFloat? = nil,
         iconColor: Color? = nil
     ) {
         self.init(icon: icon, spacing: spacing, iconSize: iconSize, iconColor: iconColor) {

@@ -1,205 +1,159 @@
 # UI Guidelines
 
-This document defines the app's current UI system. It is aligned with:
+## Summary
 
-- [TrashTheme.swift](/Users/alberthuang/Documents/Smart%20Sort/Smart%20Sort/Theme/TrashTheme.swift)
-- [TrashCorePrimitives.swift](/Users/alberthuang/Documents/Smart%20Sort/Smart%20Sort/Theme/TrashCorePrimitives.swift)
-- [TrashFormControls.swift](/Users/alberthuang/Documents/Smart%20Sort/Smart%20Sort/Theme/TrashFormControls.swift)
-- [TrashSegmentedControl.swift](/Users/alberthuang/Documents/Smart%20Sort/Smart%20Sort/Theme/TrashSegmentedControl.swift)
+Smart Sort uses a shared SwiftUI design system built around `TrashTheme`.
 
-Use this file as the implementation-facing source for visual consistency.
+The goal is consistency, maintainability, and predictable visual rhythm across Verify, Arena, Community, Leaderboard, Account, and admin surfaces.
 
-## Principles
+Core rule:
 
-- Prefer shared theme tokens over page-local magic numbers.
-- Prefer shared primitives over ad-hoc `RoundedRectangle`, `Button`, and form styling.
-- Follow Apple HIG-sized touch targets and control density.
-- Reuse semantic colors. Do not hardcode raw `.red`, `.green`, `.secondary`, or `.gray` for app states unless the platform behavior itself requires it.
+- use theme tokens and shared primitives first
+- avoid feature-local visual systems unless the theme layer is extended first
 
-## Sizing
+## Design System Rules
 
-These values come from `ThemeComponentMetrics`.
+### Theme Access
 
-- Minimum tappable target: `44pt`
-- Icon button size: `44pt`
-- Primary button height: `50pt`
-- Text input height: `50pt`
-- Standard row height: `56pt`
-- Segmented control height: `44pt`
-- Interactive pill height: `44pt`
-- Card padding: `16pt`
-- Sheet/dialog padding: `24pt`
-- Default horizontal content inset: `16pt`
+- Views should consume theme through `@Environment(\.trashTheme)`
+- Do not instantiate `TrashTheme()` inside feature views
+- App composition, previews, and test scaffolding are the only acceptable places to create a fresh theme instance
 
-Rules:
+### Grid And Rhythm
 
-- Any tappable control must respect the `44pt` minimum target.
-- Do not create custom small icon buttons below `44pt`.
-- Do not introduce one-off button heights like `52`, `54`, or `60` unless there is a strong layout reason.
-- Use responsive height only when the layout truly depends on screen size, such as large image/card regions.
+The app uses:
 
-## Corner Radius
+- 8pt primary grid
+- 4pt secondary grid for compact internal adjustments only
 
-These values come from `ThemeCornerRadius`.
+Preferred layout rhythm:
 
-- `small`: `10`
-- `medium`: `16`
-- `large`: `24`
-- `pill`: `22`
+- `screenInset = 16`
+- `sectionSpacing = 24`
+- `elementSpacing = 12`
+- `rowContentSpacing = 12`
+- `sheetActionSpacing = 12`
 
-Rules:
+Use theme tokens instead of raw literals for:
 
-- Use `small` for compact chips, icon surfaces, and small badges.
-- Use `medium` for standard cards, rows, and inline surfaces.
-- Use `large` for hero cards, sheets, quiz/image cards, and major panels.
-- Use `pill` only for capsule-like interactive pills.
-- Do not add page-local values like `12`, `14`, `15`, `18`, `20`, `28`, `30`, or `36` unless the shared token set is first expanded intentionally.
-
-## Spacing
-
-These values come from `ThemeSpacing`.
-
-- `xs`: `4`
-- `sm`: `8`
-- `md`: `16`
-- `lg`: `20`
-- `xl`: `28`
-- `xxl`: `40`
-
-Rules:
-
-- Use `md` as the default screen inset and standard card spacing.
-- Use `lg` for section separation and medium-emphasis groups.
-- Use `xl` and `xxl` for hero spacing and empty states.
-- Keep layouts on this scale instead of mixing arbitrary values like `10`, `12`, `14`, `18`, `24`, `32`.
+- `padding`
+- `spacing`
+- `frame(minHeight:)`
+- input insets
+- card insets
 
 ## Typography
 
-These values come from `ThemeTypography`.
+Use the shared text role system from `TrashTheme`:
 
-- `title`: `34pt bold rounded`
-- `headline`: `24pt semibold rounded`
-- `subheadline`: `17pt semibold rounded`
-- `body`: `17pt regular rounded`
-- `caption`: `13pt medium rounded`
-- `button`: `17pt semibold rounded`
-- `heroIcon`: `48pt semibold rounded`
-
-Rules:
-
-- Use theme typography instead of ad-hoc `.system(size:)` for common text roles.
-- Default body copy should usually be `theme.typography.body`.
-- Section labels and small metadata should usually use `theme.typography.caption`.
-- Only use custom system sizes for deliberate hero moments, countdowns, or illustrations.
-
-## Color System
-
-Use these sources:
-
-- Base palette: `theme.palette`
-- Accent colors: `theme.accents`
-- Semantic states:
-  - `theme.semanticSuccess`
-  - `theme.semanticWarning`
-  - `theme.semanticDanger`
-  - `theme.semanticInfo`
-  - `theme.semanticHighlight`
-- Category colors:
-  - `theme.categoryRecyclable`
-  - `theme.categoryCompostable`
-  - `theme.categoryHazardous`
-  - `theme.categoryLandfill`
-- Medal colors:
-  - `theme.medalGold`
-  - `theme.medalSilver`
-  - `theme.medalBronze`
+- `display`: countdowns, score moments, win states
+- `title`: page/sheet/empty-state primary titles
+- `headline`: card titles, dialog titles, quiz prompts
+- `subheadline`: compact emphasized supporting text
+- `body`: standard explanatory copy
+- `caption`: metadata, helper text, pills
+- `button`: tappable labels and segmented labels
+- `kicker`: uppercase section labels only
 
 Rules:
 
-- Text should default to `theme.palette.textPrimary` or `theme.palette.textSecondary`.
-- Interactive accent foreground should use `theme.onAccentForeground`.
-- Danger/success/warning UI must use semantic colors, not raw platform colors.
-- Do not use `.secondary` or `.primary` for app-owned styling when a theme token exists.
+- avoid direct `.font(.system(...))` in feature views
+- avoid re-creating uppercase section labels by hand
+- let the shared role determine default line limit and scaling behavior
+
+## Component Metrics
+
+Current baseline metrics:
+
+- minimum hit target: `44`
+- icon button: `44`
+- segmented control height: `44`
+- compact control height: `32`
+- pill height: `44`
+- button height: `52`
+- input height: `52`
+- standard row height: `52`
+- card padding: `16`
+- sheet padding: `24`
+
+Current radius family:
+
+- small: `12`
+- medium: `16`
+- large: `20`
+- pill: `22`
+
+## Information Hierarchy
+
+Every interactive surface should respect an information budget:
+
+- `1` primary information item
+- up to `2` secondary information items
+
+Apply this especially to:
+
+- compact cards
+- rows
+- pills
+- leaderboard cells
+- event/community summaries
+
+If a surface needs more than that, split the information into:
+
+- a secondary region
+- a detail screen
+- an expanded sheet
 
 ## Shared Primitives
 
-Prefer these primitives before writing custom UI:
+Prefer these before building feature-local controls:
 
-- Cards: `TrashCard` or `.surfaceCard(...)`
-- Primary actions: `TrashButton`
-- Tap rows/surfaces: `TrashTapArea`
-- Inputs:
-  - `TrashFormTextField`
-  - `TrashFormSecureField`
-  - `TrashFormTextEditor`
-  - `TrashFormPicker`
-  - `TrashOptionalFormPicker`
-  - `TrashFormToggle`
-  - `TrashFormStepper`
-  - `TrashFormDatePicker`
-- Small controls:
-  - `TrashIconButton`
-  - `TrashPill`
-  - `TrashTextButton`
-  - `TrashSectionTitle`
-  - `TrashSearchField`
-  - `TrashSegmentedControl`
-- Sheets:
-  - `TrashNoticeSheet`
-  - `TrashConfirmSheet`
-  - `TrashTextInputSheet`
+- `TrashButton`
+- `TrashPill`
+- `TrashIconButton`
+- `TrashTextButton`
+- `TrashSegmentedControl`
+- `TrashCard`
+- `TrashForm*`
+- `TrashLabel`
 
-Rules:
+If a feature needs a new repeated UI pattern:
 
-- If a shared primitive can express the UI, use it.
-- Expand the primitive or theme token only when repeated page-specific styling starts appearing in multiple places.
-- Do not fork a second visual system inside one feature if a shared primitive already exists.
+- add or extend a shared primitive first
+- then compose it inside the feature
 
-## Feature-Specific Guidance
+## Background, Color, And Surface Rules
 
-### Arena
+- Use `ThemeBackgroundView` / `.trashScreenBackground()` for screen backgrounds
+- Use theme semantic colors for status states
+- Use theme surface tokens for cards, pills, sheets, and inputs
+- Do not introduce ad hoc feature-specific gradients or shadows when a named theme token can express the same role
 
-- Reuse `SharedQuizCard`, `ArenaStatusBar`, and `GenericSessionSummaryView` whenever possible.
-- Arena image/quiz cards should use the shared large-radius image-card treatment.
-- Mode wrappers may differ in logic, not in core control sizing.
+## Do / Don't
 
-### Community
+### Do
 
-- Event, community, and location rows should use shared row/card metrics.
-- Detail sheets should use `contentInset`, `cardPadding`, and theme semantic colors instead of local one-off geometry.
+- use `trashTextRole(...)` for text hierarchy
+- use theme spacing/layout/component tokens
+- reuse shared controls for repeated patterns
+- keep compact surfaces visually quiet and scannable
 
-### Verify
+### Don't
 
-- Verify’s hero camera surface can use larger visual geometry, but supporting controls still follow the shared hit target, button, and card rules.
-- Error/result/feedback cards should use theme cards, semantic colors, and shared spacing.
+- write feature-local `TrashTheme()` instances
+- use raw spacing values when a token exists
+- use direct system font declarations in feature views
+- overload cards with too many badges, metadata lines, and actions
+- rebuild pills/cards/hero surfaces with slightly different spacing and radii in each feature
 
-### Account/Profile/Auth
+## Review Checklist
 
-- Avoid raw system button styles for app-owned calls to action when `TrashButton` is appropriate.
-- Status banners, toasts, and inline feedback should use semantic colors and theme typography.
-- Badge/achievement chips must still respect `44pt` targets if interactive.
+Before shipping a UI change, check:
 
-## Anti-Patterns
+- Is theme read from environment?
+- Are spacing and sizing token-driven?
+- Does the surface fit the `1 primary + 2 secondary` rule?
+- Is typography using shared roles?
+- Could this visual pattern have been built with an existing primitive?
 
-Avoid introducing:
-
-- Raw `RoundedRectangle(cornerRadius: 12/14/15/18/20/28...)` when a shared radius token already fits
-- Raw `padding(10/12/14/18/24/32...)` when an existing spacing token fits
-- Raw `.foregroundColor(.red/.green/.gray/.secondary/.primary)` for app states
-- Tiny interactive chips or buttons below `44pt`
-- Parallel component systems inside one feature
-
-## When To Expand The System
-
-Add or change theme tokens only when:
-
-- the same exception appears in multiple places
-- a new component shape/size is clearly intentional and reusable
-- the existing token set forces awkward or repetitive overrides
-
-When expanding the system:
-
-1. Add the token to `TrashTheme`
-2. Update shared primitives if needed
-3. Migrate feature code to the new token
-4. Avoid leaving page-local fallback numbers behind
+If the answer is no, fix the design-system boundary before merging.

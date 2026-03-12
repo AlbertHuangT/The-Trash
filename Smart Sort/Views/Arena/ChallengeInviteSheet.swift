@@ -11,7 +11,7 @@ import SwiftUI
 
 struct ChallengeInviteSheet: View {
     @Environment(\.dismiss) private var dismiss
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
     @StateObject private var viewModel = ChallengeInviteViewModel()
     let onChallenge: (UUID) -> Void
 
@@ -70,7 +70,7 @@ struct ChallengeInviteSheet: View {
 struct InviteMemberRow: View {
     let member: InvitableMember
     let onChallenge: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack(spacing: theme.layout.rowContentSpacing) {

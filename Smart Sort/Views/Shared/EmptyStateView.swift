@@ -9,29 +9,28 @@ struct EmptyStateView: View {
     let icon: String
     let title: String
     let subtitle: String
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.spacing.lg) {
             ZStack {
-                RoundedRectangle(cornerRadius: theme.spacing.xl, style: .continuous)
+                RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                     .fill(theme.surfaceBackground)
                     .overlay(
-                        RoundedRectangle(cornerRadius: theme.spacing.xl, style: .continuous)
+                        RoundedRectangle(cornerRadius: theme.corners.large, style: .continuous)
                             .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                     )
-                    .frame(width: theme.spacing.xxl * 2, height: theme.spacing.xxl * 2)
+                    .frame(width: 112, height: 112)
                 
                 TrashIcon(systemName: icon)
                     .font(theme.typography.heroIcon)
                     .foregroundColor(theme.accents.blue.opacity(0.9))
             }
             Text(title)
-                .font(theme.typography.headline)
-                .foregroundColor(theme.palette.textPrimary)
+                .trashTextRole(.headline)
+                .multilineTextAlignment(.center)
             Text(subtitle)
-                .font(theme.typography.subheadline)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                 .multilineTextAlignment(.center)
         }
         .padding(theme.spacing.lg)

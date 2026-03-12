@@ -16,7 +16,7 @@ struct EnhancedEventCard: View {
     let onTap: () -> Void
 
     @State private var imageURL: URL?  // For future image loading
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
@@ -52,21 +52,17 @@ struct EnhancedEventCard: View {
     private var ecoEventCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: theme.spacing.sm) {
-                VStack(alignment: .leading, spacing: theme.spacing.xs + 2) {
+                VStack(alignment: .leading, spacing: theme.spacing.xs) {
                     Text(event.title)
-                        .font(theme.typography.headline)
-                        .foregroundColor(theme.palette.textPrimary)
+                        .trashTextRole(.headline)
                         .lineLimit(2)
 
-                    HStack(spacing: theme.spacing.sm) {
-                        StampedIcon(
-                            systemName: event.imageSystemName, size: 14, weight: .semibold,
-                            color: event.category.color)
-                        Text(event.category.rawValue.uppercased())
-                            .font(theme.typography.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
+                    TrashPill(
+                        title: event.category.rawValue,
+                        icon: event.imageSystemName,
+                        color: event.category.color,
+                        isSelected: false
+                    )
                 }
 
                 Spacer()
@@ -97,60 +93,30 @@ struct EnhancedEventCard: View {
                 .frame(height: 1)
                 .padding(.horizontal, theme.components.cardPadding)
 
-            VStack(alignment: .leading, spacing: theme.spacing.sm + 1) {
+            VStack(alignment: .leading, spacing: theme.spacing.sm) {
                 TrashLabel(dateFormatter.string(from: event.date), icon: "calendar")
-                    .font(theme.typography.body)
-                    .foregroundColor(theme.palette.textSecondary)
+                    .trashTextRole(.caption, color: theme.palette.textSecondary, compact: true)
                 TrashLabel(event.location, icon: "mappin.and.ellipse")
-                    .font(theme.typography.body)
-                    .foregroundColor(theme.palette.textSecondary)
+                    .trashTextRole(.caption, color: theme.palette.textSecondary, compact: true)
                     .lineLimit(1)
-
-                HStack {
-                    HStack(spacing: theme.spacing.xs + 2) {
-                        StampedIcon(
-                            systemName: "person.crop.circle", size: 13, weight: .semibold,
-                            color: theme.palette.textSecondary)
-                        Text(event.organizer)
-                            .font(theme.typography.caption)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        StampedIcon(
-                            systemName: "person.2.fill", size: 12, weight: .semibold,
-                            color: isFull ? theme.semanticDanger : theme.accents.blue)
-                        Text("\(event.participantCount)/\(event.maxParticipants)")
-                            .font(theme.typography.caption)
-                            .fontWeight(.bold)
-                    }
-                    .foregroundColor(isFull ? theme.semanticDanger : theme.accents.blue)
-                }
             }
             .padding(.horizontal, theme.components.cardPadding)
             .padding(.top, theme.spacing.sm)
 
             HStack {
-                if isAlmostFull && !isFull {
-                    Text("Filling Fast")
-                        .font(theme.typography.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.accents.orange)
-                } else if isFull {
-                    Text("Event Full")
-                        .font(theme.typography.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.palette.textSecondary)
-                }
+                TrashPill(
+                    title: "\(event.participantCount)/\(event.maxParticipants)",
+                    icon: "person.2.fill",
+                    color: isFull ? theme.semanticDanger : theme.accents.blue,
+                    isSelected: false
+                )
 
                 Spacer()
 
                 ecoJoinTag
             }
             .padding(.horizontal, theme.components.cardPadding)
-            .padding(.top, theme.spacing.md - 4)
+            .padding(.top, theme.layout.elementSpacing)
             .padding(.bottom, theme.components.cardPadding)
         }
         .background {
@@ -161,7 +127,7 @@ struct EnhancedEventCard: View {
                         .stroke(theme.palette.divider, lineWidth: 1)
                 )
         }
-        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
+        .shadow(color: theme.cardShadow, radius: 8, x: 0, y: 3)
     }
 
     private var ecoJoinTag: some View {
@@ -170,7 +136,7 @@ struct EnhancedEventCard: View {
             ? theme.accents.green
             : (isFull ? theme.palette.textSecondary.opacity(0.7) : theme.accents.green)
 
-        return HStack(spacing: 6) {
+        return HStack(spacing: theme.spacing.sm) {
             StampedIcon(
                 systemName: event.isRegistered ? "checkmark.seal.fill" : "tag.fill",
                 size: 12,
@@ -183,7 +149,7 @@ struct EnhancedEventCard: View {
                 .foregroundColor(theme.onAccentForeground)
         }
         .padding(.horizontal, theme.layout.compactControlHorizontalInset)
-        .frame(minHeight: 32)
+        .frame(minHeight: theme.components.compactControlHeight)
         .background(
             RoundedRectangle(cornerRadius: theme.corners.small, style: .continuous)
                 .fill(tagColor)
@@ -195,7 +161,7 @@ struct EnhancedEventCard: View {
         .overlay(alignment: .topLeading) {
             Circle()
                 .fill(theme.surfaceBackground.opacity(0.98))
-                .frame(width: 7, height: 7)
+                .frame(width: 8, height: 8)
                 .offset(x: 8, y: -3)
         }
         .overlay(alignment: .topLeading) {

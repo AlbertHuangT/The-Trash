@@ -14,7 +14,7 @@ struct ChallengeListView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedChallenge: ArenaChallenge?
     @State private var showDuel = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         NavigationStack {
@@ -135,7 +135,7 @@ struct ChallengeRow: View {
     let currentUserId: UUID?
     let onAccept: (() -> Void)?
     let onDecline: (() -> Void)?
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var isChallenger: Bool {
         challenge.challengerId == currentUserId

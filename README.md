@@ -114,7 +114,6 @@ docs/
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [UI Guidelines](docs/UI_GUIDELINES.md)
-- [Audit](AUDIT.md)
 
 ## Getting Started
 
@@ -175,15 +174,21 @@ supabase db push --linked --include-all --yes
 - Face-containing photos are never uploaded as feedback
 - Feedback images are now private and served via signed URLs
 - `app_admins` can review and publish quiz candidates through the in-app `Quiz Review` flow
+- `scripts/check_backend_contracts.sh` now checks both local RPC alignment and linked remote legacy drift when Supabase access is available
 
 ## Design System Notes
 
-The app now uses a shared UI metric system aligned to Apple HIG-sized controls:
+The app uses a shared `TrashTheme` system with tokenized spacing, sizing, and typography roles.
+
+Current baseline metrics:
 
 - Minimum hit target: `44pt`
-- Button/input height: `50pt`
-- Standard row height: `56pt`
-- Corner radii: `10 / 16 / 24 / pill`
+- Button/input height: `52pt`
+- Standard row height: `52pt`
+- Compact control height: `32pt`
+- Corner radii: `12 / 16 / 20 / pill`
+- Layout rhythm: `16pt` screen inset, `24pt` section spacing, `12pt` element spacing
+- Grid rule: `8pt` primary grid with `4pt` compact internal adjustments
 
 Use shared primitives before writing feature-local styling:
 
@@ -194,6 +199,17 @@ Use shared primitives before writing feature-local styling:
 - `TrashCard` / `.surfaceCard(...)`
 - `TrashSegmentedControl`
 
+Text hierarchy should use the shared roles from `TrashTheme`:
+
+- `display`
+- `title`
+- `headline`
+- `subheadline`
+- `body`
+- `caption`
+- `button`
+- `kicker`
+
 See [UI Guidelines](docs/UI_GUIDELINES.md) for the full rules.
 
 ## Source Of Truth
@@ -201,6 +217,7 @@ See [UI Guidelines](docs/UI_GUIDELINES.md) for the full rules.
 - App-owned SQL logic lives in `supabase/migrations/`
 - UI tokens and interaction metrics live in `TrashTheme`
 - Shared component primitives should be extended before creating one-off visual systems
+- App shell, state composition, and service boundaries are documented in [Architecture](docs/ARCHITECTURE.md)
 
 ## License
 

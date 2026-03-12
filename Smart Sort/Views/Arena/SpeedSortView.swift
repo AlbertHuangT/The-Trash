@@ -227,7 +227,7 @@ struct SpeedSortView: View {
 struct SpeedSortCountdownOverlay: View {
     let value: Int
     @State private var scale: CGFloat = 0.3
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var displayText: String {
         value > 0 ? "\(value)" : "GO!"

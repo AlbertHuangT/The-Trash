@@ -7,8 +7,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var authVM: AuthViewModel
-
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
     @State private var loginMethod = 0
     @State private var email = ""
     @State private var password = ""
@@ -48,19 +47,14 @@ struct LoginView: View {
 
     private var heroSection: some View {
         VStack(alignment: .leading, spacing: theme.spacing.sm) {
-            Text("Welcome Back")
-                .font(theme.typography.caption)
+            TrashSectionTitle(title: "Welcome Back")
                 .foregroundColor(theme.accents.blue)
-                .textCase(.uppercase)
-                .tracking(0.8)
 
             Text("Sort smarter.")
-                .font(theme.typography.title)
-                .foregroundColor(theme.palette.textPrimary)
+                .trashTextRole(.title)
 
             Text("Use the camera, explore Arena, and link an account to unlock long-term rewards and leaderboard progress.")
-                .font(theme.typography.body)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.body, color: theme.palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -129,8 +123,7 @@ struct LoginView: View {
                 isSignUp.toggle()
             }
             .buttonStyle(.plain)
-            .font(.footnote.weight(.semibold))
-            .foregroundColor(theme.accents.blue)
+            .trashTextRole(.button, color: theme.accents.blue, compact: true)
         }
     }
 
@@ -174,8 +167,7 @@ struct LoginView: View {
                     otpCode = ""
                 }
                 .buttonStyle(.plain)
-                .font(.footnote.weight(.semibold))
-                .foregroundColor(theme.accents.blue)
+                .trashTextRole(.button, color: theme.accents.blue, compact: true)
             } else {
                 HStack(spacing: theme.layout.elementSpacing) {
                     Text("+1")
@@ -217,20 +209,17 @@ struct LoginView: View {
             }
 
             Text("Phone auth supports both sign in and sign up.")
-                .font(.footnote)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.caption, color: theme.palette.textSecondary)
         }
     }
 
     private var guestButton: some View {
         VStack(alignment: .leading, spacing: theme.spacing.sm) {
             Text("Just looking around?")
-                .font(theme.typography.subheadline)
-                .foregroundColor(theme.palette.textPrimary)
+                .trashTextRole(.headline)
 
             Text("Guest mode lets you browse and play, but linked accounts are required for Verify rewards and account recovery.")
-                .font(.footnote)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                 .fixedSize(horizontal: false, vertical: true)
 
             TrashButton(baseColor: theme.accents.blue, action: {
@@ -258,8 +247,7 @@ struct LoginView: View {
                 .foregroundColor(theme.semanticDanger)
 
             Text(message)
-                .font(theme.typography.caption)
-                .foregroundColor(theme.palette.textPrimary)
+                .trashTextRole(.caption, color: theme.palette.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(theme.components.cardPadding)

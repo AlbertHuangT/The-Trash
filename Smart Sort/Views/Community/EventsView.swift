@@ -320,7 +320,7 @@ struct EventsView: View {
 private struct SortOptionSheet: View {
     @Binding var selection: EventSortOption
     @Binding var isPresented: Bool
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         NavigationStack {

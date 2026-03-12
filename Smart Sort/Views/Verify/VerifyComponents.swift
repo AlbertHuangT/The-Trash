@@ -10,14 +10,13 @@ struct EnhancedSwipeableCard: View {
     let result: TrashAnalysisResult
     @Binding var offset: CGSize
     let onSwipe: (SwipeDirection) -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.layout.elementSpacing) {
             HStack(spacing: theme.layout.rowContentSpacing) {
                 Text(result.itemName)
-                    .font(theme.typography.subheadline)
-                    .foregroundColor(theme.palette.textPrimary)
+                    .trashTextRole(.headline, compact: true)
                     .lineLimit(1)
 
                 Spacer(minLength: theme.spacing.sm)
@@ -48,8 +47,7 @@ struct EnhancedSwipeableCard: View {
             }
 
             Text(result.actionTip)
-                .font(theme.typography.caption)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lineLimit(2)
@@ -111,17 +109,15 @@ struct EnhancedSwipeableCard: View {
 // MARK: - Enhanced Feedback Form
 struct EnhancedFeedbackForm: View {
     @Binding var itemName: String
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
             Text("Help us improve")
-                .font(theme.typography.subheadline)
-                .foregroundColor(theme.palette.textPrimary)
+                .trashTextRole(.headline, compact: true)
 
             Text("What was the item? Your correction helps the AI learn.")
-                .font(theme.typography.caption)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                 .fixedSize(horizontal: false, vertical: true)
 
             TrashFormTextField(
@@ -146,22 +142,20 @@ struct EnhancedFeedbackForm: View {
 struct ErrorCard: View {
     let message: String
     let onRetry: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.layout.elementSpacing) {
             TrashIcon(systemName: "exclamationmark.octagon.fill")
-                .font(.system(size: 34))
+                .font(theme.typography.headline)
                 .foregroundColor(theme.semanticDanger)
 
             Text("Analysis Error")
-                .font(theme.typography.subheadline)
+                .trashTextRole(.headline, compact: true)
                 .fontWeight(.bold)
-                .foregroundColor(theme.palette.textPrimary)
 
             Text(message)
-                .font(theme.typography.caption)
-                .foregroundColor(theme.palette.textSecondary)
+                .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 

@@ -12,7 +12,7 @@ import Combine
 struct StreakLeaderboardView: View {
     @StateObject private var viewModel = StreakLeaderboardViewModel()
     @Environment(\.dismiss) private var dismiss
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         NavigationStack {
@@ -69,7 +69,7 @@ struct StreakLeaderboardView: View {
 struct StreakLeaderboardRow: View {
     let rank: Int
     let entry: StreakLeaderboardEntry
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var rankColor: Color {
         switch rank {

@@ -19,7 +19,7 @@ struct ChallengeAcceptView: View {
 
     private let client = SupabaseManager.shared.client
     private let arenaService = ArenaService.shared
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ZStack {

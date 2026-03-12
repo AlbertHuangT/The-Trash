@@ -245,7 +245,7 @@ struct DuelView: View {
 struct DuelLobbyContent: View {
     @ObservedObject var viewModel: DuelViewModel
     let challengeId: UUID?
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -331,7 +331,7 @@ struct DuelResultsContent: View {
     let onDismiss: () -> Void
 
     @State private var showStats = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var iWon: Bool {
         viewModel.result?.winnerId == viewModel.myUserId

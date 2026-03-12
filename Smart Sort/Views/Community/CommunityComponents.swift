@@ -9,7 +9,7 @@ import SwiftUI
 struct LocationRowView: View {
     let location: UserLocation
     let onSelect: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         TrashTapArea(action: onSelect) {
@@ -30,13 +30,11 @@ struct LocationRowView: View {
                             .foregroundColor(theme.accents.blue)
                     )
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: theme.spacing.xs) {
                     Text(location.city)
-                        .font(.subheadline.bold())
-                        .foregroundColor(theme.palette.textPrimary)
+                        .trashTextRole(.subheadline, compact: true)
                     Text(location.state)
-                        .font(.caption)
-                        .foregroundColor(theme.palette.textSecondary)
+                        .trashTextRole(.caption, compact: true)
                 }
 
                 Spacer()
@@ -67,7 +65,7 @@ struct CommunityCardView: View {
     @ObservedObject private var communityStore = CommunityMembershipStore.shared
     @State private var showDetail = false
     @State private var showAdminDashboard = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var isMember: Bool {
         communityStore.isMember(of: community)
@@ -91,40 +89,25 @@ struct CommunityCardView: View {
                             RoundedRectangle(cornerRadius: theme.corners.medium, style: .continuous)
                                 .stroke(theme.palette.divider.opacity(0.8), lineWidth: 1)
                         )
-                        .frame(height: 120)
+                        .frame(height: 112)
                         .overlay(
                             TrashIcon(systemName: "person.3.fill")
-                                .font(.system(size: 50))
+                                .font(.system(size: 48))
                                 .foregroundColor(theme.palette.textSecondary.opacity(0.25))
                         )
 
                     HStack {
                         Spacer()
-                        if isPending {
-                            pillBadge(
-                                icon: "clock.badge.exclamationmark.fill", text: "Pending",
-                                foreground: theme.semanticWarning)
-                        }
-                        if isMember {
-                            pillBadge(
-                                icon: "checkmark.circle.fill", text: "Joined",
-                                foreground: theme.accents.green)
-                        }
-                        if isAdmin {
-                            Text("Admin")
-                                .font(.caption.bold())
-                                .badgeStyle(background: .orange)
-                        }
+                        statusBadge
                     }
                     .padding(12)
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: theme.layout.elementSpacing) {
                     HStack(alignment: .top) {
                         Text(community.name)
-                            .font(theme.typography.headline)
+                            .trashTextRole(.headline)
                             .lineLimit(2)
-                            .foregroundColor(theme.palette.textPrimary)
 
                         Spacer()
 
@@ -144,25 +127,19 @@ struct CommunityCardView: View {
                         )
                     }
 
-                    HStack(spacing: 6) {
-                        TrashIcon(systemName: "mappin.and.ellipse")
-                            .foregroundColor(theme.palette.textSecondary)
-                        Text(community.fullLocation)
-                            .font(theme.typography.subheadline)
-                            .foregroundColor(theme.palette.textSecondary)
-                    }
+                    TrashLabel(community.fullLocation, icon: "mappin.and.ellipse", iconColor: theme.palette.textSecondary)
+                        .trashTextRole(.caption, color: theme.palette.textSecondary, compact: true)
 
                     if !community.description.isEmpty {
                         Text(community.description)
-                            .font(theme.typography.subheadline)
-                            .foregroundColor(theme.palette.textSecondary)
+                            .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
                     if isAdmin {
                         theme.palette.divider.frame(height: 1)
-                            .padding(.vertical, 4)
+                            .padding(.vertical, theme.spacing.xs)
 
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: theme.layout.elementSpacing) {
@@ -190,6 +167,17 @@ struct CommunityCardView: View {
     @ViewBuilder
     private func pillBadge(icon: String, text: String, foreground: Color) -> some View {
         TrashPill(title: text, icon: icon, color: foreground, isSelected: false)
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        if isAdmin {
+            pillBadge(icon: "gearshape.fill", text: "Admin", foreground: theme.semanticWarning)
+        } else if isPending {
+            pillBadge(icon: "clock.badge.exclamationmark.fill", text: "Pending", foreground: theme.semanticWarning)
+        } else if isMember {
+            pillBadge(icon: "checkmark.circle.fill", text: "Joined", foreground: theme.accents.green)
+        }
     }
 
     @ViewBuilder

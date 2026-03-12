@@ -12,7 +12,7 @@ import CoreLocation
 struct LocationPickerSheet: View {
     @Binding var isPresented: Bool
     @ObservedObject private var userSettings = UserSettings.shared
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
     @State private var searchText = ""
     @State private var isSelecting = false
     @State private var isUsingCurrentLocation = false
@@ -340,7 +340,7 @@ private struct LocationRow: View {
     let isLoading: Bool
     let isDisabled: Bool
     let onTap: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         TrashTapArea(action: onTap) {

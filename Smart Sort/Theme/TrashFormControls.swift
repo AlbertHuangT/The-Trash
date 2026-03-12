@@ -13,7 +13,7 @@ struct TrashIconButton: View {
    var body: some View {
        Button(action: action) {
            TrashIcon(systemName: icon)
-               .font(.system(size: 17, weight: .semibold))
+               .font(theme.typography.button)
                .foregroundColor(foreground)
                .frame(
                    width: theme.components.iconButtonSize,
@@ -91,15 +91,13 @@ struct TrashPill: View {
    }
 
    private var pillBody: some View {
-       HStack(spacing: 6) {
+       HStack(spacing: theme.spacing.sm) {
            if let icon {
                StampedIcon(systemName: icon, size: 12, weight: .semibold, color: iconColor)
            }
            Text(title)
-               .font(theme.typography.caption)
+               .trashTextRole(.caption, color: foreground, compact: true)
                .fontWeight(.semibold)
-               .foregroundColor(foreground)
-               .lineLimit(1)
        }
        .padding(.horizontal, theme.layout.compactControlHorizontalInset)
        .frame(minHeight: action == nil ? theme.components.compactControlHeight : theme.components.pillHeight)
@@ -148,9 +146,9 @@ struct TrashSearchField: View {
    @Environment(\.trashTheme) private var theme
 
    var body: some View {
-       HStack(spacing: 10) {
+       HStack(spacing: theme.layout.rowContentSpacing) {
            TrashIcon(systemName: "magnifyingglass")
-               .font(.system(size: 17, weight: .semibold))
+               .font(theme.typography.button)
                .foregroundColor(theme.palette.textSecondary)
 
            TextField(placeholder, text: $text)
@@ -163,7 +161,7 @@ struct TrashSearchField: View {
                    text = ""
                } label: {
                    TrashIcon(systemName: "xmark.circle.fill")
-                       .font(.system(size: 17, weight: .semibold))
+                       .font(theme.typography.button)
                        .foregroundColor(theme.palette.textSecondary)
                }
                .buttonStyle(.plain)
@@ -214,11 +212,8 @@ struct TrashSectionTitle: View {
 
    var body: some View {
        Text(title)
-           .font(.footnote.weight(.semibold))
-           .foregroundColor(theme.palette.textSecondary)
+           .trashTextRole(.kicker)
            .frame(maxWidth: .infinity, alignment: .leading)
-           .textCase(.uppercase)
-           .tracking(0.5)
    }
 }
 
@@ -238,12 +233,10 @@ struct TrashTextButton: View {
    @Environment(\.trashTheme) private var theme
 
    var body: some View {
-       Button(action: action) {
-           Text(title)
-               .font(theme.typography.subheadline)
+        Button(action: action) {
+            Text(title)
+               .trashTextRole(.button, color: resolvedColor, compact: true)
                .fontWeight(.medium)
-               .foregroundColor(resolvedColor)
-               .lineLimit(1)
                .padding(.horizontal, theme.layout.inlineButtonHorizontalInset)
                .frame(
                    minWidth: theme.components.minimumHitTarget,
@@ -302,9 +295,9 @@ struct TrashIconInputField: View {
    @Environment(\.trashTheme) private var theme
 
    var body: some View {
-       HStack(spacing: 14) {
+       HStack(spacing: theme.layout.rowContentSpacing) {
            TrashIcon(systemName: icon)
-               .font(.system(size: 17, weight: .medium))
+               .font(theme.typography.button)
                .foregroundColor(isFocused ? theme.accents.blue : theme.palette.textSecondary)
                .frame(width: 24)
 
@@ -339,7 +332,7 @@ struct TrashFormTextEditor: View {
    var body: some View {
        TextEditor(text: $text)
            .frame(minHeight: minHeight)
-           .padding(2)
+           .padding(theme.spacing.xs)
            .scrollContentBackground(.hidden)
            .background(Color.clear)
            .foregroundColor(theme.palette.textPrimary)
@@ -503,13 +496,11 @@ struct TrashNoticeSheet: View {
        ZStack {
            VStack(spacing: theme.layout.sheetActionSpacing) {
                Text(title)
-                   .font(theme.typography.title)
-                   .foregroundColor(theme.palette.textPrimary)
+                   .trashTextRole(.title)
                    .multilineTextAlignment(.center)
 
                Text(message)
-                   .font(theme.typography.subheadline)
-                   .foregroundColor(theme.palette.textSecondary)
+                   .trashTextRole(.body, color: theme.palette.textSecondary)
                    .multilineTextAlignment(.center)
 
                TrashButton(
@@ -565,13 +556,11 @@ struct TrashConfirmSheet: View {
        ZStack {
            VStack(spacing: theme.layout.sheetActionSpacing) {
                Text(title)
-                   .font(theme.typography.title)
-                   .foregroundColor(theme.palette.textPrimary)
+                   .trashTextRole(.title)
                    .multilineTextAlignment(.center)
 
                Text(message)
-                   .font(theme.typography.subheadline)
-                   .foregroundColor(theme.palette.textSecondary)
+                   .trashTextRole(.body, color: theme.palette.textSecondary)
                    .multilineTextAlignment(.center)
 
                TrashButton(baseColor: confirmColor ?? theme.accents.blue, action: onConfirm) {
@@ -607,13 +596,11 @@ struct TrashTextInputSheet: View {
        ZStack {
            VStack(spacing: theme.layout.sheetActionSpacing) {
                Text(title)
-                   .font(theme.typography.title)
-                   .foregroundColor(theme.palette.textPrimary)
+                   .trashTextRole(.title)
                    .multilineTextAlignment(.center)
 
                Text(message)
-                   .font(theme.typography.subheadline)
-                   .foregroundColor(theme.palette.textSecondary)
+                   .trashTextRole(.body, color: theme.palette.textSecondary)
                    .multilineTextAlignment(.center)
 
                TrashFormTextField(
@@ -622,7 +609,7 @@ struct TrashTextInputSheet: View {
                    textInputAutocapitalization: .words
                )
 
-               HStack(spacing: 10) {
+               HStack(spacing: theme.layout.elementSpacing) {
                    TrashTextButton(title: "Cancel") {
                        dismiss()
                    }

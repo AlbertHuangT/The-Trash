@@ -12,7 +12,7 @@ import SwiftUI
 struct DailyLeaderboardView: View {
     @StateObject private var viewModel = DailyLeaderboardViewModel()
     @Environment(\.dismiss) private var dismiss
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         NavigationStack {
@@ -68,7 +68,7 @@ struct DailyLeaderboardView: View {
 
 struct DailyLeaderboardRow: View {
     let entry: DailyLeaderboardEntry
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var rankColor: Color {
         switch entry.rank {

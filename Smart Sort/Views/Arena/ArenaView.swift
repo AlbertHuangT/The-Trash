@@ -175,7 +175,7 @@ struct EnhancedAnonymousRestrictionView: View {
 
 // Loading view
 struct EnhancedLoadingView: View {
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.layout.sectionSpacing) {
@@ -193,7 +193,7 @@ struct EnhancedLoadingView: View {
 // Empty state view
 struct EnhancedEmptyStateView: View {
     var onRefresh: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.layout.sectionSpacing) {
@@ -250,7 +250,7 @@ struct CategoryAnswerButton: View {
     let category: String
     let isDisabled: Bool
     let onTap: () -> Void
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var categoryColor: Color {
         switch category {
@@ -310,7 +310,7 @@ struct CategoryAnswerButton: View {
 struct EnhancedCorrectFeedback: View {
     let pointsText: String
     @State private var animate = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ZStack {
@@ -343,7 +343,7 @@ struct EnhancedCorrectFeedback: View {
 struct EnhancedWrongFeedback: View {
     let correctAnswer: String
     @State private var animate = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ZStack {
@@ -376,7 +376,7 @@ struct EnhancedWrongFeedback: View {
 struct EnhancedComboOverlay: View {
     let comboCount: Int
     @State private var scale: CGFloat = 0.5
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.layout.elementSpacing) {
@@ -426,7 +426,7 @@ struct EnhancedComboOverlay: View {
 // Combo break overlay
 struct EnhancedComboBreakOverlay: View {
     @State private var opacity: Double = 1
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         VStack(spacing: theme.layout.elementSpacing) {
@@ -459,7 +459,7 @@ struct EnhancedComboBreakOverlay: View {
 // Session summary
 struct EnhancedSessionSummaryView: View {
     @ObservedObject var viewModel: ArenaViewModel
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var accuracy: Int {
         guard viewModel.questions.count > 0 else { return 0 }
@@ -493,7 +493,7 @@ struct EnhancedStatRow: View {
     let title: String
     let value: String
     let color: Color
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack(spacing: theme.layout.rowContentSpacing) {

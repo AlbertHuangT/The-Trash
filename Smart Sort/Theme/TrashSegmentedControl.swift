@@ -33,7 +33,7 @@ struct TrashSegmentedControl<Value: Hashable>: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .frame(minHeight: theme.components.segmentedControlHeight)
-        .padding(6)
+        .padding(theme.spacing.sm)
         .background(
             RoundedRectangle(cornerRadius: theme.layout.prominentCardCornerRadius, style: .continuous)
                 .fill(theme.surfaceBackground)

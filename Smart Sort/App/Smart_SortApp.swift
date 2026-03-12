@@ -17,7 +17,8 @@ struct Smart_SortApp: App {
     private let theme = TrashTheme()
 
     init() {
-        TrashTheme().configureAppearance()
+        let theme = TrashTheme()
+        theme.configureAppearance()
     }
 
     var body: some Scene {

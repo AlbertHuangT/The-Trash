@@ -81,7 +81,7 @@ class TrashHistoryViewModel: ObservableObject {
 // MARK: - Main View
 struct TrashHistoryView: View {
     @StateObject private var viewModel = TrashHistoryViewModel()
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
     
     var body: some View {
         ZStack {
@@ -133,7 +133,7 @@ struct TrashHistoryView: View {
 // MARK: - Subviews
 struct HistoryRow: View {
     let item: HistoryItem
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
     
     var body: some View {
         HStack(spacing: 12) {

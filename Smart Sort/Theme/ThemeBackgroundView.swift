@@ -5,7 +5,7 @@ struct ThemeBackgroundView: View {
 
     var body: some View {
         ZStack {
-            theme.appBackground
+            theme.appBackgroundGradient
 
             LinearGradient(
                 colors: [
@@ -45,8 +45,8 @@ private struct TrashScreenBackgroundModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(theme.appBackground.ignoresSafeArea())
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(ThemeBackgroundView())
     }
 }
 

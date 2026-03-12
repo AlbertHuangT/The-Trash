@@ -12,7 +12,7 @@ import SwiftUI
 struct ArenaImagePlaceholder: View {
     let failed: Bool
     let onRetry: (() -> Void)?
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         RoundedRectangle(cornerRadius: theme.corners.large + 4)
@@ -21,11 +21,10 @@ struct ArenaImagePlaceholder: View {
                 VStack(spacing: theme.spacing.md) {
                     if failed {
                         TrashIcon(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 24, weight: .semibold))
+                            .font(theme.typography.headline)
                             .foregroundColor(theme.semanticWarning)
                         Text("Image unavailable")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(theme.palette.textPrimary)
+                            .trashTextRole(.subheadline, compact: true)
                         if let onRetry {
                             TrashPill(
                                 title: "Retry",
@@ -40,8 +39,7 @@ struct ArenaImagePlaceholder: View {
                             .scaleEffect(1.2)
                             .tint(theme.accents.blue)
                         Text("Loading image...")
-                            .font(.subheadline)
-                            .foregroundColor(theme.palette.textSecondary)
+                            .trashTextRole(.body, color: theme.palette.textSecondary, compact: true)
                     }
                 }
                 .padding(.horizontal, theme.spacing.lg)
@@ -63,7 +61,7 @@ struct SharedQuizCard: View {
     var onRetryImage: (() -> Void)? = nil
     let onAnswer: (String) -> Void
     var timerView: AnyView? = nil
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         GeometryReader { geo in
@@ -89,13 +87,11 @@ struct SharedQuizCard: View {
 
                     HStack {
                         TrashIcon(systemName: "questionmark.circle.fill")
-                            .font(.subheadline.weight(.semibold))
+                            .font(theme.typography.button)
                         Text("What type of trash is this?")
-                            .font(theme.typography.subheadline)
-                            .lineLimit(2)
+                            .trashTextRole(.headline, color: theme.onAccentForeground, compact: true)
                         Spacer()
                     }
-                    .trashOnAccentForeground()
                     .padding(.horizontal, theme.layout.screenInset)
 
                     LazyVGrid(
@@ -114,13 +110,7 @@ struct SharedQuizCard: View {
                     .padding(.bottom, theme.layout.sectionSpacing)
                 }
                 .padding(.top, theme.layout.elementSpacing)
-                .background(
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.85)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .background(theme.overlayScrim)
 
                 // Correct/Wrong feedback overlays
                 if showCorrect {
@@ -150,7 +140,7 @@ struct ArenaStatusBar: View {
     let showProgress: Bool
     @Binding var pulseAnimation: Bool
     var extraContent: AnyView? = nil
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         HStack(spacing: theme.layout.elementSpacing) {
@@ -218,7 +208,7 @@ struct GenericSessionSummaryView: View {
     var ringData: [SWRingChart<EmptyView>.DataPoint]? = nil
 
     @State private var showStats = false
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -250,8 +240,7 @@ struct GenericSessionSummaryView: View {
                 }
 
                 Text(title)
-                    .font(theme.typography.title.weight(.heavy))
-                    .foregroundColor(theme.palette.textPrimary)
+                    .trashTextRole(.title)
                     .multilineTextAlignment(.center)
 
                 if let ringData, !ringData.isEmpty {
@@ -289,7 +278,7 @@ struct GenericSessionSummaryView: View {
                                 TrashIcon(systemName: "arrow.clockwise")
                                 Text("Play Again")
                             }
-                            .font(theme.typography.subheadline.weight(.bold))
+                            .font(theme.typography.button.weight(.bold))
                             .trashOnAccentForeground()
                         }
 
@@ -304,7 +293,7 @@ struct GenericSessionSummaryView: View {
                                 TrashIcon(systemName: "arrow.clockwise")
                                 Text("Play Again")
                             }
-                            .font(theme.typography.subheadline.weight(.bold))
+                            .font(theme.typography.button.weight(.bold))
                             .trashOnAccentForeground()
                         }
 
@@ -330,7 +319,7 @@ struct GenericSessionSummaryView: View {
                 TrashIcon(systemName: "chart.bar.fill")
                 Text("Ranks")
             }
-            .font(theme.typography.subheadline.weight(.bold))
+            .font(theme.typography.button.weight(.bold))
             .foregroundColor(theme.accents.blue)
             .padding(.horizontal, theme.layout.compactControlHorizontalInset)
             .frame(minHeight: theme.components.buttonHeight)
@@ -351,7 +340,7 @@ struct GenericSessionSummaryView: View {
 struct TimerBarView: View {
     let timeRemaining: Double
     let totalTime: Double
-    private let theme = TrashTheme()
+    @Environment(\.trashTheme) private var theme
     
     var progress: Double {
         guard totalTime > 0 else { return 0 }
@@ -365,12 +354,12 @@ struct TimerBarView: View {
     }
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: theme.spacing.xs) {
             HStack {
                 TrashIcon(systemName: "timer")
-                    .font(.caption.bold())
+                    .font(theme.typography.caption.weight(.bold))
                 Text(String(format: "%.1fs", timeRemaining))
-                    .font(.subheadline.bold().monospacedDigit())
+                    .font(theme.typography.subheadline.weight(.bold).monospacedDigit())
                 Spacer()
             }
             .foregroundColor(timerTextColor)

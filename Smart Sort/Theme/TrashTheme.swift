@@ -22,12 +22,14 @@ struct ThemeShadowPalette {
 }
 
 struct ThemeTypography {
+    let display: Font
     let title: Font
     let headline: Font
     let subheadline: Font
     let body: Font
     let caption: Font
     let button: Font
+    let kicker: Font
     let heroIcon: Font
 }
 
@@ -181,24 +183,25 @@ struct TrashTheme {
         )
 
         typography = ThemeTypography(
-            title: .system(size: 34, weight: .bold, design: .rounded),
+            display: .system(size: 48, weight: .heavy, design: .rounded),
+            title: .system(size: 32, weight: .bold, design: .rounded),
             headline: .system(size: 24, weight: .semibold, design: .rounded),
-            subheadline: .system(size: 17, weight: .semibold, design: .rounded),
-            body: .system(size: 17, weight: .regular, design: .rounded),
-            caption: .system(size: 13, weight: .medium, design: .rounded),
-            button: .system(size: 17, weight: .semibold, design: .rounded),
+            subheadline: .system(size: 16, weight: .semibold, design: .rounded),
+            body: .system(size: 16, weight: .regular, design: .rounded),
+            caption: .system(size: 12, weight: .medium, design: .rounded),
+            button: .system(size: 16, weight: .semibold, design: .rounded),
+            kicker: .system(size: 12, weight: .semibold, design: .rounded),
             heroIcon: .system(size: 48, weight: .semibold, design: .rounded)
         )
 
-        // 8pt grid-aligned spacing system
-        spacing = ThemeSpacing(xs: 4, sm: 8, md: 16, lg: 20, xl: 28, xxl: 40)
-        // Apple-aligned sizing baseline: 44pt hit targets, moderate radii, compact rows.
+        // 8pt primary grid, 4pt secondary grid for compact internals only.
+        spacing = ThemeSpacing(xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 40)
         corners = ThemeCornerRadius(small: 12, medium: 16, large: 20, pill: 22)
         components = ThemeComponentMetrics(
             minimumHitTarget: 44,
             iconButtonSize: 44,
             buttonHeight: 52,
-            inputHeight: 50,
+            inputHeight: 52,
             rowHeight: 52,
             segmentedControlHeight: 44,
             pillHeight: 44,
@@ -209,13 +212,13 @@ struct TrashTheme {
         )
         layout = ThemeLayoutGuides(
             screenInset: 16,
-            sectionSpacing: 20,
+            sectionSpacing: 24,
             elementSpacing: 12,
-            rowContentSpacing: 14,
+            rowContentSpacing: 12,
             inlineButtonHorizontalInset: 8,
             compactControlHorizontalInset: 12,
-            inputHorizontalInset: 14,
-            sheetEdgeInset: 20,
+            inputHorizontalInset: 16,
+            sheetEdgeInset: 16,
             sheetActionSpacing: 12,
             toolbarHitTarget: 44,
             standardCardCornerRadius: 16,
@@ -363,6 +366,34 @@ struct TrashTheme {
         accents.green.opacity(0.42)
     }
 
+    var appBackgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                appBackground,
+                surfaceBackground.opacity(0.96),
+                appBackground
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    var overlayScrim: LinearGradient {
+        LinearGradient(
+            colors: [.clear, Color.black.opacity(0.82)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    var cardShadow: Color {
+        Color.black.opacity(0.08)
+    }
+
+    var raisedShadow: Color {
+        Color.black.opacity(0.18)
+    }
+
     var semanticSuccess: Color {
         Color(red: 0.23, green: 0.39, blue: 0.21)
     }
@@ -430,6 +461,96 @@ extension EnvironmentValues {
     }
 }
 
+enum TrashTextRole {
+    case display
+    case title
+    case headline
+    case subheadline
+    case body
+    case caption
+    case button
+    case kicker
+}
+
+private struct TrashTextRoleModifier: ViewModifier {
+    @Environment(\.trashTheme) private var theme
+    let role: TrashTextRole
+    let color: Color?
+    let compact: Bool
+
+    func body(content: Content) -> some View {
+        let resolvedColor = color ?? defaultColor
+
+        content
+            .font(font)
+            .foregroundColor(resolvedColor)
+            .lineLimit(lineLimit)
+            .minimumScaleFactor(minimumScaleFactor)
+            .textCase(role == .kicker ? .uppercase : nil)
+            .tracking(role == .kicker ? 0.6 : 0)
+    }
+
+    private var font: Font {
+        switch role {
+        case .display:
+            return theme.typography.display
+        case .title:
+            return theme.typography.title
+        case .headline:
+            return theme.typography.headline
+        case .subheadline:
+            return theme.typography.subheadline
+        case .body:
+            return theme.typography.body
+        case .caption:
+            return theme.typography.caption
+        case .button:
+            return theme.typography.button
+        case .kicker:
+            return theme.typography.kicker
+        }
+    }
+
+    private var defaultColor: Color {
+        switch role {
+        case .caption, .kicker:
+            return theme.palette.textSecondary
+        default:
+            return theme.palette.textPrimary
+        }
+    }
+
+    private var lineLimit: Int? {
+        switch role {
+        case .display:
+            return 1
+        case .title, .headline:
+            return 2
+        case .subheadline:
+            return compact ? 1 : 2
+        case .body:
+            return compact ? 2 : nil
+        case .caption:
+            return compact ? 1 : 2
+        case .button, .kicker:
+            return 1
+        }
+    }
+
+    private var minimumScaleFactor: CGFloat {
+        switch role {
+        case .display:
+            return 0.95
+        case .title, .headline:
+            return 0.92
+        case .subheadline, .body, .caption:
+            return 0.9
+        case .button, .kicker:
+            return 0.88
+        }
+    }
+}
+
 // MARK: - Accent Foreground Modifier
 
 private struct TrashOnAccentForegroundModifier: ViewModifier {
@@ -443,5 +564,9 @@ private struct TrashOnAccentForegroundModifier: ViewModifier {
 extension View {
     func trashOnAccentForeground() -> some View {
         modifier(TrashOnAccentForegroundModifier())
+    }
+
+    func trashTextRole(_ role: TrashTextRole, color: Color? = nil, compact: Bool = false) -> some View {
+        modifier(TrashTextRoleModifier(role: role, color: color, compact: compact))
     }
 }
